@@ -12,3 +12,4 @@ test-results/
 *.tmp
 *.bak
 
+.zcode/
