@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/content-item.schema.json",
+  "title": "Starsoil item definition",
+  "type": "object",
+  "required": ["id", "kind", "name_zh", "stack_limit"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "kind": {"enum": ["material", "story_core", "sandbox_item"]},
+    "name_zh": {"type": "string", "minLength": 1},
+    "desc_zh": {"type": "string"},
+    "stack_limit": {"type": "integer", "minimum": 1, "maximum": 999},
+    "tier": {"type": "integer", "minimum": 0, "maximum": 9},
+    "battle_usable": {"type": "boolean"}
+  }
+}

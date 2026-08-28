@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/combat-action.schema.json",
+  "title": "Starsoil combat action",
+  "type": "object",
+  "required": ["id", "kind", "name_zh", "targeting", "power", "stability_damage"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "kind": {"enum": ["attack", "skill", "item", "guard", "destabilize"]},
+    "name_zh": {"type": "string", "minLength": 1},
+    "targeting": {"enum": ["self", "single_ally", "single_enemy", "all_enemies"]},
+    "power": {"type": "integer", "minimum": 0},
+    "stability_damage": {"type": "integer", "minimum": 0},
+    "cost": {
+      "type": ["object", "null"],
+      "required": ["item_id", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "heal": {"type": "integer", "minimum": 0},
+    "guard_ratio": {"type": "number", "minimum": 0, "maximum": 1}
+  }
+}

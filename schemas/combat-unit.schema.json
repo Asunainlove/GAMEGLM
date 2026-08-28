@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/combat-unit.schema.json",
+  "title": "Starsoil combat unit",
+  "type": "object",
+  "required": ["id", "kind", "name_zh", "max_hp", "stability_max", "track", "speed", "action_ids"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "kind": {"enum": ["ally", "enemy_normal", "enemy_elite", "boss"]},
+    "name_zh": {"type": "string", "minLength": 1},
+    "max_hp": {"type": "integer", "minimum": 1},
+    "stability_max": {"type": "integer", "minimum": 1},
+    "track": {"enum": ["front", "mid", "rear"]},
+    "speed": {"type": "integer", "minimum": 1},
+    "action_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+    },
+    "phases": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["id", "at_hp_ratio", "action_ids"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "at_hp_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+          "action_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+          }
+        }
+      }
+    },
+    "drops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["item_id", "amount"],
+        "additionalProperties": false,
+        "properties": {
+          "item_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "amount": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

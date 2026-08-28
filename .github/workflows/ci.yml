@@ -1,0 +1,59 @@
+name: ci
+
+# 注：仓库当前无 remote；配置远程后 push/PR 会自动触发本工作流。
+# 本地等效门禁为 scripts/Verify-Toolchain.ps1。
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  toolchain-gate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot 4.7.2
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: .tools/godot-ci
+          key: godot-4.7.2-stable-win64
+
+      - name: Download Godot 4.7.2
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .tools/godot-ci | Out-Null
+          $url = "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_win64.exe.zip"
+          Invoke-WebRequest -Uri $url -OutFile .tools/godot-ci/godot.zip
+          Expand-Archive -Path .tools/godot-ci/godot.zip -DestinationPath .tools/godot-ci -Force
+
+      - name: Run toolchain gate
+        shell: pwsh
+        env:
+          STARSOIL_GODOT_EXE: ${{ github.workspace }}\.tools\godot-ci\Godot_v4.7.2-stable_win64_console.exe
+        run: pwsh -NoProfile -File scripts/Verify-Toolchain.ps1
+
+  content-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install jsonschema
+        run: pip install jsonschema==4.25.1
+      - name: Validate content data against schemas
+        run: |
+          if [ -f scripts/validate_content.py ]; then
+            python scripts/validate_content.py
+          else
+            echo "validate_content.py not present yet (WP01 pending); schema files checked for syntax only."
+            python - <<'PY'
+            import json, pathlib
+            for p in pathlib.Path("schemas").glob("*.schema.json"):
+                json.loads(p.read_text(encoding="utf-8"))
+                print("ok", p)
+            PY
+          fi

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/save-envelope.schema.json",
+  "title": "Starsoil save envelope v1",
+  "type": "object",
+  "required": ["save_version", "revision", "payload", "checksum"],
+  "additionalProperties": false,
+  "properties": {
+    "save_version": {"const": 1},
+    "revision": {"type": "integer", "minimum": 0},
+    "payload": {"type": "object"},
+    "checksum": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

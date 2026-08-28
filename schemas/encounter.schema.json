@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/encounter.schema.json",
+  "title": "Starsoil encounter configuration",
+  "type": "object",
+  "required": ["id", "name_zh", "trigger_flag", "allies", "enemies", "seed"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "name_zh": {"type": "string", "minLength": 1},
+    "trigger_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "on_victory_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "allies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["unit_id", "track"],
+        "additionalProperties": false,
+        "properties": {
+          "unit_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "track": {"enum": ["front", "mid", "rear"]},
+          "item_ids": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+          }
+        }
+      }
+    },
+    "enemies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["unit_id", "track"],
+        "additionalProperties": false,
+        "properties": {
+          "unit_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "track": {"enum": ["front", "mid", "rear"]}
+        }
+      }
+    },
+    "seed": {"type": "integer", "minimum": 0},
+    "intro_event_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+  }
+}
