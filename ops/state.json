@@ -1,0 +1,12 @@
+{
+  "goal_status": "active",
+  "milestone": "G0",
+  "window": "W000",
+  "window_status": "active",
+  "last_verified_commit": null,
+  "active_packet": "W000-P00",
+  "resume_from": "bootstrap_toolchain",
+  "next_packet_ids": ["W000-P00"],
+  "known_blockers": ["godot_not_yet_installed"]
+}
+

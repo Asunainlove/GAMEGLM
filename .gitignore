@@ -1,0 +1,14 @@
+.godot/
+.tools/
+.worktrees/
+.venv/
+__pycache__/
+*.pyc
+build/
+dist/
+exports/
+logs/
+test-results/
+*.tmp
+*.bak
+

@@ -1,0 +1,10 @@
+{
+  "packets": [
+    {"id": "W000-P00", "title": "Bootstrap repository and toolchain", "status": "in_progress", "depends_on": []},
+    {"id": "W000-P01", "title": "Godot project and test runner", "status": "backlog", "depends_on": ["W000-P00"]},
+    {"id": "W000-P02", "title": "GameState and SaveService", "status": "backlog", "depends_on": ["W000-P01"]},
+    {"id": "W000-P03", "title": "Single-Chunk walking skeleton", "status": "backlog", "depends_on": ["W000-P02"]},
+    {"id": "W000-P04", "title": "Integration verification and handoff", "status": "backlog", "depends_on": ["W000-P03"]}
+  ]
+}
+
