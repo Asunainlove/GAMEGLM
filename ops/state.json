@@ -1,12 +1,12 @@
 {
   "goal_status": "active",
-  "milestone": "G0",
+  "milestone": "G1",
   "window": "W000",
   "window_status": "active",
-  "last_verified_commit": null,
-  "active_packet": "W000-P00",
-  "resume_from": "bootstrap_toolchain",
-  "next_packet_ids": ["W000-P00"],
-  "known_blockers": ["godot_not_yet_installed"]
+  "last_verified_commit": "cdd58b4bb1939af172024b36244d327fa8a4a775",
+  "active_packet": "W000-P02",
+  "resume_from": "implement_state_patch_and_save_v1",
+  "next_packet_ids": ["W000-P02"],
+  "known_blockers": []
 }
 
