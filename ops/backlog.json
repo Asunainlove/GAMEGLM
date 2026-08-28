@@ -1,10 +1,82 @@
 {
   "packets": [
-    {"id": "W000-P00", "title": "Bootstrap repository and toolchain", "status": "verified", "depends_on": []},
-    {"id": "W000-P01", "title": "Godot project and test runner", "status": "verified", "depends_on": ["W000-P00"]},
-    {"id": "W000-P02", "title": "GameState and SaveService", "status": "verified", "depends_on": ["W000-P01"]},
-    {"id": "W000-P03", "title": "Single-Chunk walking skeleton", "status": "backlog", "depends_on": ["W000-P02"]},
-    {"id": "W000-P04", "title": "Integration verification and handoff", "status": "backlog", "depends_on": ["W000-P03"]}
+    {
+      "id": "W000-P00",
+      "title": "Bootstrap repository and toolchain",
+      "status": "verified",
+      "depends_on": []
+    },
+    {
+      "id": "W000-P01",
+      "title": "Godot project and test runner",
+      "status": "verified",
+      "depends_on": [
+        "W000-P00"
+      ]
+    },
+    {
+      "id": "W000-P02",
+      "title": "GameState and SaveService",
+      "status": "verified",
+      "depends_on": [
+        "W000-P01"
+      ]
+    },
+    {
+      "id": "W000-P03",
+      "title": "Single-Chunk walking skeleton",
+      "status": "backlog",
+      "depends_on": [
+        "W000-P02"
+      ]
+    },
+    {
+      "id": "W000-P04",
+      "title": "Integration verification and handoff",
+      "status": "backlog",
+      "depends_on": [
+        "W000-P03"
+      ]
+    },
+    {
+      "id": "WP06",
+      "title": "Building and placement rules",
+      "status": "verified",
+      "depends_on": [
+        "W000-P02"
+      ]
+    },
+    {
+      "id": "WP01",
+      "title": "ContentDB core and schema pipeline",
+      "status": "in_progress",
+      "depends_on": [
+        "W000-P02"
+      ]
+    },
+    {
+      "id": "WP04",
+      "title": "State ops v2 and save migration",
+      "status": "in_progress",
+      "depends_on": [
+        "W000-P02"
+      ]
+    },
+    {
+      "id": "WP05",
+      "title": "Gathering and inventory logic",
+      "status": "in_progress",
+      "depends_on": [
+        "W000-P02"
+      ]
+    },
+    {
+      "id": "WP07",
+      "title": "Room and power rules",
+      "status": "in_progress",
+      "depends_on": [
+        "W000-P02"
+      ]
+    }
   ]
 }
-
