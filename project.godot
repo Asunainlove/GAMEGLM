@@ -9,6 +9,11 @@ config/name="星壤：余辉纪元"
 run/main_scene="res://scenes/app.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+GameState="*res://src/state/game_state.gd"
+SaveService="*res://src/save/save_service.gd"
+
 [display]
 
 [display/window]
