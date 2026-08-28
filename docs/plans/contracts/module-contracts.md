@@ -10,6 +10,8 @@
 - 表现层节点不得直接改持久状态，一律经 `GameState.begin_patch(source_id, expected_revision)` + `StatePatch` + `GameState.commit(patch) -> AppResult`。
 - `AppResult`（`res://src/core/app_result.gd`）已存在：`is_ok: bool`、`code: String`、`message: String`、`value: Variant`。
 - 每个 patch 的 `source_id` 必须唯一且幂等（重复 source_id 返回 `already_applied`），命名建议 `<模块>_<行为>_<序号或目标>`。
+- **WP04 依赖规避模式**：WP04 的新操作在并行开发时尚未存在于 main。依赖这些操作的模块（WP08/WP09/WP13/WP14）必须把持久层设计为**可注入 store**（构造/调用参数 `store: Object = null`，null 时用 `GameState`），并自带本地 `DuckPatch` 测试替身（记录操作字典、模拟 commit 语义）。禁止对 `StatePatch` 类型化变量调用 main 上不存在的方法；对新操作的调用经 store 注入路径完成，合并后自然生效，提交时由 `GameState` 统一校验全部操作。
+- **并行场景引用模式**：WP03 的 world 不得硬依赖 `res://scenes/player.tscn` 存在——经 `ResourceLoader.exists()` 守卫 + 可注入场景路径，缺失时优雅跳过（合并集成后生效）。同理 WP13 的 battle 场景对 WP10 引擎经契约类型（Dictionary 状态）交互，引擎类在包内以本地最小替身联调。
 
 ## 1. 输入映射（已预置于 project.godot，任何 agent 禁改 project.godot）
 
@@ -28,7 +30,7 @@
 - `GameState.snapshot() -> Dictionary`（深拷贝；含 `revision/inventory/flags/chunk_deltas/placed_buildings/relationships/ideology/completed_events/battle_outcomes/content_hash/player` 等）。
 - `GameState.begin_patch(source_id: String, expected_revision: int) -> StatePatch`；`GameState.commit(patch) -> AppResult`。
 - 既有 5 操作：`add_item(item_id, amount)`、`remove_item(item_id, amount)`、`set_destructible_cell(chunk_id, cell_x, cell_y, destroyed)`、`place_building(building_id, chunk_id, cell_x, cell_y)`、`set_flag(flag_id, enabled: bool)`（**布尔值**）。
-- **WP04 将追加 4 操作**（增量、不改 payload 形状、save_version 仍为 1）：
+- **WP04 将追加 5 操作**（增量、不改 payload 形状、save_version 仍为 1）：
   - `set_relationship(char_id: String, dim: String, value: int)` → `relationships[char_id][dim]`，dim ∈ {affection, trust, ideology}，value 钳制 0..100；
   - `adjust_ideology(axis: String, delta: int)` → `ideology[axis]`，axis ∈ {stewardship, continuity, agency}，总和钳制 -100..100；
   - `complete_event(event_id: String)` → 幂等追加 `completed_events`；
@@ -64,7 +66,7 @@
 - **采集** `class_name Gathering`（WP05）：`mining_result(cell_def: Dictionary, tool_tier: int) -> Dictionary`（确定性：返回 `{"item_id": String, "amount": int, "hardness_left": int}` 或 `{"item_id": "", "amount": 0}`）；`apply_mining(state: Dictionary, chunk_id: String, cell: Vector2i, cell_def: Dictionary, tool_tier: int) -> AppResult`（内部 begin_patch/commit：`set_destructible_cell` + `add_item`）。
 - **背包** `class_name InventoryModel`（WP05）：`stack_counts(inventory: Dictionary) -> Array[Dictionary]`、`can_carry(inventory: Dictionary, item_id: String, amount: int, stack_limit: int, capacity: int) -> bool`、`total_slots(inventory: Dictionary, stack_limits: Dictionary) -> int`。
 - **建造** `class_name BuildingRules`（WP06）：`validate_placement(state: Dictionary, building_def: Dictionary, chunk_id: String, cell: Vector2i) -> AppResult`（占地/占位/相邻锚块规则）；`try_build(state: Dictionary, building_def: Dictionary, chunk_id: String, cell: Vector2i) -> AppResult`（材料足够则一次性 patch：`remove_item*` + `place_building`，任一不足零修改）。
-- **房间与电力** `class_name PowerGrid`（WP07）：`find_rooms(buildings: Array, enclosed_cells: Dictionary) -> Array[Dictionary]`、`evaluate(buildings: Array) -> Dictionary`（返回 `{"supply": int, "demand": int, "satisfied": bool, "powered_ids": Array[String]}`，供给按建造顺序分配）。
+- **房间与电力** `class_name PowerGrid`（WP07）：`find_rooms(buildings: Array) -> Array[Dictionary]`（房间 = 建筑 footprint 的最大 4 连通组，返回 `{"building_ids": Array[String], "cells": Array[Vector2i]}`；`requires_room` 的建筑仅在位于任一房间内时视为有效）；`evaluate(buildings: Array) -> Dictionary`（返回 `{"supply": int, "demand": int, "satisfied": bool, "powered_ids": Array[String], "rooms": Array[Dictionary]}`，供给按 placed_buildings 顺序分配，未获电建筑排除在 powered_ids 外）。
 - **叙事** `class_name EventRunner`（WP08）：`load_events_from(dir: String) -> AppResult`；`available_events(events: Array, state: Dictionary) -> Array[String]`；`start_event(event_def: Dictionary) -> Dictionary`（游标状态）；`choose_option(state: Dictionary, event_def: Dictionary, step: Dictionary, option: Dictionary) -> AppResult`（写 flag/effect patch + `complete_event`）。
 - **对话 UI 数据**（WP08 提供、WP11 消费）：`DialogueBox.show_lines(lines: Array[Dictionary])` / `signal option_chosen(option_id: String)`。
 - **关系** `class_name Relations`（WP09）：`get_dim(state: Dictionary, char_id: String, dim: String) -> int`（缺省 0）；`change(state: Dictionary, char_id: String, dim: String, delta: int, reason: String) -> AppResult`（patch `set_relationship`）；`policy_unlocked(state: Dictionary, policy_id: String) -> bool`（门控表见 §7）。

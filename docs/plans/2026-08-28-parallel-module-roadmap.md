@@ -6,7 +6,7 @@
 
 | 包 | 分支 | 允许路径 |
 |---|---|---|
-| WP01 ContentDB | `feature/wp01-content-db` | `src/content/**`、`project.godot`（仅 autoload 一行）、`scripts/Validate-Content.ps1`、`scripts/validate_content.py`、`tests/unit/test_content_db*.gd` |
+| WP01 ContentDB | `feature/wp01-content-db` | `src/content/**`、`project.godot`（仅 autoload 一行）、`scripts/Validate-Content.ps1`、`scripts/validate_content.py`、`tests/unit/test_content_db*.gd`、`tests/unit/test_p02_contract_files.gd`（仅更新 autoload 断言为含 ContentDB） |
 | WP02 玩家控制器 | `feature/wp02-player` | `src/player/**`、`scenes/player.tscn`、`tests/unit/test_player*.gd` |
 | WP03 世界与 Chunk | `feature/wp03-world` | `src/world/**`、`scenes/world.tscn`、`tests/unit/test_world*.gd` |
 | WP04 状态扩展+存档迁移 | `feature/wp04-save-v2` | `src/state/**`、`src/save/**`、`tests/golden/**`、`tests/unit/test_state_v2*.gd`、`tests/unit/test_save_v2*.gd` |
