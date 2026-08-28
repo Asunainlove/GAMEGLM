@@ -73,7 +73,7 @@
     {
       "id": "WP07",
       "title": "Room and power rules",
-      "status": "in_progress",
+      "status": "verified",
       "depends_on": [
         "W000-P02"
       ]
