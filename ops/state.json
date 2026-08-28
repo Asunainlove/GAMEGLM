@@ -1,12 +1,12 @@
 {
   "goal_status": "active",
-  "milestone": "G0",
+  "milestone": "G1",
   "window": "W000",
   "window_status": "active",
-  "last_verified_commit": null,
-  "active_packet": "W000-P00",
-  "resume_from": "bootstrap_toolchain",
-  "next_packet_ids": ["W000-P00"],
-  "known_blockers": ["godot_not_yet_installed"]
+  "last_verified_commit": "e7f7328",
+  "active_packet": null,
+  "resume_from": "parallel_module_roadmap_2026-08-28",
+  "next_packet_ids": ["WP01", "WP02", "WP03", "WP04", "WP05", "WP06", "WP07", "WP08", "WP09", "WP10", "WP11", "WP12", "WP13", "WP14", "WP15"],
+  "known_blockers": []
 }
 
