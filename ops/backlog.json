@@ -117,6 +117,14 @@
       "depends_on": [
         "WP04"
       ]
+    },
+    {
+      "id": "WP10",
+      "title": "Deterministic combat engine",
+      "status": "verified",
+      "depends_on": [
+        "W000-P02"
+      ]
     }
   ]
 }
