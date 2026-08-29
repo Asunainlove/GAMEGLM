@@ -151,6 +151,14 @@
         "WP04",
         "WP08"
       ]
+    },
+    {
+      "id": "WP15",
+      "title": "Endings and RC gate",
+      "status": "verified",
+      "depends_on": [
+        "WP14"
+      ]
     }
   ]
 }

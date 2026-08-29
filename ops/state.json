@@ -1,12 +1,15 @@
 {
   "goal_status": "active",
-  "milestone": "G1",
-  "window": "W000",
-  "window_status": "active",
-  "last_verified_commit": "e7f7328",
+  "milestone": "G5",
+  "window": "W001-PARALLEL",
+  "window_status": "integrating",
+  "last_verified_commit": "packet/wp15",
   "active_packet": null,
-  "resume_from": "parallel_module_roadmap_2026-08-28",
-  "next_packet_ids": ["WP01", "WP02", "WP03", "WP04", "WP05", "WP06", "WP07", "WP08", "WP09", "WP10", "WP11", "WP12", "WP13", "WP14", "WP15"],
-  "known_blockers": []
+  "resume_from": "app_level_integration_wiring",
+  "next_packet_ids": [
+    "W000-P04-INTEGRATION"
+  ],
+  "known_blockers": [
+    "godot export templates not installed locally (Verify-Slice GATE4 skips by design)"
+  ]
 }
-
