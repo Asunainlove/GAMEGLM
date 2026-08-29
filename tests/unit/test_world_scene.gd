@@ -18,6 +18,7 @@ const GRID_CHUNK_IDS: Array[String] = [
 ]
 
 var world_scene: PackedScene
+var _snapshot_store: SnapshotStore
 
 
 class SnapshotStore:
@@ -46,6 +47,12 @@ func _instantiate_world(player_scene_path: String = "") -> Node2D:
 		return null
 	if player_scene_path != "":
 		world.set("player_scene_path", player_scene_path)
+	_snapshot_store = SnapshotStore.new({
+		"revision": 0,
+		"world_seed": DEFAULT_WORLD_SEED,
+		"chunk_deltas": {},
+	})
+	world.set("snapshot_provider", Callable(_snapshot_store, "snapshot"))
 	add_child_autofree(world)
 	return world
 
