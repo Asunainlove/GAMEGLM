@@ -77,6 +77,14 @@
       "depends_on": [
         "W000-P02"
       ]
+    },
+    {
+      "id": "WP03",
+      "title": "World and chunk system",
+      "status": "verified",
+      "depends_on": [
+        "W000-P02"
+      ]
     }
   ]
 }
