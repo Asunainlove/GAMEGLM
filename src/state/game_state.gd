@@ -1,6 +1,12 @@
 extends Node
 
 const MAX_CELL_COORDINATE: int = 1_000_000
+const RELATIONSHIP_DIMENSIONS: Array[String] = ["affection", "trust", "ideology"]
+const MAX_RELATIONSHIP_SCORE: int = 100
+const IDEOLOGY_AXES: Array[String] = ["stewardship", "continuity", "agency"]
+const MIN_IDEOLOGY_SCORE: int = -100
+const MAX_IDEOLOGY_SCORE: int = 100
+const BATTLE_RESULTS: Array[String] = ["victory", "defeat"]
 
 var _state: Dictionary = {}
 
@@ -82,6 +88,16 @@ func _apply_operation(working: Dictionary, operation: Dictionary) -> AppResult:
 			return _apply_place_building(working, operation)
 		StatePatch.OP_SET_FLAG:
 			return _apply_set_flag(working, operation)
+		StatePatch.OP_SET_RELATIONSHIP:
+			return _apply_set_relationship(working, operation)
+		StatePatch.OP_ADJUST_IDEOLOGY:
+			return _apply_adjust_ideology(working, operation)
+		StatePatch.OP_COMPLETE_EVENT:
+			return _apply_complete_event(working, operation)
+		StatePatch.OP_RECORD_BATTLE_OUTCOME:
+			return _apply_record_battle_outcome(working, operation)
+		StatePatch.OP_SET_PLAYER_POSITION:
+			return _apply_set_player_position(working, operation)
 		_:
 			return AppResult.failure("unsupported_operation", "Unsupported patch operation: %s" % operation_type)
 
@@ -162,6 +178,74 @@ func _apply_set_flag(working: Dictionary, operation: Dictionary) -> AppResult:
 		return AppResult.failure("invalid_flag_value", "Flag value must be boolean.")
 	var flags: Dictionary = working["flags"]
 	flags[operation["flag_id"]] = operation["enabled"]
+	return AppResult.success()
+
+
+func _apply_set_relationship(working: Dictionary, operation: Dictionary) -> AppResult:
+	if typeof(operation.get("char_id")) != TYPE_STRING or not _is_stable_id(operation["char_id"]):
+		return AppResult.failure("invalid_char_id", "Character ID must be stable snake_case.")
+	if typeof(operation.get("dim")) != TYPE_STRING or not RELATIONSHIP_DIMENSIONS.has(operation["dim"]):
+		return AppResult.failure("invalid_dim", "Relationship dimension must be affection, trust, or ideology.")
+	if typeof(operation.get("value")) != TYPE_INT:
+		return AppResult.failure("invalid_relationship_value", "Relationship value must be an integer.")
+
+	var char_id: String = operation["char_id"]
+	var relationships: Dictionary = working["relationships"]
+	if not relationships.has(char_id):
+		relationships[char_id] = {"affection": 0, "trust": 0, "ideology": 0}
+	var record: Dictionary = relationships[char_id]
+	record[operation["dim"]] = clampi(int(operation["value"]), 0, MAX_RELATIONSHIP_SCORE)
+	return AppResult.success()
+
+
+func _apply_adjust_ideology(working: Dictionary, operation: Dictionary) -> AppResult:
+	if typeof(operation.get("axis")) != TYPE_STRING or not IDEOLOGY_AXES.has(operation["axis"]):
+		return AppResult.failure("invalid_ideology_axis", "Ideology axis must be stewardship, continuity, or agency.")
+	if typeof(operation.get("delta")) != TYPE_INT:
+		return AppResult.failure("invalid_ideology_delta", "Ideology delta must be an integer.")
+
+	var ideology: Dictionary = working["ideology"]
+	var adjusted: int = int(ideology[operation["axis"]]) + int(operation["delta"])
+	ideology[operation["axis"]] = clampi(adjusted, MIN_IDEOLOGY_SCORE, MAX_IDEOLOGY_SCORE)
+	return AppResult.success()
+
+
+func _apply_complete_event(working: Dictionary, operation: Dictionary) -> AppResult:
+	if typeof(operation.get("event_id")) != TYPE_STRING or not _is_stable_id(operation["event_id"]):
+		return AppResult.failure("invalid_event_id", "Event ID must be stable snake_case.")
+
+	var completed_events: Array = working["completed_events"]
+	if completed_events.has(operation["event_id"]):
+		return AppResult.success()
+	completed_events.append(operation["event_id"])
+	return AppResult.success()
+
+
+func _apply_record_battle_outcome(working: Dictionary, operation: Dictionary) -> AppResult:
+	if typeof(operation.get("battle_id")) != TYPE_STRING or not _is_stable_id(operation["battle_id"]):
+		return AppResult.failure("invalid_battle_id", "Battle ID must be stable snake_case.")
+	if typeof(operation.get("result")) != TYPE_STRING or not BATTLE_RESULTS.has(operation["result"]):
+		return AppResult.failure("invalid_battle_result", "Battle result must be victory or defeat.")
+	if typeof(operation.get("turns")) != TYPE_INT or int(operation["turns"]) < 0:
+		return AppResult.failure("invalid_battle_result", "Battle turns must be a non-negative integer.")
+
+	var battle_outcomes: Dictionary = working["battle_outcomes"]
+	battle_outcomes[operation["battle_id"]] = {
+		"result": operation["result"],
+		"turns": int(operation["turns"]),
+	}
+	return AppResult.success()
+
+
+func _apply_set_player_position(working: Dictionary, operation: Dictionary) -> AppResult:
+	for coordinate_key: String in ["cell_x", "cell_y"]:
+		if typeof(operation.get(coordinate_key)) != TYPE_INT:
+			return AppResult.failure("invalid_cell_coordinate", "Cell coordinates must be integers.")
+		if abs(int(operation[coordinate_key])) > MAX_CELL_COORDINATE:
+			return AppResult.failure("invalid_cell_coordinate", "Cell coordinate exceeds the supported range.")
+
+	var player: Dictionary = working["player"]
+	player["position"] = {"x": int(operation["cell_x"]), "y": int(operation["cell_y"])}
 	return AppResult.success()
 
 
