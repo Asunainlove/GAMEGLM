@@ -125,6 +125,14 @@
       "depends_on": [
         "W000-P02"
       ]
+    },
+    {
+      "id": "WP12",
+      "title": "Content data authoring",
+      "status": "verified",
+      "depends_on": [
+        "WP01"
+      ]
     }
   ]
 }
