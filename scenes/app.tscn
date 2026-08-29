@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/app/app.gd" id="1_app"]
+[ext_resource type="PackedScene" path="res://scenes/world.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://scenes/ui_hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" path="res://scenes/dialogue_box.tscn" id="4_dialogue"]
+[ext_resource type="Script" path="res://src/integration/game_session.gd" id="5_session"]
 
 [node name="App" type="Node"]
 script = ExtResource("1_app")
@@ -82,3 +86,15 @@ theme_override_colors/font_color = Color(0.52, 0.59, 0.62, 1)
 theme_override_font_sizes/font_size = 16
 text = "占位界面 · 正式美术尚未接入"
 horizontal_alignment = 1
+
+[node name="World" parent="WorldHost" instance=ExtResource("2_world")]
+unique_name_in_owner = true
+
+[node name="Hud" parent="UILayer" instance=ExtResource("3_hud")]
+unique_name_in_owner = true
+
+[node name="DialogueBox" parent="ModalLayer" instance=ExtResource("4_dialogue")]
+unique_name_in_owner = true
+
+[node name="GameSession" type="Node" parent="."]
+script = ExtResource("5_session")
