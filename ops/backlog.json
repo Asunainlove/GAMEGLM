@@ -93,6 +93,14 @@
       "depends_on": [
         "W000-P02"
       ]
+    },
+    {
+      "id": "WP11",
+      "title": "UI framework and HUD",
+      "status": "verified",
+      "depends_on": [
+        "W000-P02"
+      ]
     }
   ]
 }
