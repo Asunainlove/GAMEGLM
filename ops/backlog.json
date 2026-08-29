@@ -57,7 +57,7 @@
     {
       "id": "WP04",
       "title": "State ops v2 and save migration",
-      "status": "in_progress",
+      "status": "verified",
       "depends_on": [
         "W000-P02"
       ]
