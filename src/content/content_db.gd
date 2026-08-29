@@ -56,6 +56,7 @@ var _combat_units: Dictionary = {}
 var _combat_actions: Dictionary = {}
 var _events: Dictionary = {}
 var _encounters: Dictionary = {}
+var _encounter_trigger_flags: Dictionary = {}
 var _id_regex: RegEx = null
 
 
@@ -84,6 +85,11 @@ func bootstrap(content_dir: String = DEFAULT_CONTENT_DIR) -> AppResult:
 	_combat_actions = store[CATEGORY_COMBAT_ACTIONS]
 	_events = store[CATEGORY_EVENTS]
 	_encounters = store[CATEGORY_ENCOUNTERS]
+	_encounter_trigger_flags = {}
+	for encounter_id_key: String in _encounters:
+		var encounter_def: Dictionary = _encounters[encounter_id_key]
+		if encounter_def.has("trigger_flag"):
+			_encounter_trigger_flags[str(encounter_def["trigger_flag"])] = true
 	_bootstrapped = true
 	_content_hash = _compute_content_hash()
 	return AppResult.success(
@@ -184,7 +190,7 @@ func validate_refs() -> AppResult:
 			for grant: Dictionary in step.get("grant_items", []):
 				_check_ref(_items, grant["item_id"], "item", "event '%s' grant_items" % event_id, dangling)
 			if step.has("due_encounter"):
-				_check_ref(_encounters, step["due_encounter"], "encounter", "event '%s' due_encounter" % event_id, dangling)
+				_check_ref(_encounter_trigger_flags, step["due_encounter"], "encounter trigger flag", "event '%s' due_encounter" % event_id, dangling)
 	for encounter_id: String in _encounters:
 		var encounter: Dictionary = _encounters[encounter_id]
 		for ally: Dictionary in encounter["allies"]:

@@ -58,13 +58,6 @@ const EXPECTED_ALLY_ITEM_COUNTS: Dictionary = {
 	"encounter_leviathan": {"sedative_mist": 2, "shock_trap": 1},
 }
 
-## The only dangling refs ContentDB.validate_refs may report: it validates the
-## event effect field due_encounter as an encounter id, while the frozen
-## contract defines it as the encounter's trigger_flag (see WP12 evidence).
-const EXPECTED_DANGLING_DUE_ENCOUNTERS: Array[String] = [
-	"event 'event_first_mining' due_encounter references missing encounter 'encounter_first_drift_due'",
-	"event 'event_workshop_guide' due_encounter references missing encounter 'encounter_husk_ambush_due'",
-]
 
 var _items: Array = []
 var _buildings: Array = []
@@ -1054,22 +1047,11 @@ func test_content_db_bootstraps_whole_pack() -> void:
 	assert_eq(db.ids_of("combat_action").size(), 9, "ContentDB combat action count.")
 	assert_true(db.ids_of("event").size() >= 10, "ContentDB event count >= 10.")
 	assert_eq(db.ids_of("encounter").size(), 3, "ContentDB encounter count.")
-	# WP01 的 validate_refs 把事件 effect 的 due_encounter 当作遭遇 id 校验，而冻结契约
-	# （§5 EventRunner.apply_effect_step 将其写为 flag；§7 trigger_flag）与 WP12 任务书
-	# 均定义其为遭遇 trigger_flag。数据按 trigger_flag 携带；允许悬空的引用必须且仅为
-	# 下列两条。若协调者修订 ContentDB 后 validate_refs 通过，请同步更新此处与证据。
+	# 协调者裁定（2026-08-28）：WP01 validate_refs 的 due_encounter 语义已修订为按
+	# 遭遇 trigger_flag 校验（契约 §5 EventRunner 将其写为 flag、§7 定义 trigger_flag）。
+	# 数据按 trigger_flag 落地，validate_refs 必须完全通过。
 	var refs: AppResult = db.validate_refs()
-	assert_false(
-		refs.is_ok,
-		"validate_refs should flag exactly the two due_encounter/trigger_flag mismatches."
-	)
-	var dangling := str(refs.message).split("; ", false)
-	assert_eq(dangling.size(), 2, "exactly the two due_encounter entries may dangle.")
-	for line: String in dangling:
-		assert_true(
-			EXPECTED_DANGLING_DUE_ENCOUNTERS.has(line),
-			"unexpected dangling ref (WP01 due_encounter semantics): %s" % line
-		)
+	assert_true(refs.is_ok, "validate_refs must pass: due_encounter values are trigger flags.")
 	assert_false(db.content_hash().is_empty(), "content_hash must be non-empty for a non-empty pack.")
 
 

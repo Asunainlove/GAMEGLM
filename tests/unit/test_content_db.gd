@@ -458,7 +458,7 @@ func _fixture_event_station_mode() -> Dictionary:
 				{"id": "station_mode_seal", "text_zh": "封存矿脉。"},
 				{"id": "station_mode_symbiosis", "text_zh": "尝试共生。"},
 			]},
-			{"type": "effect", "due_encounter": "encounter_leviathan"},
+			{"type": "effect", "due_encounter": "encounter_leviathan_due"},
 		],
 	}
 
