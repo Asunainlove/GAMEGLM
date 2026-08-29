@@ -101,6 +101,14 @@
       "depends_on": [
         "W000-P02"
       ]
+    },
+    {
+      "id": "WP08",
+      "title": "Narrative events and dialogue",
+      "status": "verified",
+      "depends_on": [
+        "W000-P02"
+      ]
     }
   ]
 }
