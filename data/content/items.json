@@ -1,0 +1,50 @@
+[
+  {
+    "id": "starsoil_dust",
+    "kind": "material",
+    "name_zh": "星壤尘",
+    "desc_zh": "矿脉表层析出的发光尘粒，是这片大地最基础的馈赠。一切建造与精炼，都从一捧尘开始。",
+    "stack_limit": 99,
+    "tier": 0
+  },
+  {
+    "id": "lumen_shard",
+    "kind": "material",
+    "name_zh": "辉砂晶片",
+    "desc_zh": "凝聚了共鸣的晶质碎片，迎光时会泛起潮汐般的微芒。轻敲它，能听见极遥远处的回声。",
+    "stack_limit": 99,
+    "tier": 1
+  },
+  {
+    "id": "resonant_core",
+    "kind": "material",
+    "name_zh": "共鸣核",
+    "desc_zh": "矿脉律动的凝结体，握在掌心会随呼吸轻轻发烫。高级建筑与回路皆以此为心脏。",
+    "stack_limit": 99,
+    "tier": 2
+  },
+  {
+    "id": "echo_seed",
+    "kind": "story_core",
+    "name_zh": "余辉之种",
+    "desc_zh": "自利维坦体内剥落的种子状结晶，仍在缓慢搏动。它记得这片矿脉所有的过往。",
+    "stack_limit": 1,
+    "tier": 3
+  },
+  {
+    "id": "sedative_mist",
+    "kind": "sandbox_item",
+    "name_zh": "定神雾",
+    "desc_zh": "舒缓神经的雾化制剂。战斗中使用，可为一名同伴恢复 12 点生命。",
+    "stack_limit": 9,
+    "battle_usable": true
+  },
+  {
+    "id": "shock_trap",
+    "kind": "sandbox_item",
+    "name_zh": "震颤陷阱",
+    "desc_zh": "踩踏即发的震荡装置。战斗中使用，对一名敌人造成伤害并动摇其身形稳定。",
+    "stack_limit": 9,
+    "battle_usable": true
+  }
+]

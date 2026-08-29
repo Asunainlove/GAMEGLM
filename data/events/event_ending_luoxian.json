@@ -1,0 +1,10 @@
+{
+  "id": "event_ending_luoxian",
+  "kind": "dialogue",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "章程落定，塔架归位，每一笔账都对得上。我总算把秩序还给了这片混乱。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "所以这就是你的愿望？让一切都整整齐齐？"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "秩序不是终点，是让人能安心睡一觉的承诺。谢谢你，弥砂——今晚我也睡得着了。"}
+  ]
+}

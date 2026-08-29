@@ -1,0 +1,29 @@
+{
+  "id": "event_station_mode",
+  "kind": "mixed",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "锚定程序进入稳定期。接下来这座矿站怎么走，得立一份章程。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "想清楚再选哦。矿脉听得见我们打算怎么对待它。"},
+    {"type": "choice", "choice_id": "station_mode", "prompt_zh": "矿站的运营基调应当是？", "options": [
+      {
+        "id": "station_mode_exploit",
+        "text_zh": "全速开采：产量优先，矿脉的负荷以后再算。",
+        "set_flag": "station_mode_exploit",
+        "relation_delta": {"char_id": "luoxian", "dim": "affection", "delta": -10}
+      },
+      {
+        "id": "station_mode_seal",
+        "text_zh": "封闭封存：暂停扩张，把矿站连同回声一起封进静默里。",
+        "set_flag": "station_mode_seal",
+        "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 5}
+      },
+      {
+        "id": "station_mode_symbiosis",
+        "text_zh": "共生共调：按矿脉的呼吸节奏安排开采与回补。",
+        "set_flag": "station_mode_symbiosis",
+        "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 10}
+      }
+    ]}
+  ]
+}

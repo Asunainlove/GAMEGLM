@@ -1,0 +1,11 @@
+{
+  "id": "event_prologue_landing",
+  "kind": "dialogue",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "着陆架锁止，尘暴还没散。从这条矿道往下，每一步都得按规程来。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "哇——你听，地底下有回声！像有谁在很深的地方轻轻敲鼓。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "那是矿脉共振。先立锚块，再谈采集。秩序未立之前，任何开采都是透支。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "明白啦，锚定工程师。你负责把规矩立起来，我负责听大地的脾气。"}
+  ]
+}

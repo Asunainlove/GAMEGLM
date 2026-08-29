@@ -1,0 +1,46 @@
+[
+  {
+    "id": "encounter_first_drift",
+    "name_zh": "漂游群初袭",
+    "trigger_flag": "encounter_first_drift_due",
+    "on_victory_flag": "encounter_first_drift_won",
+    "allies": [
+      {"unit_id": "luoxian_fighter", "track": "front"},
+      {"unit_id": "misa_weaver", "track": "mid", "item_ids": ["sedative_mist"]}
+    ],
+    "enemies": [
+      {"unit_id": "drift_swarmling", "track": "front"},
+      {"unit_id": "drift_swarmling", "track": "front"}
+    ],
+    "seed": 1001
+  },
+  {
+    "id": "encounter_husk_ambush",
+    "name_zh": "碎壳伏击",
+    "trigger_flag": "encounter_husk_ambush_due",
+    "on_victory_flag": "encounter_husk_ambush_won",
+    "allies": [
+      {"unit_id": "luoxian_fighter", "track": "front"},
+      {"unit_id": "misa_weaver", "track": "mid", "item_ids": ["sedative_mist", "shock_trap"]}
+    ],
+    "enemies": [
+      {"unit_id": "shard_husk", "track": "mid"},
+      {"unit_id": "drift_swarmling", "track": "front"}
+    ],
+    "seed": 1002
+  },
+  {
+    "id": "encounter_leviathan",
+    "name_zh": "辉光利维坦之战",
+    "trigger_flag": "encounter_leviathan_due",
+    "on_victory_flag": "encounter_leviathan_won",
+    "allies": [
+      {"unit_id": "luoxian_fighter", "track": "front"},
+      {"unit_id": "misa_weaver", "track": "mid", "item_ids": ["sedative_mist", "sedative_mist", "shock_trap"]}
+    ],
+    "enemies": [
+      {"unit_id": "lumen_leviathan", "track": "front"}
+    ],
+    "seed": 1003
+  }
+]

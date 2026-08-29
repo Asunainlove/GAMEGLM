@@ -1,0 +1,12 @@
+{
+  "id": "event_workshop_guide",
+  "kind": "mixed",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "工坊立起来啦！精炼器和织机的接口我都留好了，就差电力。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "供电走塔架，房间必须封闭。回响舱那种设备，四面合围才能稳住声场。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "嘘——外壳那边有刮擦声。不是风。风不会拐弯。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "碎壳游荡者，循着精炼余热来的。别慌，按预案迎击。"},
+    {"type": "effect", "due_encounter": "encounter_husk_ambush_due"}
+  ]
+}
