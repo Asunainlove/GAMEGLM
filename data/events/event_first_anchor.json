@@ -1,0 +1,11 @@
+{
+  "id": "event_first_anchor",
+  "kind": "mixed",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "锚块落位，地基开始吃上劲了。读数很干净，工坊可以往上盖。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "我照图纸缠了一只震颤陷阱——踩上去只会麻半拍，别露出那种表情。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "收好。真遇上成群的漂游幼体，陷阱比喊叫管用。"},
+    {"type": "effect", "grant_items": [{"item_id": "shock_trap", "amount": 1}]}
+  ]
+}

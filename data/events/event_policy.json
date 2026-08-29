@@ -1,0 +1,22 @@
+{
+  "id": "event_policy",
+  "kind": "mixed",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "地表议会转来两份章程草案，授权我们执行其中一份。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "一份是配额开采令，一份是矿脉庇护案。这次换你听我一句：它累了。"},
+    {"type": "choice", "choice_id": "policy", "prompt_zh": "颁布哪一份矿站章程？", "options": [
+      {
+        "id": "policy_extraction_quota",
+        "text_zh": "配额开采令：按季度核定产量，超额部分充公。",
+        "set_flag": "policy_extraction_quota"
+      },
+      {
+        "id": "policy_sanctuary",
+        "text_zh": "矿脉庇护案：划定禁采区，只收集自然析出的晶尘。（需要洛弦的信任达到 40）",
+        "set_flag": "policy_sanctuary",
+        "requires_trust": 40
+      }
+    ]}
+  ]
+}

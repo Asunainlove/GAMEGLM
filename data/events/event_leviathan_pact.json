@@ -1,0 +1,12 @@
+{
+  "id": "event_leviathan_pact",
+  "kind": "dialogue",
+  "requires_flag": "encounter_leviathan_due",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "整条矿脉都在往低处流……源头是它。辉光利维坦，矿脉的心脏。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "读数爆表。它每一次翻身都是一场矿震，常规锚定撑不住。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "它不是故意捣乱的，它只是……睡不着。你感觉不到吗？那么大，又那么孤单。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "先让它停下来。之后是与它共处，还是另作打算——打赢了再谈。"}
+  ]
+}

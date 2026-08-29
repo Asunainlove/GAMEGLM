@@ -1,0 +1,10 @@
+{
+  "id": "event_ending_misa",
+  "kind": "dialogue",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "矿脉今夜唱得很轻，像在道谢，又像在道别。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "你真的听得懂它？"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "不是懂，是陪。陪着陪着，就知道它想成为什么样子了——我们也是。"}
+  ]
+}

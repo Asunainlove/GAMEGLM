@@ -1,0 +1,78 @@
+[
+  {
+    "id": "strike",
+    "kind": "attack",
+    "name_zh": "破尘击",
+    "targeting": "single_enemy",
+    "power": 6,
+    "stability_damage": 2
+  },
+  {
+    "id": "guard",
+    "kind": "guard",
+    "name_zh": "定锚式",
+    "targeting": "self",
+    "power": 0,
+    "stability_damage": 0,
+    "guard_ratio": 0.5
+  },
+  {
+    "id": "resonate_pulse",
+    "kind": "destabilize",
+    "name_zh": "共鸣脉冲",
+    "targeting": "single_enemy",
+    "power": 4,
+    "stability_damage": 5
+  },
+  {
+    "id": "thread_bind",
+    "kind": "skill",
+    "name_zh": "缚尘丝",
+    "targeting": "single_enemy",
+    "power": 3,
+    "stability_damage": 3
+  },
+  {
+    "id": "shard_jolt",
+    "kind": "attack",
+    "name_zh": "碎壳电窜",
+    "targeting": "single_enemy",
+    "power": 5,
+    "stability_damage": 3
+  },
+  {
+    "id": "vein_quake",
+    "kind": "attack",
+    "name_zh": "矿脉震颤",
+    "targeting": "all_enemies",
+    "power": 7,
+    "stability_damage": 4
+  },
+  {
+    "id": "lumen_surge",
+    "kind": "attack",
+    "name_zh": "辉光奔涌",
+    "targeting": "all_enemies",
+    "power": 9,
+    "stability_damage": 5
+  },
+  {
+    "id": "mist_calm",
+    "kind": "item",
+    "name_zh": "定神雾息",
+    "targeting": "single_ally",
+    "power": 0,
+    "stability_damage": 0,
+    "heal": 12,
+    "cost": {"item_id": "sedative_mist", "count": 1}
+  },
+  {
+    "id": "trap_snap",
+    "kind": "item",
+    "name_zh": "陷阱骤发",
+    "targeting": "single_enemy",
+    "power": 10,
+    "stability_damage": 6,
+    "cost": {"item_id": "shock_trap", "count": 1}
+  }
+]

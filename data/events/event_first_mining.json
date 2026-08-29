@@ -1,0 +1,12 @@
+{
+  "id": "event_first_mining",
+  "kind": "mixed",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "第一捧星壤尘！很轻，带着一点暖意，像捧着一把会呼吸的灰。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "装罐、密封、贴标，按配比入账。记住：尘越纯，共鸣越危险。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "……洛弦，你有没有觉得四周安静得有点过分？连风都停了。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "共鸣会引来东西。握紧工具，别离开光照范围。"},
+    {"type": "effect", "due_encounter": "encounter_first_drift_due"}
+  ]
+}

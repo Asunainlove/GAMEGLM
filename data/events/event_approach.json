@@ -1,0 +1,21 @@
+{
+  "id": "event_approach",
+  "kind": "mixed",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "前面的岩腔里有东西在发光——一整片，一闪一闪，像睡着的心跳。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "接近方式决定它的反应。要么走流程，要么走诚意。"},
+    {"type": "choice", "choice_id": "approach", "prompt_zh": "如何接近这片发光矿脉？", "options": [
+      {
+        "id": "approach_direct",
+        "text_zh": "直接勘探：架灯、钻孔，按标准流程推进。",
+        "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 5}
+      },
+      {
+        "id": "approach_diplomatic",
+        "text_zh": "先礼后探：熄灯静立，等矿脉先开口。",
+        "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 5}
+      }
+    ]}
+  ]
+}

@@ -1,0 +1,84 @@
+[
+  {
+    "id": "anchor_block",
+    "kind": "building",
+    "name_zh": "锚块",
+    "desc_zh": "打入岩层的基础锚点，为整片矿站提供承力基准。",
+    "inputs": [
+      {"item_id": "starsoil_dust", "count": 2}
+    ],
+    "power_draw": 0,
+    "power_supply": 0
+  },
+  {
+    "id": "anchor_workshop",
+    "kind": "building",
+    "name_zh": "锚居工坊",
+    "desc_zh": "居住与作业一体的主工坊，为矿区持续供应 10 点电力。",
+    "inputs": [
+      {"item_id": "starsoil_dust", "count": 4}
+    ],
+    "power_draw": 0,
+    "power_supply": 10
+  },
+  {
+    "id": "dust_refiner",
+    "kind": "building",
+    "name_zh": "尘精炼器",
+    "desc_zh": "把星壤尘反复压缩提纯：3 份尘可凝出 1 枚共鸣核。",
+    "inputs": [
+      {"item_id": "lumen_shard", "count": 2}
+    ],
+    "recipe": {
+      "input_item_id": "starsoil_dust",
+      "input_count": 3,
+      "output_item_id": "resonant_core",
+      "output_count": 1
+    },
+    "power_draw": 4,
+    "power_supply": 0
+  },
+  {
+    "id": "stabilizer_pylon",
+    "kind": "building",
+    "name_zh": "稳定塔",
+    "desc_zh": "向四周散发稳定力场，抑制矿脉的无序共振。",
+    "inputs": [
+      {"item_id": "lumen_shard", "count": 1},
+      {"item_id": "resonant_core", "count": 1}
+    ],
+    "power_draw": 6,
+    "power_supply": 0,
+    "effect_flag": "pylon_stabilized"
+  },
+  {
+    "id": "resonance_loom",
+    "kind": "building",
+    "name_zh": "共鸣织机",
+    "desc_zh": "以辉砂晶片为经纬缓缓编织，产出安抚心神的定神雾。",
+    "inputs": [
+      {"item_id": "resonant_core", "count": 1}
+    ],
+    "recipe": {
+      "input_item_id": "lumen_shard",
+      "input_count": 2,
+      "output_item_id": "sedative_mist",
+      "output_count": 1
+    },
+    "power_draw": 5,
+    "power_supply": 0
+  },
+  {
+    "id": "echo_chamber",
+    "kind": "building",
+    "name_zh": "回响舱",
+    "desc_zh": "必须四面合围成房间才能运行，用于放大并疏导矿脉的回声。",
+    "inputs": [
+      {"item_id": "resonant_core", "count": 2}
+    ],
+    "requires_room": true,
+    "power_draw": 8,
+    "power_supply": 0,
+    "effect_flag": "echo_chamber_active"
+  }
+]
