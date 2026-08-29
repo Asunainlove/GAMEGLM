@@ -9,3 +9,13 @@
 - Commands: pwsh -NoProfile -File ./scripts/Run-Gut.ps1 (exit 0, 26/26), ./scripts/Verify-Toolchain.ps1 (exit 0) run on main @ d0aef63 pre-dispatch.
 - Limitations: G6 art generation excluded (requires provenance + human approval per AGENTS.md); CI workflow inactive until a remote is configured.
 - Next: collect SUBMITTED reports, merge in dependency order, run full gates per merge, tag packet/<ID>, update backlog/state.
+
+# Final checkpoint: all packets VERIFIED (2026-08-28)
+
+- 16 merge-gate runs, each: Run-Gut full suite + Verify-Toolchain on main after merge; all exit 0.
+- Packets merged & tagged: packet/wp01 (ContentDB, 43/43), packet/wp04 (state ops+save migration, 47/47), packet/wp05 (gathering, 51/51), packet/wp06 (building, 47/47), packet/wp07 (power, 38/38), packet/wp03 (world, 50/50 + coordinator Callable-lifetime test repair), packet/wp02 (player, 39/39), packet/wp11 (UI/HUD, 47/47), packet/wp08 (narrative, 50/50), packet/wp09 (relations, 221/221), packet/wp10 (combat, 247/247), packet/wp12 (content data, 268/268 + coordinator due_encounter trigger_flag ruling), packet/wp13 (encounters, 296/296), packet/wp14 (progression, 324/324), packet/wp15 (endings+RC gate, 335/335), packet/p04-integration (app-level loop wiring, 349/349).
+- Final state on main: 349/349 tests, 3122 asserts; Verify-Toolchain exit 0; Verify-Slice exit 0 (GATE4 export smoke SKIP: local export templates not installed — documented in docs/rc-checklist.md).
+- Cross-package coordinator rulings recorded: (1) ContentDB.validate_refs due_encounter checks encounter trigger_flags (commit 88d7ae9); (2) world test snapshot-store lifetime (Callable holds ObjectID only, commit c55a0da); (3) hud objective_for done-flag aligned to EventRunner EVENT_DONE_FLAG_FORMAT (in p04-integration).
+- Concurrency constraint: platform user-concurrency limit allowed only ONE subagent at a time; packets ran serially via synchronous dispatch instead of 15-way parallel.
+- Limitations: G6 art assets excluded (provenance + human approval required per AGENTS.md); export templates not installed locally; PowerGrid not yet gating the build chain (powered=true passthrough); menu key toggles HUD menu only (save is throttled auto-save + boot-time load).
+- Next: install Godot 4.7.2 export templates -> rerun Verify-Slice GATE4 -> G7 RC checklist (45-60min playthrough of all three endings, save/reload, performance sampling, external playtest gate).
