@@ -13,6 +13,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 GameState="*res://src/state/game_state.gd"
 SaveService="*res://src/save/save_service.gd"
+ContentDB="*res://src/content/content_db.gd"
 
 [display]
 
