@@ -340,10 +340,10 @@ func test_objective_for_walks_progression_table() -> void:
 
 	table.append([_snap(flags.duplicate(true), buildings.duplicate()), "探索世界"])
 
-	flags["event_prologue_landing_done"] = true
+	flags["event_event_prologue_landing_done"] = true
 	table.append([_snap(flags.duplicate(true), buildings.duplicate()), "勘探琉砂海，采集星壤尘"])
 
-	flags["event_first_mining_done"] = true
+	flags["event_event_first_mining_done"] = true
 	table.append([_snap(flags.duplicate(true), buildings.duplicate()), "放置第一座锚块"])
 
 	buildings.append("anchor_block")
@@ -365,7 +365,7 @@ func test_objective_for_walks_progression_table() -> void:
 	flags["encounter_leviathan_won"] = true
 	table.append([_snap(flags.duplicate(true), buildings.duplicate()), "见证余辉结局"])
 
-	flags["event_ending_luoxian_done"] = true
+	flags["event_event_ending_luoxian_done"] = true
 	table.append([_snap(flags.duplicate(true), buildings.duplicate()), "探索世界"])
 
 	assert_eq(table.size(), 10, "Progression table must cover every milestone.")

@@ -96,11 +96,11 @@ static func objective_for(snapshot: Dictionary) -> String:
 
 	if not _has_progress(flags, placed_ids):
 		return "探索世界"
-	if not (_flag_enabled(flags, "event_first_mining_done") or placed_ids.has("anchor_block")):
+	if not (_flag_enabled(flags, _event_done_flag("event_first_mining")) or placed_ids.has("anchor_block")):
 		return "勘探琉砂海，采集星壤尘"
-	if not (placed_ids.has("anchor_block") or _flag_enabled(flags, "event_first_anchor_done")):
+	if not (placed_ids.has("anchor_block") or _flag_enabled(flags, _event_done_flag("event_first_anchor"))):
 		return "放置第一座锚块"
-	if not (placed_ids.has("anchor_workshop") or _flag_enabled(flags, "event_workshop_guide_done")):
+	if not (placed_ids.has("anchor_workshop") or _flag_enabled(flags, _event_done_flag("event_workshop_guide"))):
 		return "建立锚居工坊"
 	if not (_flag_enabled(flags, "encounter_first_drift_won") or _flag_enabled(flags, "encounter_husk_ambush_won")):
 		return "应对漂移群威胁"
@@ -108,26 +108,32 @@ static func objective_for(snapshot: Dictionary) -> String:
 		_flag_enabled(flags, "station_mode_exploit")
 		or _flag_enabled(flags, "station_mode_seal")
 		or _flag_enabled(flags, "station_mode_symbiosis")
-		or _flag_enabled(flags, "event_station_mode_done")
+		or _flag_enabled(flags, _event_done_flag("event_station_mode"))
 	):
 		return "做出驻地抉择"
 	var approach_done: bool = (
 		_flag_enabled(flags, "approach_direct")
 		or _flag_enabled(flags, "approach_diplomatic")
-		or _flag_enabled(flags, "event_approach_done")
+		or _flag_enabled(flags, _event_done_flag("event_approach"))
 	)
 	var policy_done: bool = (
 		_flag_enabled(flags, "policy_extraction_quota")
 		or _flag_enabled(flags, "policy_sanctuary")
-		or _flag_enabled(flags, "event_policy_done")
+		or _flag_enabled(flags, _event_done_flag("event_policy"))
 	)
 	if not (approach_done and policy_done):
 		return "推进方法与政策抉择"
-	if not (_flag_enabled(flags, "encounter_leviathan_won") or _flag_enabled(flags, "event_leviathan_pact_done")):
+	if not (_flag_enabled(flags, "encounter_leviathan_won") or _flag_enabled(flags, _event_done_flag("event_leviathan_pact"))):
 		return "面对辉砂巨兽"
-	if not (_flag_enabled(flags, "event_ending_luoxian_done") or _flag_enabled(flags, "event_ending_misa_done")):
+	if not (_flag_enabled(flags, _event_done_flag("event_ending_luoxian")) or _flag_enabled(flags, _event_done_flag("event_ending_misa"))):
 		return "见证余辉结局"
 	return "探索世界"
+
+
+## 事件完成标记名：与 EventRunner 的实际模板（event_%s_done % 事件全 id，
+## 事件 id 自带 event_ 前缀，因此 flag 为双前缀形态）保持单一来源对齐。
+static func _event_done_flag(event_id: String) -> String:
+	return EventRunner.EVENT_DONE_FLAG_FORMAT % event_id
 
 
 static func _flag_enabled(flags: Dictionary, flag_id: String) -> bool:
