@@ -109,6 +109,14 @@
       "depends_on": [
         "W000-P02"
       ]
+    },
+    {
+      "id": "WP09",
+      "title": "Relations and stance",
+      "status": "verified",
+      "depends_on": [
+        "WP04"
+      ]
     }
   ]
 }
