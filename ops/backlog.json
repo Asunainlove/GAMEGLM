@@ -85,6 +85,14 @@
       "depends_on": [
         "W000-P02"
       ]
+    },
+    {
+      "id": "WP02",
+      "title": "Player controller and intents",
+      "status": "verified",
+      "depends_on": [
+        "W000-P02"
+      ]
     }
   ]
 }
