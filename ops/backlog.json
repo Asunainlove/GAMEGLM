@@ -142,6 +142,15 @@
         "WP10",
         "WP12"
       ]
+    },
+    {
+      "id": "WP14",
+      "title": "Progression and world response",
+      "status": "verified",
+      "depends_on": [
+        "WP04",
+        "WP08"
+      ]
     }
   ]
 }
