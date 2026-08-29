@@ -65,7 +65,7 @@
     {
       "id": "WP05",
       "title": "Gathering and inventory logic",
-      "status": "in_progress",
+      "status": "verified",
       "depends_on": [
         "W000-P02"
       ]
