@@ -133,6 +133,15 @@
       "depends_on": [
         "WP01"
       ]
+    },
+    {
+      "id": "WP13",
+      "title": "Encounters and boss",
+      "status": "verified",
+      "depends_on": [
+        "WP10",
+        "WP12"
+      ]
     }
   ]
 }
