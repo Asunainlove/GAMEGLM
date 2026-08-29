@@ -2,6 +2,10 @@ class_name SaveCodec
 extends RefCounted
 
 const SAVE_VERSION: int = 1
+## Version -> Array[Callable] of migration steps. Each step receives the payload
+## Dictionary and returns an AppResult whose value is the migrated payload.
+## Version 1 is the initial schema, so its migration list is empty (identity).
+const MIGRATIONS: Dictionary = {1: []}
 const REQUIRED_SNAPSHOT_FIELDS: Array[String] = [
 	"save_version",
 	"generator_version",
@@ -76,13 +80,49 @@ func decode_text(text: String) -> AppResult:
 	if envelope["checksum"] != expected_checksum:
 		return AppResult.failure("checksum_mismatch", "Save checksum does not match its payload.")
 
-	var validation: AppResult = validate_snapshot(envelope["payload"])
+	# Migration runs after the checksum was verified against the writer's
+	# original body, so older envelopes authenticate before their payload is
+	# transformed. For save_version 1 the migration is identity, which keeps
+	# current decode behavior unchanged.
+	var migration_result: AppResult = migrate_to_latest(envelope)
+	if not migration_result.is_ok:
+		return migration_result
+
+	var validation: AppResult = validate_snapshot(migration_result.value)
 	if not validation.is_ok:
 		return validation
 	var normalized: Dictionary = validation.value
 	if int(normalized["revision"]) != int(envelope_revision):
 		return AppResult.failure("revision_mismatch", "Envelope and payload revisions differ.")
 	return AppResult.success(normalized.duplicate(true), "decoded")
+
+
+## Applies every pending migration from envelope.save_version up to SAVE_VERSION.
+## The payload is migrated on a deep copy; the input envelope is never mutated.
+static func migrate_to_latest(envelope: Dictionary) -> AppResult:
+	var version_value: Variant = _integral_number(envelope.get("save_version"))
+	if version_value == null:
+		return AppResult.failure("invalid_envelope", "Envelope save_version must be an integer number.")
+	var version: int = int(version_value)
+	if version > SAVE_VERSION:
+		return AppResult.failure("future_save_version", "Save was created by a newer version.")
+	if not MIGRATIONS.has(version):
+		return AppResult.failure("unsupported_save_version", "Save version %d has no migration path." % version)
+	var payload_value: Variant = envelope.get("payload")
+	if typeof(payload_value) != TYPE_DICTIONARY:
+		return AppResult.failure("invalid_envelope", "Envelope payload must be a dictionary.")
+
+	var payload: Dictionary = (payload_value as Dictionary).duplicate(true)
+	var current_version: int = version
+	while current_version < SAVE_VERSION:
+		current_version += 1
+		var steps: Array = MIGRATIONS[current_version]
+		for migration: Callable in steps:
+			var step_result: AppResult = migration.call(payload)
+			if not step_result.is_ok:
+				return step_result
+			payload = step_result.value
+	return AppResult.success(payload, "migrated")
 
 
 func canonical_json(value: Variant) -> String:
@@ -354,7 +394,7 @@ func _canonicalize(value: Variant) -> Variant:
 			return value
 
 
-func _integral_number(value: Variant) -> Variant:
+static func _integral_number(value: Variant) -> Variant:
 	if typeof(value) == TYPE_INT:
 		return value
 	if typeof(value) == TYPE_FLOAT:
