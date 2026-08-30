@@ -32,13 +32,13 @@ const TARGETINGS: Array[String] = ["self", "single_ally", "single_enemy", "all_e
 const RELATION_DIMS: Array[String] = ["affection", "trust", "ideology"]
 
 const ITEM_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "stack_limit", "tier", "battle_usable"]
-const BUILDING_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "inputs", "recipe", "requires_room", "power_draw", "power_supply", "effect_flag"]
+const BUILDING_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "inputs", "recipe", "recipes", "requires_room", "power_draw", "power_supply", "effect_flag"]
 const COMBAT_UNIT_FIELDS: Array[String] = ["id", "kind", "name_zh", "max_hp", "stability_max", "track", "speed", "action_ids", "phases", "drops"]
 const COMBAT_ACTION_FIELDS: Array[String] = ["id", "kind", "name_zh", "targeting", "power", "stability_damage", "cost", "heal", "guard_ratio"]
 const EVENT_FIELDS: Array[String] = ["id", "kind", "requires_flag", "once", "steps"]
 const ENCOUNTER_FIELDS: Array[String] = ["id", "name_zh", "trigger_flag", "on_victory_flag", "allies", "enemies", "seed", "intro_event_id"]
 const ITEM_STACK_FIELDS: Array[String] = ["item_id", "count"]
-const RECIPE_FIELDS: Array[String] = ["input_item_id", "input_count", "output_item_id", "output_count"]
+const RECIPE_FIELDS: Array[String] = ["input_item_id", "input_count", "extra_input_item_id", "extra_input_count", "output_item_id", "output_count"]
 const PHASE_FIELDS: Array[String] = ["id", "at_hp_ratio", "action_ids"]
 const DROP_FIELDS: Array[String] = ["item_id", "amount"]
 const COST_FIELDS: Array[String] = ["item_id", "count"]
@@ -164,10 +164,13 @@ func validate_refs() -> AppResult:
 		var building: Dictionary = _buildings[building_id]
 		for stack: Dictionary in building.get("inputs", []):
 			_check_ref(_items, stack["item_id"], "item", "building '%s' inputs" % building_id, dangling)
-		if building.has("recipe"):
-			var recipe: Dictionary = building["recipe"]
+		# W002-GAP4：recipe（单对象，兼容）与 recipes（数组，新形态）两种配方载体
+		# 的全部输入/输出引用都必须可解析。
+		for recipe: Dictionary in _building_recipes(building):
 			_check_ref(_items, recipe["input_item_id"], "item", "building '%s' recipe input" % building_id, dangling)
 			_check_ref(_items, recipe["output_item_id"], "item", "building '%s' recipe output" % building_id, dangling)
+			if recipe.has("extra_input_item_id"):
+				_check_ref(_items, recipe["extra_input_item_id"], "item", "building '%s' recipe extra input" % building_id, dangling)
 	for unit_id: String in _combat_units:
 		var unit: Dictionary = _combat_units[unit_id]
 		for action_id: String in unit["action_ids"]:
@@ -211,6 +214,18 @@ func _get_copy(store: Dictionary, id: String, label: String) -> Dictionary:
 		push_warning("ContentDB: unknown %s id '%s'." % [label, id])
 		return {}
 	return (store[id] as Dictionary).duplicate(true)
+
+
+## 建筑定义携带的全部配方（recipe 单对象在前 + recipes 数组），供引用检查与
+## 消费方归一化共用单一来源。
+func _building_recipes(building: Dictionary) -> Array:
+	var recipes: Array = []
+	if building.has("recipe"):
+		recipes.append(building["recipe"])
+	for recipe_entry: Variant in building.get("recipes", []):
+		if typeof(recipe_entry) == TYPE_DICTIONARY:
+			recipes.append(recipe_entry)
+	return recipes
 
 
 func _append_keys(target: Array[String], store: Dictionary) -> void:
@@ -395,6 +410,18 @@ func _validate_building(definition: Dictionary, path: String) -> AppResult:
 		result = _validate_recipe(definition["recipe"], path)
 		if not result.is_ok:
 			return result
+	# W002-GAP4：可选 recipes 数组（元素形状同 recipe；与 recipe 同时出现时运行时
+	# 以 recipes 为准，见 CraftingService.available_recipes 的归一化规则）。
+	if definition.has("recipes"):
+		result = _validate_array(definition, "recipes", path, 1)
+		if not result.is_ok:
+			return result
+		for recipe_entry: Variant in definition["recipes"]:
+			if typeof(recipe_entry) != TYPE_DICTIONARY:
+				return _fail(path, "recipes entries must be objects.")
+			result = _validate_recipe(recipe_entry, path)
+			if not result.is_ok:
+				return result
 	result = _optional_bool(definition, "requires_room", path)
 	if not result.is_ok:
 		return result
@@ -706,7 +733,8 @@ func _validate_recipe(recipe: Dictionary, path: String) -> AppResult:
 	var result: AppResult = _reject_unknown_fields(recipe, RECIPE_FIELDS, path)
 	if not result.is_ok:
 		return result
-	result = _require_fields(recipe, RECIPE_FIELDS, path)
+	result = _require_fields(recipe, RECIPE_FIELDS.filter(
+		func(field: String) -> bool: return field != "extra_input_item_id" and field != "extra_input_count"), path)
 	if not result.is_ok:
 		return result
 	result = _require_stable_id(recipe, "input_item_id", path)
@@ -718,7 +746,18 @@ func _validate_recipe(recipe: Dictionary, path: String) -> AppResult:
 	result = _require_integer(recipe, "input_count", path, 1)
 	if not result.is_ok:
 		return result
-	return _require_integer(recipe, "output_count", path, 1)
+	result = _require_integer(recipe, "output_count", path, 1)
+	if not result.is_ok:
+		return result
+	# W002-GAP4：可选第二输入（extra_input_*）必须成对出现且为稳定 ID + 正整数。
+	if recipe.has("extra_input_item_id") or recipe.has("extra_input_count"):
+		result = _require_stable_id(recipe, "extra_input_item_id", path)
+		if not result.is_ok:
+			return result
+		result = _require_integer(recipe, "extra_input_count", path, 1)
+		if not result.is_ok:
+			return result
+	return AppResult.success()
 
 
 func _validate_phase(phase: Dictionary, path: String) -> AppResult:

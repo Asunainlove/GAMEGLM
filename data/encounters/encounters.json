@@ -25,7 +25,7 @@
     ],
     "enemies": [
       {"unit_id": "shard_husk", "track": "mid"},
-      {"unit_id": "drift_swarmling", "track": "front"}
+      {"unit_id": "veinwarden_echo", "track": "mid"}
     ],
     "seed": 1002
   },

@@ -10,10 +10,17 @@ extends CanvasLayer
 signal menu_resumed
 signal save_requested
 signal restart_requested
+## W002-GAP4 建造热键栏：点击槽位请求选中该建筑（落账由集成层 select_building 完成）。
+signal build_selected(building_id: String)
+## W002-GAP4 背包配方区：点击"合成"请求一次精炼（落账由集成层 CraftingService 完成）。
+signal craft_requested(building_id: String, recipe: Dictionary)
 
 const POLL_INTERVAL_SECONDS: float = 0.25
 const MAX_BAR_SLOTS: int = 8
 const DEFAULT_NOTICE_SECONDS: float = 1.5
+const UNPOWERED_DOT_COLOR: Color = Color(0.85, 0.15, 0.15)
+const UNAFFORDABLE_SUFFIX: String = "（材料不足）"
+const EMPTY_RECIPES_HINT: String = "暂无可用配方：需要已建成且供电的配方建筑。"
 
 const _CHOICE_FLAGS: PackedStringArray = [
 	"station_mode_exploit",
@@ -31,11 +38,23 @@ var snapshot_provider: Callable = Callable()
 ## 物品显示名解析；缺省返回 id 本身，集成层可注入中文映射。
 var name_resolver: Callable = Callable()
 
+## W002-GAP4 注入点（全部为只读 provider，由集成层 GameSession 绑定）：
+## build_catalog() -> [{building_id, name_zh, cost_text, affordable}]
+var build_catalog: Callable = Callable()
+## selected_provider() -> 当前选中的 building_id（"" 表示无）
+var selected_provider: Callable = Callable()
+## unpowered_provider() -> [building_id]（存在断电实例的耗电建筑）
+var unpowered_provider: Callable = Callable()
+## recipe_provider() -> [{building_id, recipe, craftable}]
+var recipe_provider: Callable = Callable()
+
 @onready var _inventory_bar: HBoxContainer = $InventoryBar
 @onready var _objective_label: Label = $ObjectiveLabel
 @onready var _inventory_panel: PanelContainer = $InventoryPanel
 @onready var _menu_panel: PanelContainer = $MenuPanel
 @onready var _inventory_items_box: VBoxContainer = $InventoryPanel/Content/ItemsBox
+@onready var _recipes_box: VBoxContainer = $InventoryPanel/Content/RecipesBox
+@onready var _build_bar: HBoxContainer = $BuildBar
 @onready var _menu_help_panel: PanelContainer = $MenuPanel/Content/HelpPanel
 @onready var _resume_button: Button = $MenuPanel/Content/ResumeButton
 @onready var _save_button: Button = $MenuPanel/Content/SaveButton
@@ -202,6 +221,10 @@ func _revision_of(snapshot: Dictionary) -> int:
 func _render(snapshot: Dictionary) -> void:
 	_render_inventory_bar(snapshot)
 	_render_inventory_panel(snapshot)
+	_render_build_bar()
+	# 配方区跟随背包面板显隐渲染；合成落账会推进 revision，轮询路径同样会刷新。
+	if _inventory_panel.visible:
+		_render_recipe_rows()
 	# 通知窗口期内保持提示文案，避免轮询重渲染覆盖短暂提示。
 	if _notice_text.is_empty():
 		_objective_label.text = objective_for(snapshot)
@@ -249,6 +272,148 @@ func _inventory_entries(snapshot: Dictionary) -> Array[Dictionary]:
 			"amount": int(stock[item_id]),
 		})
 	return entries
+
+
+# ---------------------------------------------------------------- 建造热键栏（W002-GAP4）
+
+
+## BuildBar：按注入目录渲染 6 个建造槽（序号 + 中文名 + 成本摘要）。
+## 选中槽位按下态高亮；断电建筑槽位右上角小红点；材料不足槽位加（材料不足）。
+## 点击槽位发 build_selected 信号——表现层不直接改选中状态。
+func _render_build_bar() -> void:
+	_clear_children(_build_bar)
+	var catalog: Array = _provider_array(build_catalog)
+	var selected := _selected_building_id()
+	var unpowered := _string_set(_provider_array(unpowered_provider))
+	for index: int in catalog.size():
+		var entry := catalog[index] as Dictionary
+		if entry == null:
+			continue
+		var building_id := str(entry.get("building_id", ""))
+		var button := Button.new()
+		button.name = "BuildSlot_%s" % building_id
+		button.toggle_mode = true
+		button.button_pressed = building_id != "" and building_id == selected
+		var cost_text := str(entry.get("cost_text", ""))
+		if not bool(entry.get("affordable", false)):
+			cost_text += UNAFFORDABLE_SUFFIX
+		button.text = "%d %s\n%s" % [index + 1, str(entry.get("name_zh", building_id)), cost_text]
+		if unpowered.has(building_id):
+			button.add_child(_make_unpowered_dot())
+		button.pressed.connect(_on_build_slot_pressed.bind(building_id))
+		_build_bar.add_child(button)
+
+
+func _make_unpowered_dot() -> ColorRect:
+	var dot := ColorRect.new()
+	dot.name = "UnpoweredDot"
+	dot.color = UNPOWERED_DOT_COLOR
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dot.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	dot.offset_left = -12.0
+	dot.offset_top = 2.0
+	dot.offset_right = -4.0
+	dot.offset_bottom = 10.0
+	return dot
+
+
+func _on_build_slot_pressed(building_id: String) -> void:
+	build_selected.emit(building_id)
+	# 选中变化不经 revision（不提交 patch），延迟一帧重建以立即移动高亮，
+	# 且避免在信号发射过程中释放发射按钮本身。
+	_render_build_bar.call_deferred()
+
+
+# ---------------------------------------------------------------- 背包配方区（W002-GAP4）
+
+
+## RecipesBox：按注入配方列表渲染"输出名：输入×n → 输出×m [合成]"行；
+## 不可合成的行按钮置灰。点击发 craft_requested 信号，落账由集成层完成。
+## provider 未注入（非集成环境）时不渲染任何内容。
+func _render_recipe_rows() -> void:
+	_clear_children(_recipes_box)
+	if not recipe_provider.is_valid():
+		return
+	var entries := _provider_array(recipe_provider)
+	if entries.is_empty():
+		_append_label(_recipes_box, EMPTY_RECIPES_HINT)
+		return
+	for entry_value: Variant in entries:
+		var entry := entry_value as Dictionary
+		if entry == null:
+			continue
+		var building_id := str(entry.get("building_id", ""))
+		var recipe := entry.get("recipe", {}) as Dictionary
+		if recipe == null or recipe.is_empty():
+			continue
+		var row := HBoxContainer.new()
+		var inputs_text := _recipe_inputs_text(recipe)
+		var output_text := "%s×%d" % [
+			_resolve_name(str(recipe.get("output_item_id", ""))),
+			int(recipe.get("output_count", 1)),
+		]
+		_append_label(row, "%s：%s → %s" % [
+			_resolve_name(str(recipe.get("output_item_id", ""))),
+			inputs_text,
+			output_text,
+		])
+		var craft_button := Button.new()
+		craft_button.text = "合成"
+		craft_button.disabled = not bool(entry.get("craftable", false))
+		craft_button.pressed.connect(_on_craft_pressed.bind(building_id, recipe))
+		row.add_child(craft_button)
+		_recipes_box.add_child(row)
+
+
+func _recipe_inputs_text(recipe: Dictionary) -> String:
+	var parts: Array[String] = []
+	var pairs: Array = [
+		["input_item_id", "input_count"],
+		["extra_input_item_id", "extra_input_count"],
+	]
+	for pair: Array in pairs:
+		var item_id := str(recipe.get(pair[0], ""))
+		if item_id == "":
+			continue
+		parts.append("%s×%d" % [_resolve_name(item_id), int(recipe.get(pair[1], 1))])
+	return " + ".join(parts)
+
+
+func _on_craft_pressed(building_id: String, recipe: Dictionary) -> void:
+	craft_requested.emit(building_id, recipe)
+	# 合成提交由集成层同步完成；延迟一帧重渲染行区与背包（避免释放发射按钮）。
+	_refresh_after_craft.call_deferred()
+
+
+func _refresh_after_craft() -> void:
+	refresh()
+
+
+# ---------------------------------------------------------------- provider 工具
+
+
+## 读取注入 provider 的结果；无效 Callable 或非数组返回安全空数组。
+func _provider_array(provider: Callable) -> Array:
+	if not provider.is_valid():
+		return []
+	var provided: Variant = provider.call()
+	if provided is Array:
+		return provided
+	return []
+
+
+func _selected_building_id() -> String:
+	if not selected_provider.is_valid():
+		return ""
+	var provided: Variant = selected_provider.call()
+	return str(provided) if typeof(provided) == TYPE_STRING else ""
+
+
+func _string_set(values: Array) -> Dictionary:
+	var result: Dictionary = {}
+	for value: Variant in values:
+		result[str(value)] = true
+	return result
 
 
 func _resolve_name(item_id: String) -> String:

@@ -29,6 +29,7 @@ const MAX_AUTO_TURNS: int = 64
 var store: Object = null
 
 var _encounter_def: Dictionary = {}
+var _config: Dictionary = {}
 var _battle: Dictionary = {}
 var _last_finish_result: AppResult = null
 
@@ -40,8 +41,8 @@ var _last_finish_result: AppResult = null
 ## 若先手为敌方单位（如 Boss 速度更高），自动结算敌方回合直到轮到盟友或结束。
 func begin_encounter(encounter_def: Dictionary, content: Dictionary) -> void:
 	_encounter_def = encounter_def.duplicate(true)
-	var config: Dictionary = DIRECTOR_SCRIPT.start(_encounter_def, content)
-	_battle = COMBAT_ENGINE_SCRIPT.create_battle(config)
+	_config = DIRECTOR_SCRIPT.start(_encounter_def, content)
+	_battle = COMBAT_ENGINE_SCRIPT.create_battle(_config)
 	_resolve_enemy_turns()
 
 
@@ -127,6 +128,12 @@ func _lowest_hp_living_key(battle: Dictionary, side: String) -> String:
 
 func _finish_battle() -> void:
 	var outcome: Dictionary = COMBAT_ENGINE_SCRIPT.outcome(_battle)
+	# W002-GAP4 道具经济：把盟友战斗中的实际道具消耗并入 outcome，
+	# 经 director.finish 的 remove_item 通道回写库存（victory/defeat 均回写）。
+	var spent: Dictionary = DIRECTOR_SCRIPT.spent_items(
+		_config.get("allies", []), _battle.get("units", []))
+	if not spent.is_empty():
+		outcome["items_spent"] = spent
 	# finish 是 EncounterDirector 的实例方法（check_triggers/start 才是静态），
 	# 因此这里实例化纯逻辑 director 再落账（无状态，用完即释）。
 	var director: EncounterDirector = DIRECTOR_SCRIPT.new()

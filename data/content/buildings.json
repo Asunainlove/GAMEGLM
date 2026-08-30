@@ -3,23 +3,23 @@
     "id": "anchor_block",
     "kind": "building",
     "name_zh": "锚块",
-    "desc_zh": "打入岩层的基础锚点，为整片矿站提供承力基准。",
+    "desc_zh": "打入岩层的基础锚点，为整片矿站提供承力基准，并持续供给 2 点电力。",
     "inputs": [
       {"item_id": "starsoil_dust", "count": 2}
     ],
     "power_draw": 0,
-    "power_supply": 0
+    "power_supply": 2
   },
   {
     "id": "anchor_workshop",
     "kind": "building",
     "name_zh": "锚居工坊",
-    "desc_zh": "居住与作业一体的主工坊，为矿区持续供应 10 点电力。",
+    "desc_zh": "居住与作业一体的主工坊，为矿区持续供应 16 点电力。",
     "inputs": [
       {"item_id": "starsoil_dust", "count": 4}
     ],
     "power_draw": 0,
-    "power_supply": 10
+    "power_supply": 16
   },
   {
     "id": "dust_refiner",
@@ -59,12 +59,22 @@
     "inputs": [
       {"item_id": "resonant_core", "count": 1}
     ],
-    "recipe": {
-      "input_item_id": "lumen_shard",
-      "input_count": 2,
-      "output_item_id": "sedative_mist",
-      "output_count": 1
-    },
+    "recipes": [
+      {
+        "input_item_id": "lumen_shard",
+        "input_count": 2,
+        "output_item_id": "sedative_mist",
+        "output_count": 1
+      },
+      {
+        "input_item_id": "lumen_shard",
+        "input_count": 2,
+        "extra_input_item_id": "resonant_core",
+        "extra_input_count": 1,
+        "output_item_id": "shock_trap",
+        "output_count": 1
+      }
+    ],
     "power_draw": 5,
     "power_supply": 0
   },

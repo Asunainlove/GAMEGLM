@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "starsoil:schemas/building-recipe.schema.json",
-  "title": "Starsoil building (with embedded recipe)",
+  "title": "Starsoil building (with embedded recipe or recipes)",
   "type": "object",
   "required": ["id", "kind", "name_zh", "inputs", "power_draw", "power_supply"],
   "additionalProperties": false,
@@ -22,6 +22,18 @@
         }
       }
     },
+    "recipe": {"$ref": "#/$defs/recipe"},
+    "recipes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/recipe"}
+    },
+    "requires_room": {"type": "boolean"},
+    "power_draw": {"type": "integer", "minimum": 0},
+    "power_supply": {"type": "integer", "minimum": 0},
+    "effect_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+  },
+  "$defs": {
     "recipe": {
       "type": "object",
       "required": ["input_item_id", "input_count", "output_item_id", "output_count"],
@@ -29,13 +41,18 @@
       "properties": {
         "input_item_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
         "input_count": {"type": "integer", "minimum": 1},
+        "extra_input_item_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "extra_input_count": {"type": "integer", "minimum": 1},
         "output_item_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
         "output_count": {"type": "integer", "minimum": 1}
-      }
-    },
-    "requires_room": {"type": "boolean"},
-    "power_draw": {"type": "integer", "minimum": 0},
-    "power_supply": {"type": "integer", "minimum": 0},
-    "effect_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+      },
+      "anyOf": [
+        {"not": {"anyOf": [
+          {"required": ["extra_input_item_id"]},
+          {"required": ["extra_input_count"]}
+        ]}},
+        {"required": ["extra_input_item_id", "extra_input_count"]}
+      ]
+    }
   }
 }

@@ -332,20 +332,22 @@ func test_place_chain_withholds_effect_flag_without_room() -> void:
 
 func test_place_chain_does_not_recommit_flag_for_unpowered_duplicate_effect_building() -> void:
 	_make_session()
-	_give_item("starsoil_dust", 10)
-	_give_item("resonant_core", 4)
+	_give_item("starsoil_dust", 14)
+	_give_item("resonant_core", 8)
 	assert_true(_place_at("anchor_block", Vector2i(20, 20)).is_ok)
 	assert_true(_place_at("anchor_workshop", Vector2i(20, 21)).is_ok)
+	# W002-GAP4（D2）合法断言更新：工坊供给 10 -> 16、锚块供能 2（合计 18）。
+	# 前两座回响舱（draw 8 各）占去 16，只剩 2：第三座回响舱（draw 8）断电。
 	assert_true(_place_at("echo_chamber", Vector2i(20, 22)).is_ok)
+	assert_true(_place_at("echo_chamber", Vector2i(20, 23)).is_ok)
 	var snapshot: Dictionary = store.snapshot()
 	assert_true(bool((snapshot["flags"] as Dictionary).get("echo_chamber_active", false)))
 	var revision_before: int = int(snapshot["revision"])
 
-	# 工坊供给 10 已被首座回响舱(draw 8)占去 8，只剩 2：第二座回响舱(draw 8)
-	# 断电。判定对象是"本次新建建筑"，不得因同 id 旧实例在 powered_ids 中而
+	# 判定对象是"本次新建建筑"，不得因同 id 旧实例在 powered_ids 中而
 	# 把 powered=true 误报给 Progression（那样会多提交一个冗余 flag patch，
 	# revision 将 +2 而非建造 patch 本身的 +1）。
-	assert_true(_place_at("echo_chamber", Vector2i(20, 23)).is_ok)
+	assert_true(_place_at("echo_chamber", Vector2i(20, 24)).is_ok)
 	var after: Dictionary = store.snapshot()
 	assert_eq(
 		int(after["revision"]), revision_before + 1,
