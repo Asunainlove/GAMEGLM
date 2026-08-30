@@ -26,7 +26,9 @@ extends Node
 ## - 结局链：Progression.ending_ready 且 due_event 为空且无战斗 → ending.tscn。
 ## - 存档链：每次 patch 提交后节流 SaveService.save_slot("auto")；启动时尝试
 ##   load → restore_snapshot。主菜单手动保存写 "manual" 槽并在 HUD 闪现提示；
-##   重新开始删除 auto/manual 槽全部候选文件后重载当前场景。
+##   重新开始先经 GameState.reset_to_initial 归零持久状态（Autoload 或注入
+##   store），再经 SaveService.delete_slot 删除 auto/manual 槽全部候选文件，
+##   最后重载当前场景（W001-P06 修复 P05 两个缺陷：内存状态残留与镜像命名）。
 ##
 ## 表现层约束：本节点绝不直接改持久字典，一切变更经注入 store（契约 §0：
 ## null → GameState autoload）的各模块 API / patch 提交完成。
@@ -48,9 +50,6 @@ const MAX_LINES_PER_BATCH: int = 32
 const MANUAL_SAVE_SLOT: String = "manual"
 const SAVE_NOTICE_TEXT: String = "已保存"
 const SAVE_NOTICE_SECONDS: float = 1.5
-## 存档槽候选文件后缀，与 SaveService._slot_paths 的命名约定保持镜像
-## （SaveService 无删除 API 且 src/save 冻结，见 W001-P05 evidence）。
-const SAVE_FILE_SUFFIXES: Array[String] = [".json", ".json.tmp", ".json.bak"]
 
 ## 契约 §0 注入模式：持久层 store，null → GameState autoload。
 var store: Object = null
@@ -69,10 +68,6 @@ var ending_scene_path: String = ENDING_SCENE_PATH
 var save_slot: String = DEFAULT_SAVE_SLOT
 var save_throttle_seconds: float = DEFAULT_SAVE_THROTTLE_SECONDS
 var autosave_enabled: bool = true
-
-## 存档根（user:// 路径）；空串回退 SaveService.DEFAULT_SAVE_ROOT。测试注入
-## 与 SaveService.configure_root_for_tests 相同的路径以断言删档行为。
-var save_root: String = ""
 
 ## 注入点：重新开始时的场景重载；缺省 get_tree().reload_current_scene()。
 ## 测试注入 spy 避免重载 GUT 测试场景。
@@ -325,28 +320,36 @@ func _on_save_requested() -> void:
 		hud.flash_notice(SAVE_NOTICE_TEXT, SAVE_NOTICE_SECONDS)
 
 
-## 主菜单"重新开始"：删除 auto/manual 槽全部候选文件后重载当前场景。
+## 主菜单"重新开始"（W001-P06 修复 P05 两个缺陷）：
+## 1. 先经 GameState.reset_to_initial 归零持久状态——reload_current_scene 不重置
+##    Autoload，缺失此步会残留旧内存进度（P05 evidence "重启语义"限制）。
+## 2. 再经 SaveService.delete_slot 删除 auto/manual 槽全部候选文件——复用
+##    SaveService._slot_paths 同一私有路径构造，消除 P05 的镜像命名逻辑。
 ## 重启后无档，GameSession._ready 的读档逻辑天然兼容（读档失败即初始状态）。
 func _on_restart_requested() -> void:
+	_reset_persistent_state()
 	_delete_save_slots()
 	_reload_current_scene()
 
 
-## 删除存档槽候选文件（primary/tmp/backup）。文件命名与 SaveService._slot_paths
-## 保持镜像；SaveService 无删除 API 且 src/save 冻结（W001-P05 evidence 记录）。
+## 将持久层（注入 store 优先，否则 GameState autoload）归零为全新初始态。
+## 与 _try_load_autosave 的目标解析保持同一注入契约。
+func _reset_persistent_state() -> void:
+	var target: Object = store
+	if target == null:
+		target = GameState
+	target.call("reset_to_initial")
+
+
+## 删除 auto/manual 槽全部候选文件（primary/tmp/backup），统一走
+## SaveService.delete_slot；失败仅告警，不阻断场景重载。
 func _delete_save_slots() -> void:
-	var root := save_root
-	if root.is_empty():
-		root = SaveService.DEFAULT_SAVE_ROOT
-	var directory := DirAccess.open(root)
-	if directory == null:
-		push_warning("GameSession: cannot open save root '%s' for deletion." % root)
-		return
 	for slot: String in [save_slot, MANUAL_SAVE_SLOT]:
-		for suffix: String in SAVE_FILE_SUFFIXES:
-			var file_name := slot + suffix
-			if directory.file_exists(file_name) and directory.remove(file_name) != OK:
-				push_warning("GameSession: failed to remove save file '%s'." % file_name)
+		var result := SaveService.delete_slot(slot)
+		if not result.is_ok:
+			push_warning(
+				"GameSession: failed to delete save slot '%s': %s" % [slot, result.message]
+			)
 
 
 func _reload_current_scene() -> void:

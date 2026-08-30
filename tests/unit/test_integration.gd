@@ -22,8 +22,8 @@ static var _save_root_seq: int = 0
 ## 场景重载 spy 宿主：必须存测试实例字段保活（Callable 只持 ObjectID）。
 var _reload_spy: SceneReloadSpy = null
 
-## 当前隔离存档根；注入 GameSession.save_root 以断言删档行为（生产环境
-## GameSession 回退 SaveService.DEFAULT_SAVE_ROOT，与真实存档根一致）。
+## 当前隔离存档根；经 SaveService.configure_root_for_tests 注入，删档断言走
+## SaveService.delete_slot（与生产同一 SaveService 存根路径）。
 var _save_root: String = ""
 
 
@@ -414,6 +414,14 @@ func test_restart_request_clears_save_slots_and_reloads_scene() -> void:
 	assert_eq(_reload_spy.calls, 1, "restart_requested 必须触发场景重载。")
 	assert_false(SaveService.load_slot(session.save_slot).is_ok, "重启后 auto 槽必须被清空。")
 	assert_false(SaveService.load_slot("manual").is_ok, "重启后 manual 槽必须被清空。")
+	var reset_snapshot: Dictionary = store.snapshot()
+	assert_eq(int(reset_snapshot["revision"]), 0, "重启后持久状态必须归零（W001-P06）。")
+	assert_true((reset_snapshot["inventory"] as Dictionary).is_empty(), "重启后背包必须清空。")
+	assert_true((reset_snapshot["flags"] as Dictionary).is_empty(), "重启后 flags 必须清空。")
+	assert_true(
+		(reset_snapshot["applied_patch_sources"] as Array).is_empty(),
+		"重启后 applied_patch_sources 必须清空（新鲜约束重新满足）。"
+	)
 
 
 # ---------------------------------------------------------------- 启动屏淡出
@@ -522,7 +530,6 @@ func _make_session() -> void:
 	session.store = store
 	session.world = world
 	session.dialogue_box = dialogue
-	session.save_root = _save_root
 	add_child_autofree(session)
 
 
@@ -540,7 +547,6 @@ func _make_session_with_hud(hud: Hud) -> void:
 	session.world = world
 	session.dialogue_box = dialogue
 	session.hud = hud
-	session.save_root = _save_root
 	add_child_autofree(session)
 
 
