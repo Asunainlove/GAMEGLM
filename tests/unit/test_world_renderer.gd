@@ -143,3 +143,86 @@ func test_apply_deltas_with_empty_array_changes_nothing() -> void:
 
 	assert_eq(renderer.ground_layer.get_used_cells().size(), before_ground)
 	assert_eq(renderer.ore_layer.get_used_cells().size(), before_ore)
+
+
+# ---------------------------------------------------------------- W002-GAP3
+
+
+func test_render_with_chunk_origin_offsets_both_layers() -> void:
+	var renderer: WorldRenderer = _make_renderer()
+	var chunk_id: String = "chunk_2_1"
+	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate(chunk_id, RENDER_SEED)["cells"]
+	var origin := Vector2i(64, 32)
+	renderer.render({"chunk_id": chunk_id, "cells": cells}, origin)
+
+	assert_eq(
+		renderer.ground_layer.get_used_cells().size(), 1024,
+		"One chunk render must paint exactly its own 1024 ground cells."
+	)
+	var min_cell := origin
+	var max_cell := origin + Vector2i(31, 31)
+	for cell: Vector2i in renderer.ground_layer.get_used_cells():
+		assert_true(
+			cell.x >= min_cell.x and cell.x <= max_cell.x and cell.y >= min_cell.y and cell.y <= max_cell.y,
+			"Ground cells must stay inside the chunk rect [%s .. %s]." % [min_cell, max_cell]
+		)
+	var ore_cell: Vector2i = _ore_cell(cells, "ore_dust")
+	assert_eq(
+		renderer.ore_layer.get_cell_source_id(ore_cell + origin),
+		WorldRenderer.SOURCE_ORE_DUST,
+		"Ore overlay must translate local cells by the chunk origin."
+	)
+	var soil_cell: Vector2i = _soil_cell(cells)
+	assert_eq(renderer.ore_layer.get_cell_source_id(soil_cell + origin), -1)
+
+
+func test_clear_layers_empties_both_layers_for_full_world_repaint() -> void:
+	var renderer: WorldRenderer = _make_renderer()
+	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate(RENDER_CHUNK_ID, RENDER_SEED)["cells"]
+	renderer.render({"chunk_id": RENDER_CHUNK_ID, "cells": cells})
+	assert_gt(renderer.ground_layer.get_used_cells().size(), 0)
+
+	renderer.clear_layers()
+
+	assert_eq(renderer.ground_layer.get_used_cells().size(), 0)
+	assert_eq(renderer.ore_layer.get_used_cells().size(), 0)
+
+
+func test_apply_delta_resolves_chunk_origin_and_erases_destroyed_cell() -> void:
+	var renderer: WorldRenderer = _make_renderer()
+	var chunk_id: String = "chunk_2_1"
+	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate(chunk_id, RENDER_SEED)["cells"]
+	var origin := Vector2i(64, 32)
+	renderer.render({"chunk_id": chunk_id, "cells": cells}, origin)
+	var destroyed_local: Vector2i = _ore_cell(cells, "ore_shard")
+	var surviving_local: Vector2i = _ore_cell(cells, "ore_core")
+
+	renderer.apply_delta(chunk_id, destroyed_local, true)
+
+	assert_eq(
+		renderer.ground_layer.get_cell_source_id(destroyed_local + origin), -1,
+		"apply_delta must erase at local cell + chunk origin on Ground."
+	)
+	assert_eq(
+		renderer.ore_layer.get_cell_source_id(destroyed_local + origin), -1,
+		"apply_delta must erase at local cell + chunk origin on OreOverlay."
+	)
+	assert_eq(
+		renderer.ore_layer.get_cell_source_id(surviving_local + origin),
+		WorldRenderer.SOURCE_ORE_CORE,
+		"apply_delta must not touch surviving cells."
+	)
+
+
+func test_apply_delta_ignores_non_destroyed_delta() -> void:
+	var renderer: WorldRenderer = _make_renderer()
+	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate(RENDER_CHUNK_ID, RENDER_SEED)["cells"]
+	renderer.render({"chunk_id": RENDER_CHUNK_ID, "cells": cells})
+	var intact_cell: Vector2i = _ore_cell(cells, "ore_dust")
+
+	renderer.apply_delta(RENDER_CHUNK_ID, intact_cell, false)
+
+	assert_eq(
+		renderer.ore_layer.get_cell_source_id(intact_cell), WorldRenderer.SOURCE_ORE_DUST,
+		"destroyed=false deltas must not erase anything."
+	)

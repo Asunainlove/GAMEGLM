@@ -1,10 +1,12 @@
 class_name WorldRenderer
 extends Node2D
 
-## Grey-box renderer for one generated chunk. Builds a 32x32 monochrome TileSet
-## at runtime (no binary art assets) and writes cells into two injected
-## TileMapLayer nodes owned by the world scene. This node never touches
-## persistent state: destroyed cells arrive as plain coordinates.
+## Grey-box renderer for the generated chunks of the 4x2 slice world. Builds a
+## 32x32 monochrome TileSet at runtime (no binary art assets) and writes cells
+## into two injected TileMapLayer nodes owned by the world scene. This node
+## never touches persistent state: destroyed cells arrive as plain coordinates.
+## Chunk payloads are chunk-local; `render()` translates them by the chunk
+## origin so all 8 world chunks accumulate on the shared layers.
 
 const SOURCE_SOIL: int = 0
 const SOURCE_ORE_DUST: int = 1
@@ -40,31 +42,43 @@ func build_tile_set() -> TileSet:
 	return tile_set
 
 
-## Fills both layers from a ChunkData.generate() result. Ore cells are painted
-## as a double layer: soil base on the ground layer plus the ore color overlay.
-func render(chunk: Dictionary) -> void:
+## Fills both layers from a ChunkData.generate() result, translating chunk-local
+## cells by `chunk_origin` (the chunk's cell offset inside the world grid).
+## Multiple chunks accumulate on the shared layers: call clear_layers() first
+## for a full-world repaint. Ore cells are painted as a double layer: soil base
+## on the ground layer plus the ore color overlay.
+func render(chunk: Dictionary, chunk_origin: Vector2i = Vector2i.ZERO) -> void:
 	if ground_layer == null or ore_layer == null:
 		push_warning("WorldRenderer.render() skipped: ground/ore layers are not injected.")
 		return
 	var tile_set := ensure_tile_set()
 	ground_layer.tile_set = tile_set
 	ore_layer.tile_set = tile_set
-	ground_layer.clear()
-	ore_layer.clear()
 
 	for grid_y: int in ChunkData.CHUNK_SIZE:
 		for grid_x: int in ChunkData.CHUNK_SIZE:
-			ground_layer.set_cell(Vector2i(grid_x, grid_y), SOURCE_SOIL, Vector2i.ZERO)
+			ground_layer.set_cell(Vector2i(grid_x, grid_y) + chunk_origin, SOURCE_SOIL, Vector2i.ZERO)
 
 	var cells: Dictionary = chunk.get("cells", {})
 	for cell_value: Variant in cells:
 		if typeof(cell_value) != TYPE_VECTOR2I:
 			continue
 		var cell: Vector2i = cell_value
-		ore_layer.set_cell(cell, _source_for(str(cells[cell_value])), Vector2i.ZERO)
+		ore_layer.set_cell(cell + chunk_origin, _source_for(str(cells[cell_value])), Vector2i.ZERO)
+
+
+## Empties both layers; full-world repaint entry point before re-rendering all
+## chunks (world.gd calls this once, then render()s every chunk by origin).
+func clear_layers() -> void:
+	if ground_layer == null or ore_layer == null:
+		push_warning("WorldRenderer.clear_layers() skipped: ground/ore layers are not injected.")
+		return
+	ground_layer.clear()
+	ore_layer.clear()
 
 
 ## Erases destroyed cells from both layers at once (set_cell with source -1).
+## Cells are world-absolute; kept as the chunk_0_0-compatible legacy seam.
 func apply_deltas(destroyed_cells: Array[Vector2i]) -> void:
 	if ground_layer == null or ore_layer == null:
 		push_warning("WorldRenderer.apply_deltas() skipped: ground/ore layers are not injected.")
@@ -72,6 +86,22 @@ func apply_deltas(destroyed_cells: Array[Vector2i]) -> void:
 	for cell: Vector2i in destroyed_cells:
 		ground_layer.set_cell(cell, -1)
 		ore_layer.set_cell(cell, -1)
+
+
+## Chunk-aware destruction seam: erases one destroyed cell of `chunk_id` from
+## both layers. `cell` is chunk-local; the chunk origin is resolved internally
+## via ChunkData.chunk_origin. destroyed=false is a documented no-op —
+## production deltas only ever record destruction, and repainting a restored
+## cell would need the ore type, which this seam does not carry.
+func apply_delta(chunk_id: String, cell: Vector2i, destroyed: bool) -> void:
+	if ground_layer == null or ore_layer == null:
+		push_warning("WorldRenderer.apply_delta() skipped: ground/ore layers are not injected.")
+		return
+	if not destroyed:
+		return
+	var world_cell := cell + ChunkData.chunk_origin(chunk_id)
+	ground_layer.set_cell(world_cell, -1)
+	ore_layer.set_cell(world_cell, -1)
 
 
 func ensure_tile_set() -> TileSet:
