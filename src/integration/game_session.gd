@@ -73,6 +73,10 @@ var autosave_enabled: bool = true
 ## 测试注入 spy 避免重载 GUT 测试场景。
 var scene_reloader: Callable = Callable()
 
+## 注入点（W002-GAP3）：位置检查点取玩家所在格（世界格坐标）。缺省从绑定的
+## player 节点读 position / CELL_SIZE（玩家节点 position 即世界像素坐标）。
+var player_cell_provider: Callable = Callable()
+
 ## 当前选中建筑（建造链缺省 anchor_block）。
 var selected_building_id: String = DEFAULT_BUILDING_ID
 
@@ -297,8 +301,10 @@ func select_building(building_id: String) -> bool:
 # ---------------------------------------------------------------- 存档链
 
 
-## 立即保存当前快照到 save_slot。
+## 立即保存当前快照到 save_slot。存档前执行位置检查点（W002-GAP3：存档前
+## 玩家所在格必须已落账，读档才能恢复到离开时的位置）。
 func save_now() -> AppResult:
+	_checkpoint_player_position("save")
 	return SaveService.save_slot(save_slot, _snapshot())
 
 
@@ -310,8 +316,10 @@ func try_load_autosave() -> bool:
 # ---------------------------------------------------------------- 主菜单保存与重启链
 
 
-## 主菜单"保存"：立即写 manual 槽，成功后在 HUD 闪现短暂提示。
+## 主菜单"保存"：存档前位置检查点（W002-GAP3），立即写 manual 槽，成功后在
+## HUD 闪现短暂提示。
 func _on_save_requested() -> void:
+	_checkpoint_player_position("manual_save")
 	var result := SaveService.save_slot(MANUAL_SAVE_SLOT, _snapshot())
 	if not result.is_ok:
 		push_warning("GameSession: manual save failed: %s" % result.message)
@@ -507,6 +515,7 @@ func _finish_active_event() -> void:
 	var react_result := Progression.react(_snapshot(), "event_completed", {"event_id": event_id}, store)
 	if not react_result.is_ok:
 		push_warning("GameSession: Progression.react(event_completed) failed: %s" % react_result.message)
+	_checkpoint_player_position("event_complete")
 	_schedule_autosave()
 
 
@@ -532,6 +541,7 @@ func _start_encounter(encounter_id: String) -> void:
 	_modal_host().add_child(battle_node)
 	encounter_started.emit(encounter_id)
 	battle_node.begin_encounter(encounter_def, _battle_content())
+	_checkpoint_player_position("battle_start")
 
 
 func _battle_content() -> Dictionary:
@@ -565,6 +575,7 @@ func _on_encounter_finished(encounter_id: String, outcome: Dictionary) -> void:
 		var react_result := Progression.react(_snapshot(), "encounter_won", {"encounter_id": encounter_id}, store)
 		if not react_result.is_ok:
 			push_warning("GameSession: Progression.react(encounter_won) failed: %s" % react_result.message)
+	_checkpoint_player_position("battle_end")
 	_schedule_autosave()
 
 
@@ -609,8 +620,62 @@ func _try_load_autosave() -> bool:
 		target = GameState
 	var restore_result: Variant = target.call("restore_snapshot", loaded.value)
 	if restore_result is AppResult:
+		if (restore_result as AppResult).is_ok:
+			_place_player_from_saved_snapshot(loaded.value)
 		return (restore_result as AppResult).is_ok
 	return false
+
+
+## 读档成功后（W002-GAP3）把 world 内玩家节点移到存档格。默认出生点 (0,0)
+## 交给 world 的 PlayerSpawn marker 逻辑——初始存档不得把玩家复位到世界原点角。
+func _place_player_from_saved_snapshot(loaded_snapshot: Dictionary) -> void:
+	if world == null or not world.has_method("place_player_at_cell"):
+		return
+	var player_state := loaded_snapshot.get("player", {}) as Dictionary
+	var position := player_state.get("position", {}) as Dictionary
+	if position.is_empty():
+		return
+	var cell := Vector2i(int(position.get("x", 0)), int(position.get("y", 0)))
+	if cell == Vector2i.ZERO:
+		return
+	world.call("place_player_at_cell", cell)
+
+
+# ---------------------------------------------------------------- 位置检查点链（W002-GAP3）
+
+
+## 位置检查点：把玩家当前所在格经独立 integration patch 写入 player.position
+## （set_player_position，expected_revision 取当前快照 revision）。reason 参与
+## source_id；同 revision 同原因的重复提交由 GameState 按 already_applied 幂等
+## 处理。取不到玩家格（无 player / provider 结果无效）时静默跳过。
+func _checkpoint_player_position(reason: String) -> void:
+	var cell := _player_cell()
+	if cell.x < 0 or cell.y < 0:
+		return
+	var patch: Variant = _begin_integration_patch("player_position_%s" % reason)
+	if patch == null:
+		return
+	patch.set_player_position(cell.x, cell.y)
+	_commit_integration_patch(patch)
+
+
+## 玩家所在格（世界格坐标）：注入 player_cell_provider 优先，缺省从绑定的
+## player 节点读 position（世界像素坐标）按 CELL_SIZE 取整。
+func _player_cell() -> Vector2i:
+	if player_cell_provider.is_valid():
+		var provided: Variant = player_cell_provider.call()
+		if provided is Vector2i:
+			return provided
+		if provided is Vector2:
+			return Vector2i((provided as Vector2).floor())
+		push_warning(
+			"GameSession.player_cell_provider returned %s, expected Vector2i." % type_string(typeof(provided))
+		)
+		return Vector2i(-1, -1)
+	var player_node := player as Node2D
+	if player_node == null:
+		return Vector2i(-1, -1)
+	return Vector2i((player_node.position / float(ChunkData.CELL_SIZE)).floor())
 
 
 # ---------------------------------------------------------------- 装配与工具

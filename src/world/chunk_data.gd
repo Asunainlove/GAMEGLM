@@ -48,6 +48,27 @@ const CELL_DEF_ORE_CORE: Dictionary = {
 }
 
 
+## Parses a "chunk_<x>_<y>" id into its grid coordinates inside the world grid.
+## Returns Vector2i(-1, -1) when the id does not follow the pattern.
+static func grid_coords(chunk_id: String) -> Vector2i:
+	var parts := chunk_id.split("_", false)
+	if parts.size() != 3 or parts[0] != "chunk":
+		return Vector2i(-1, -1)
+	if not parts[1].is_valid_int() or not parts[2].is_valid_int():
+		return Vector2i(-1, -1)
+	return Vector2i(int(parts[1]), int(parts[2]))
+
+
+## World-grid cell origin of a chunk id (grid coordinates x CHUNK_SIZE), i.e.
+## the chunk-local (0, 0) cell expressed in world cell coordinates. Unparseable
+## ids degrade to the chunk_0_0 origin so callers stay safe by default.
+static func chunk_origin(chunk_id: String) -> Vector2i:
+	var grid := grid_coords(chunk_id)
+	if grid.x < 0 or grid.y < 0:
+		return Vector2i.ZERO
+	return grid * CHUNK_SIZE
+
+
 ## Generates one chunk deterministically. Returns
 ## `{"chunk_id": String, "cells": Dictionary}` where `cells` maps Vector2i grid
 ## coordinates to ore type ids and only contains non-soil cells.

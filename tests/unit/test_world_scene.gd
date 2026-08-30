@@ -98,10 +98,12 @@ func test_world_builds_runtime_tileset_and_renders_initial_chunk() -> void:
 	var ore_overlay: TileMapLayer = world.get_node("OreOverlay") as TileMapLayer
 	assert_not_null(ground.tile_set, "Ground must receive a runtime-built TileSet.")
 	assert_not_null(ore_overlay.tile_set, "OreOverlay must receive a runtime-built TileSet.")
+	# W002-GAP3：world._ready 现在渲染全部 8 个 chunk（8 x 32 x 32 = 8192 格），
+	# 原断言 1024 只覆盖 chunk_0_0，随 GAP3 全量渲染合法更新。
 	assert_eq(
 		ground.get_used_cells().size(),
-		1024,
-		"chunk_0_0 ground must be fully rendered at ready."
+		8192,
+		"All 8 chunks must be fully rendered at ready (8 x 1024 cells)."
 	)
 	assert_gt(ore_overlay.get_used_cells().size(), 0, "chunk_0_0 ore veins must be rendered.")
 

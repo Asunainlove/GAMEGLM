@@ -142,6 +142,121 @@ func test_player_mine_signal_drives_session_chain() -> void:
 		(snapshot["chunk_deltas"] as Dictionary).get(RENDERED_CHUNK_ID, []), ore_cell))
 
 
+# ---------------------------------------------------------------- 跨 chunk 采集链（W002-GAP3）
+
+
+func test_cross_chunk_mine_chain_destroys_cell_and_erases_visual() -> void:
+	_make_session()
+	var local_cell: Vector2i = _chunk_ore_cell("chunk_2_1", "ore_dust")
+	var world_cell: Vector2i = local_cell + Vector2i(64, 32)
+	var ground: TileMapLayer = world.get_node("Ground") as TileMapLayer
+	var ore_overlay: TileMapLayer = world.get_node("OreOverlay") as TileMapLayer
+	assert_eq(
+		ore_overlay.get_cell_source_id(world_cell), WorldRenderer.SOURCE_ORE_DUST,
+		"前置：chunk_2_1 的矿格必须已被渲染。"
+	)
+
+	var first: AppResult = session.request_mine(world_cell)
+	assert_true(first.is_ok, "跨 chunk 矿格第一次敲击必须成功：%s" % first.message)
+	var second: AppResult = session.request_mine(world_cell)
+	assert_true(second.is_ok, "跨 chunk 矿格第二次敲击必须成功：%s" % second.message)
+
+	var snapshot: Dictionary = store.snapshot()
+	assert_eq(
+		int((snapshot["inventory"] as Dictionary).get("starsoil_dust", 0)), 2,
+		"跨 chunk 采集必须产出星壤尘。"
+	)
+	assert_true(
+		_has_destroyed_delta(
+			(snapshot["chunk_deltas"] as Dictionary).get("chunk_2_1", []), world_cell
+		),
+		"chunk_deltas[chunk_2_1] 必须以世界格坐标记录 destroyed。"
+	)
+
+	world.call("refresh_from_snapshot")
+	assert_eq(
+		ore_overlay.get_cell_source_id(world_cell), -1,
+		"refresh_from_snapshot 必须擦除 chunk_2_1 的 OreOverlay 格。"
+	)
+	assert_eq(
+		ground.get_cell_source_id(world_cell), -1,
+		"refresh_from_snapshot 必须擦除 chunk_2_1 的 Ground 格。"
+	)
+	var intact_cell: Vector2i = _ore_cell("ore_shard")
+	assert_eq(
+		ore_overlay.get_cell_source_id(intact_cell), WorldRenderer.SOURCE_ORE_SHARD,
+		"chunk_0_0 的其他矿格必须保持渲染。"
+	)
+
+
+# ---------------------------------------------------------------- 检查点位置持久化（W002-GAP3）
+
+
+func test_event_completion_checkpoints_player_position() -> void:
+	_make_session()
+	session.tick()
+	assert_eq(session.active_event_id, "event_prologue_landing")
+	_advance_lines()
+	assert_eq(session.active_event_id, "", "台词播完后事件必须结束。")
+	assert_eq(
+		store.snapshot()["player"]["position"], {"x": 2, "y": 2},
+		"事件完成检查点必须把玩家所在格 (2,2) 写入 snapshot.player.position。"
+	)
+
+
+func test_battle_start_checkpoint_records_player_position() -> void:
+	_make_session()
+	_patch_flags(["event_event_prologue_landing_done", "encounter_first_drift_due"])
+	session.tick()
+	assert_not_null(session.battle, "tick 必须启动遭遇战。")
+	assert_eq(
+		store.snapshot()["player"]["position"], {"x": 2, "y": 2},
+		"战斗开始检查点必须记录玩家所在格。"
+	)
+
+
+func test_save_now_checkpoints_player_position() -> void:
+	_make_session()
+	var player_node: Node2D = session.player as Node2D
+	assert_not_null(player_node)
+	player_node.position = Vector2(40, 20) * 32.0
+	var saved: AppResult = session.save_now()
+	assert_true(saved.is_ok, saved.message)
+	assert_eq(
+		store.snapshot()["player"]["position"], {"x": 40, "y": 20},
+		"存档前检查点必须按 player_cell_provider 记录玩家所在格 (40,20)。"
+	)
+
+
+func test_loaded_snapshot_places_player_at_saved_cell() -> void:
+	_make_session()
+	var player_node: Node2D = session.player as Node2D
+	assert_not_null(player_node)
+	player_node.position = Vector2(40, 20) * 32.0
+	assert_true(session.save_now().is_ok, "预置存档必须成功。")
+
+	var fresh_store: Node = GAME_STATE_SCRIPT.new()
+	var fresh_session := GameSession.new()
+	fresh_session.store = fresh_store
+	fresh_session.world = world
+	fresh_session.dialogue_box = dialogue
+	add_child_autofree(fresh_session)
+	var payload: Dictionary = fresh_store.snapshot()
+	assert_eq(
+		payload["player"]["position"], {"x": 40, "y": 20},
+		"读档后的 store 必须恢复存档中的玩家格坐标。"
+	)
+	var loaded_player: Node2D = fresh_session.player as Node2D
+	assert_not_null(loaded_player, "fresh session 必须绑定 world 内的 player。")
+	if loaded_player != null:
+		assert_eq(
+			loaded_player.position, Vector2(1280, 640),
+			"读档后玩家节点必须被移动到存档格 (40,20) 的像素位置。"
+		)
+	fresh_session.free()
+	fresh_store.free()
+
+
 # ---------------------------------------------------------------- 建造链
 
 
@@ -745,6 +860,16 @@ func _ore_cell(ore_type: String) -> Vector2i:
 		if cells[cell] == ore_type:
 			return cell
 	fail_test("generated chunk has no %s cell." % ore_type)
+	return Vector2i(-1, -1)
+
+
+## 取任意 chunk 中某矿种的 chunk 本地格（W002-GAP3 跨 chunk 用例）。
+func _chunk_ore_cell(chunk_id: String, ore_type: String) -> Vector2i:
+	var cells: Dictionary = ChunkData.generate(chunk_id, 0)["cells"]
+	for cell: Vector2i in cells:
+		if cells[cell] == ore_type:
+			return cell
+	fail_test("generated %s has no %s cell." % [chunk_id, ore_type])
 	return Vector2i(-1, -1)
 
 
