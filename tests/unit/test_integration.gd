@@ -399,6 +399,56 @@ func test_trust_economy_curve_reaches_sanctuary_and_symbiosis() -> void:
 	assert_eq(_misa_affection(), 26, "弥砂 affection 累计 5+8+5+8=26。")
 
 
+func test_trust_locked_option_is_disabled_and_choice_never_softlocks() -> void:
+	# 软锁死回归（W002-GAP1）：trust=0 走到 policy 时 sanctuary 预检禁用；
+	# 即使强行触发拒绝（trust_insufficient），选项必须弹回、事件可继续、tick 不停摆。
+	_make_session()
+	# 用 done 标记跳过全部羁绊事件，模拟一条低信任到达 policy 的路径。
+	_patch_flags([
+		"event_event_prologue_landing_done",
+		"event_event_first_mining_done",
+		"event_event_drift_aftermath_done",
+		"event_event_first_anchor_done",
+		"event_event_workshop_guide_done",
+		"event_event_misa_campfire_done",
+		"event_event_husk_aftermath_done",
+		"event_event_station_mode_done",
+		"event_event_echo_resonance_done",
+		"station_mode_seal",
+	])
+	_play_event_choice("event_approach", 1)
+	assert_eq(_luoxian_trust(), 0, "本路径没有任何 trust 收入。")
+
+	_play_event_to_choice("event_policy")
+	var options_box: VBoxContainer = dialogue.get_node("Panel/OptionsBox")
+	assert_eq(options_box.get_child_count(), 2)
+	var sanctuary_button: Button = options_box.get_child(1) as Button
+	assert_not_null(sanctuary_button)
+	if sanctuary_button != null:
+		assert_true(sanctuary_button.disabled, "trust 不足时 sanctuary 必须被预检禁用。")
+		assert_true(
+			sanctuary_button.text.contains("（信任不足）"),
+			"禁用的 sanctuary 必须展示（信任不足）后缀。"
+		)
+		# 强行 emit（模拟禁用态被绕过）：choose_option 拒绝 → 弹回选项。
+		sanctuary_button.pressed.emit()
+
+	assert_eq(
+		session.active_event_id, "event_policy",
+		"trust_insufficient 拒绝后事件不得停摆。"
+	)
+	var popped_box: VBoxContainer = dialogue.get_node("Panel/OptionsBox")
+	assert_gt(popped_box.get_child_count(), 0, "拒绝后必须重新弹出选项。")
+	var extraction_button: Button = popped_box.get_child(0) as Button
+	assert_false(extraction_button.disabled, "弹回后可用选项保持可点。")
+	extraction_button.pressed.emit()
+	assert_eq(session.active_event_id, "", "选择可用选项后事件必须完成。")
+
+	# 完成后 tick 继续运转（无到期事件/遭遇/结局时不报错不卡死）。
+	session.tick()
+	assert_eq(session.active_event_id, "", "tick 不得重新卡进已完成的事件。")
+
+
 # ---------------------------------------------------------------- 遭遇链
 
 

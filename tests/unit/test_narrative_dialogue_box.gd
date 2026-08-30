@@ -145,3 +145,41 @@ func test_show_lines_clears_leftover_option_buttons() -> void:
 	var text_label: Label = box.get_node("Panel/TextLabel") as Label
 	assert_eq(name_label.text, "洛弦", "Line display works after a choice step.")
 	assert_eq(text_label.text, "降落舱的铰链发出轻响。")
+
+
+func test_show_choice_disables_listed_options_with_trust_suffix() -> void:
+	# W002-GAP1 软锁死修复：禁用表中的选项按钮 disabled 且文本带（信任不足）后缀；
+	# 默认参数（无禁用表）保持旧调用兼容。
+	var box: Node = _load_box()
+	if box == null:
+		return
+	box.call("show_choice", _choice_step(), ["test_tap_core"] as Array[String])
+
+	assert_true(box.visible, "DialogueBox stays visible for a disabled-choice display.")
+	var options_box: VBoxContainer = box.get_node("Panel/OptionsBox") as VBoxContainer
+	assert_eq(options_box.get_child_count(), 2, "Disabled options still render as buttons.")
+	var first_button: Button = options_box.get_child(0) as Button
+	var second_button: Button = options_box.get_child(1) as Button
+	if first_button != null and second_button != null:
+		assert_false(first_button.disabled, "Options outside the disabled list stay enabled.")
+		assert_eq(first_button.text, "封存核心，保全矿脉余辉。", "Enabled option text has no suffix.")
+		assert_true(second_button.disabled, "Listed options must render disabled.")
+		assert_eq(
+			second_button.text, "抽取能量维持营地运转。（信任不足）",
+			"Disabled options must carry the trust-locked suffix."
+		)
+
+
+func test_show_choice_without_disabled_list_keeps_all_options_enabled() -> void:
+	var box: Node = _load_box()
+	if box == null:
+		return
+	box.call("show_choice", _choice_step())
+
+	var options_box: VBoxContainer = box.get_node("Panel/OptionsBox") as VBoxContainer
+	for button_index: int in options_box.get_child_count():
+		var button: Button = options_box.get_child(button_index) as Button
+		assert_false(
+			button.disabled,
+			"The legacy single-argument call must leave every option enabled."
+		)

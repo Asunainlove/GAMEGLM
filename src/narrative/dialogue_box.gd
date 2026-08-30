@@ -9,8 +9,9 @@ signal finished
 signal option_chosen(option_id: String)
 
 const ADVANCE_ACTIONS: Array[String] = ["interact", "ui_accept"]
-const DEFAULT_SPEAKER_TEXT: String = "???"
+const DEFAULT_SPEAKER_TEXT: String = "？？？"
 const CHOICE_SPEAKER_TEXT: String = "选择"
+const TRUST_LOCKED_SUFFIX: String = "（信任不足）"
 
 var _lines: Array[Dictionary] = []
 var _line_index: int = 0
@@ -46,8 +47,11 @@ func show_lines(lines: Array[Dictionary]) -> void:
 
 ## Shows a choice step: the prompt in the text area plus one Button per option
 ## in OptionsBox. Pressing a button emits option_chosen(option.id) and clears
-## the buttons.
-func show_choice(step: Dictionary) -> void:
+## the buttons. Options whose id is listed in disabled_option_ids render
+## disabled with the（信任不足）suffix (W002-GAP1: the caller pre-checks trust
+## so an insufficient option can never clear the choices and stall the event).
+## The default empty list keeps legacy single-argument calls compatible.
+func show_choice(step: Dictionary, disabled_option_ids: Array[String] = []) -> void:
 	_advancing = false
 	visible = true
 	_name_label.text = String(step.get("speaker", CHOICE_SPEAKER_TEXT))
@@ -55,9 +59,13 @@ func show_choice(step: Dictionary) -> void:
 	_clear_options()
 	var options: Array = step.get("options", [])
 	for option: Dictionary in options:
+		var option_id := String(option.get("id", ""))
 		var button := Button.new()
 		button.text = String(option.get("text_zh", ""))
-		button.pressed.connect(_on_option_pressed.bind(String(option.get("id", ""))))
+		if disabled_option_ids.has(option_id):
+			button.disabled = true
+			button.text += TRUST_LOCKED_SUFFIX
+		button.pressed.connect(_on_option_pressed.bind(option_id))
 		_options_box.add_child(button)
 
 
