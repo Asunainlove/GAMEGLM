@@ -209,6 +209,44 @@ func test_new_operations_fail_atomically_after_prior_success() -> void:
 	assert_eq(state.snapshot()["revision"], 0)
 
 
+func test_reset_to_initial_returns_to_brand_new_fresh_state() -> void:
+	var state: Node = _new_state()
+	var patch: StatePatch = state.begin_patch("p06_reset_seed", 0)
+	patch.add_item("starsoil_dust", 3)
+	patch.set_flag("first_mining_done", true)
+	patch.complete_event("event_prologue_landing")
+	patch.set_player_position(9, -4)
+	assert_true(state.commit(patch).is_ok)
+	assert_eq(int(state.snapshot()["revision"]), 1)
+
+	state.reset_to_initial()
+
+	var fresh: Node = _new_state()
+	assert_eq(_canonical(state.snapshot()), _canonical(fresh.snapshot()))
+	assert_eq(int(state.snapshot()["revision"]), 0)
+	assert_true((state.snapshot()["inventory"] as Dictionary).is_empty())
+	assert_true((state.snapshot()["flags"] as Dictionary).is_empty())
+	assert_true((state.snapshot()["applied_patch_sources"] as Array).is_empty())
+
+
+func test_restore_snapshot_is_unblocked_by_reset_to_initial() -> void:
+	var state: Node = _new_state()
+	var patch: StatePatch = state.begin_patch("p06_reset_freshness", 0)
+	patch.add_item("starsoil_dust", 5)
+	assert_true(state.commit(patch).is_ok)
+	var progressed: Dictionary = state.snapshot()
+
+	var blocked: AppResult = state.restore_snapshot(progressed)
+	assert_false(blocked.is_ok, "进度态（revision>0）必须拒绝 restore。")
+	assert_eq(blocked.code, "restore_requires_fresh_state")
+
+	state.reset_to_initial()
+	var restored: AppResult = state.restore_snapshot(progressed)
+	assert_true(restored.is_ok, restored.message)
+	assert_eq(int(state.snapshot()["revision"]), 1)
+	assert_eq(int((state.snapshot()["inventory"] as Dictionary).get("starsoil_dust", 0)), 5)
+
+
 func test_new_operations_round_trip_through_save_v1_codec() -> void:
 	var state: Node = _new_state()
 	var patch: StatePatch = state.begin_patch("wp04_codec_round_trip", 0)
