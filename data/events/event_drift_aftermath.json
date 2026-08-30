@@ -1,0 +1,13 @@
+{
+  "id": "event_drift_aftermath",
+  "kind": "dialogue",
+  "requires_flag": "encounter_first_drift_won",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "它们散了……洛弦，刚才你挡在我前面的时候，手一直在抖。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "抖的是火光。再遇上流沙群，我还是会站在你前面——但下次，我们一起上。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "一言为定。篝火往这边挪一点，你的护目镜擦擦再收起来。"},
+    {"type": "effect", "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 12}},
+    {"type": "effect", "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 5}}
+  ]
+}

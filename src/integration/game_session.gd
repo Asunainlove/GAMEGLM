@@ -403,6 +403,13 @@ func _pump_event_step() -> void:
 				var result := event_runner.apply_effect_step(active_event_id, step, store)
 				if not result.is_ok:
 					push_warning("GameSession: effect step failed: %s" % result.message)
+				elif result.value is Dictionary:
+					# W002-GAP1：effect 步骤的 relation_delta 沿 deferred_ops 通道
+					# 返回，经独立 integration patch 落账（与 choice 通道同构）。
+					_commit_deferred_relationship_ops(
+						"event_%s_effect" % active_event_id,
+						(result.value as Dictionary).get("deferred_ops", [])
+					)
 				_active_step_index += 1
 			_:
 				_active_step_index += 1
@@ -437,8 +444,28 @@ func _on_option_chosen(option_id: String) -> void:
 		for op: Dictionary in Progression.world_response_ops(state, option_id):
 			patch.set_flag(String(op.get("flag_id", "")), bool(op.get("enabled", true)))
 		_commit_integration_patch(patch)
+	# W002-GAP1：政策选项提交后发出 policy_chosen 信号，命中 Boss 门控
+	# （两场胜利 + policy_* flag）时置 encounter_leviathan_due——否则正常流程
+	# 中伏击胜利先于政策选择，Boss 遭遇永不到期，结局链死锁。
+	if String(option.get("set_flag", "")).begins_with(Progression.POLICY_PREFIX):
+		var policy_result := Progression.react(
+			_snapshot(), "policy_chosen", {"policy_id": option_id}, store
+		)
+		if not policy_result.is_ok:
+			push_warning("GameSession: policy_chosen react failed: %s" % policy_result.message)
 	_active_step_index += 1
 	_pump_event_step()
+
+
+## 把 EventRunner 返回的 deferred relationship ops 落进独立 integration patch。
+func _commit_deferred_relationship_ops(source_suffix: String, deferred_ops: Array) -> void:
+	if deferred_ops.is_empty():
+		return
+	var patch: Variant = _begin_integration_patch(source_suffix)
+	if patch == null:
+		return
+	Progression.deferred_to_patch(deferred_ops, patch)
+	_commit_integration_patch(patch)
 
 
 func _finish_active_event() -> void:

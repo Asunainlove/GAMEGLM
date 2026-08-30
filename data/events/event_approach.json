@@ -9,11 +9,13 @@
       {
         "id": "approach_direct",
         "text_zh": "直接勘探：架灯、钻孔，按标准流程推进。",
+        "set_flag": "approach_direct",
         "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 5}
       },
       {
         "id": "approach_diplomatic",
         "text_zh": "先礼后探：熄灯静立，等矿脉先开口。",
+        "set_flag": "approach_diplomatic",
         "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 5}
       }
     ]}

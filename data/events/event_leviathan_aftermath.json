@@ -1,0 +1,13 @@
+{
+  "id": "event_leviathan_aftermath",
+  "kind": "dialogue",
+  "requires_flag": "encounter_leviathan_won",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "它沉下去了。矿震停了，读数第一次安静得像一张白纸。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "它不是被打败的，是被哄睡着的。你最后那一下收力，我看见了。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "……也许我们从来不需要赢过它，只需要让它睡个好觉。走吧，天快亮了。"},
+    {"type": "effect", "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 15}},
+    {"type": "effect", "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 8}}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "event_husk_aftermath",
+  "kind": "dialogue",
+  "requires_flag": "encounter_husk_ambush_won",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "刚才那个东西撞进来的时候，我脑子里一片空白……对不起，我拖后腿了。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "你没有。受惊不是过错，退回光照范围内示警就是预案，你每一步都做对了。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "……那说好了，下次我心跳到嗓子眼的时候，你就哼那段锚定谣给我听。"},
+    {"type": "effect", "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 12}},
+    {"type": "effect", "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 5}}
+  ]
+}
