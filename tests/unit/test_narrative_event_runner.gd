@@ -22,9 +22,12 @@ class DuckStore extends RefCounted:
 	var last_expected_revision: int = -1
 	var operations: Array[Dictionary] = []
 	var commit_calls: int = 0
+	## 快照替身：默认只带 revision；effect 步 relation_delta 的 clamp 计算会
+	## 读取其中的 relationships，测试按需覆写。
+	var snapshot_state: Dictionary = {"revision": 7}
 
 	func snapshot() -> Dictionary:
-		return {"revision": 7}
+		return snapshot_state
 
 	func begin_patch(source_id: String, expected_revision: int) -> DuckStore:
 		last_source_id = source_id
@@ -520,6 +523,104 @@ func test_apply_effect_step_rejects_non_effect_step() -> void:
 	assert_false(result.is_ok, "apply_effect_step requires an effect step.")
 	assert_eq(result.code, "invalid_step")
 	assert_eq(duck.operations, [] as Array[Dictionary])
+
+
+# ---------------------------------------------------------------- apply_effect_step: relation_delta
+
+
+func test_apply_effect_step_returns_relation_delta_as_deferred_op_with_clamping() -> void:
+	# W002-GAP1：effect 步骤支持 relation_delta，沿 choose_option 的
+	# deferred_ops 通道返回；目标值基于快照关系值计算并钳制 0..100。
+	var runner := _new_runner()
+	if runner == null:
+		return
+	var duck := _duck_store()
+	duck.snapshot_state = {"revision": 7, "relationships": {"luoxian": {"trust": 90}}}
+	var step: Dictionary = {
+		"type": "effect",
+		"relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 150},
+	}
+
+	var result: AppResult = runner.call("apply_effect_step", "event_test_touchdown", step, duck)
+	assert_true(result.is_ok, result.message)
+	var value: Dictionary = result.value
+	var deferred_ops: Array = value.get("deferred_ops", [])
+	assert_eq(deferred_ops.size(), 1, "relation_delta becomes exactly one deferred op.")
+	if deferred_ops.size() == 1:
+		assert_eq(deferred_ops[0], {
+			"op": "set_relationship",
+			"char_id": "luoxian",
+			"dim": "trust",
+			"value": 100,
+		}, "90 + 150 clamps to 100 in the deferred op.")
+	assert_eq(duck.operations, [] as Array[Dictionary], "relation_delta is never applied directly by WP08.")
+	assert_eq(duck.commit_calls, 0, "A delta-only effect step commits no patch.")
+
+
+func test_apply_effect_step_commits_direct_ops_alongside_relation_delta() -> void:
+	var runner := _new_runner()
+	if runner == null:
+		return
+	var duck := _duck_store()
+	duck.snapshot_state = {"revision": 7, "relationships": {"misa": {"affection": 3}}}
+	var step: Dictionary = {
+		"type": "effect",
+		"flag_id": "test_bond_flag",
+		"relation_delta": {"char_id": "misa", "dim": "affection", "delta": 5},
+	}
+
+	var result: AppResult = runner.call("apply_effect_step", "event_test_touchdown", step, duck)
+	assert_true(result.is_ok, result.message)
+	assert_eq(duck.commit_calls, 1, "Direct ops still commit exactly one patch.")
+	assert_eq(duck.operations, [
+		{"type": "set_flag", "flag_id": "test_bond_flag", "enabled": true},
+	] as Array[Dictionary])
+	var deferred_ops: Array = (result.value as Dictionary).get("deferred_ops", [])
+	assert_eq(deferred_ops, [
+		{"op": "set_relationship", "char_id": "misa", "dim": "affection", "value": 8},
+	] as Array[Dictionary], "3 + 5 surfaces as a deferred op alongside the direct patch.")
+
+
+func test_apply_effect_step_derives_relationships_from_store_snapshot() -> void:
+	# 未显式提供关系值时，从 store 快照派生（缺省 0），与 revision 派生同源。
+	var runner := _new_runner()
+	if runner == null:
+		return
+	var duck := _duck_store()
+	var step: Dictionary = {
+		"type": "effect",
+		"relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 12},
+	}
+
+	var result: AppResult = runner.call("apply_effect_step", "event_test_touchdown", step, duck)
+	assert_true(result.is_ok, result.message)
+	var deferred_ops: Array = (result.value as Dictionary).get("deferred_ops", [])
+	assert_eq(deferred_ops, [
+		{"op": "set_relationship", "char_id": "luoxian", "dim": "trust", "value": 12},
+	] as Array[Dictionary], "Missing relationships default to 0 before clamping.")
+
+
+func test_apply_effect_step_skips_malformed_relation_delta_defensively() -> void:
+	var runner := _new_runner()
+	if runner == null:
+		return
+	var duck := _duck_store()
+	var step: Dictionary = {
+		"type": "effect",
+		"flag_id": "test_defensive_flag",
+		"relation_delta": {"dim": "trust", "delta": 10},
+	}
+
+	var result: AppResult = runner.call("apply_effect_step", "event_test_touchdown", step, duck)
+	assert_true(result.is_ok, result.message)
+	var deferred_ops: Array = (result.value as Dictionary).get("deferred_ops", [])
+	assert_eq(
+		deferred_ops, [] as Array[Dictionary],
+		"A relation_delta without char_id is skipped defensively."
+	)
+	assert_eq(duck.operations, [
+		{"type": "set_flag", "flag_id": "test_defensive_flag", "enabled": true},
+	] as Array[Dictionary], "Direct ops must survive a malformed relation_delta.")
 
 
 # ---------------------------------------------------------------- complete_event

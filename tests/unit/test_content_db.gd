@@ -7,6 +7,8 @@ extends GutTest
 const CONTENT_DB_PATH: String = "res://src/content/content_db.gd"
 const FIXTURE_ROOT: String = "user://starsoil_test_content"
 const MISSING_DIR: String = "user://starsoil_test_content_missing_dir"
+const EFFECT_DELTA_ROOT: String = "user://starsoil_test_content_effect_delta"
+const EFFECT_DELTA_BAD_ROOT: String = "user://starsoil_test_content_effect_delta_bad"
 
 var _db_script: Script
 
@@ -25,6 +27,8 @@ func before_all() -> void:
 		FIXTURE_ROOT + "_empty_dir",
 		FIXTURE_ROOT + "_hash_a",
 		FIXTURE_ROOT + "_hash_b",
+		EFFECT_DELTA_ROOT,
+		EFFECT_DELTA_BAD_ROOT,
 	]:
 		_remove_dir_recursive(tree)
 	_write_fixture_tree(FIXTURE_ROOT, "")
@@ -38,6 +42,8 @@ func before_all() -> void:
 	_write_fixture_tree(FIXTURE_ROOT + "_empty_dir", "empty_dir")
 	_write_text_file(FIXTURE_ROOT + "_hash_a/content/alpha.json", '{"id": "starsoil_dust", "kind": "material", "name_zh": "星壤尘", "stack_limit": 99}')
 	_write_text_file(FIXTURE_ROOT + "_hash_b/content/beta.json", '{"stack_limit": 99, "kind": "material", "name_zh": "星壤尘", "id": "starsoil_dust"}')
+	_write_json(EFFECT_DELTA_ROOT + "/events/event_test_bond.json", _fixture_event_effect_delta())
+	_write_json(EFFECT_DELTA_BAD_ROOT + "/events/event_test_bond_bad.json", _fixture_event_effect_delta_bad_dim())
 
 
 func after_all() -> void:
@@ -53,6 +59,8 @@ func after_all() -> void:
 		FIXTURE_ROOT + "_empty_dir",
 		FIXTURE_ROOT + "_hash_a",
 		FIXTURE_ROOT + "_hash_b",
+		EFFECT_DELTA_ROOT,
+		EFFECT_DELTA_BAD_ROOT,
 	]:
 		_remove_dir_recursive(tree)
 
@@ -307,6 +315,56 @@ func test_bootstrap_of_existing_but_empty_directory_succeeds_empty() -> void:
 	assert_eq(db.ids_of("item"), _strings([]))
 	assert_eq(db.get_item("starsoil_dust"), {})
 	assert_true(db.validate_refs().is_ok)
+
+
+# ---------------------------------------------------------------- effect 步骤 relation_delta（W002-GAP1）
+
+
+func test_bootstrap_accepts_effect_step_relation_delta() -> void:
+	# W002-GAP1：effect 步骤新增可选 relation_delta，与 choice option 同形同规则。
+	var db: Node = _new_db()
+	if db == null:
+		return
+	var result: AppResult = db.bootstrap(EFFECT_DELTA_ROOT)
+	assert_true(result.is_ok, result.message)
+	var event: Dictionary = db.get_event("event_test_bond")
+	assert_false(event.is_empty(), "The effect-delta fixture event must load.")
+	var effect_step: Dictionary = event["steps"][2]
+	var delta: Dictionary = effect_step["relation_delta"]
+	assert_eq(str(delta.get("char_id")), "luoxian", "relation_delta char_id loads verbatim.")
+	assert_eq(str(delta.get("dim")), "trust", "relation_delta dim loads verbatim.")
+	assert_eq(int(delta.get("delta")), 12, "relation_delta delta loads verbatim.")
+
+
+func test_bootstrap_rejects_effect_step_relation_delta_with_unknown_dim() -> void:
+	var db: Node = _new_db()
+	if db == null:
+		return
+	var result: AppResult = db.bootstrap(EFFECT_DELTA_BAD_ROOT)
+	assert_false(result.is_ok, "Effect-step relation_delta must follow the choice dim enum rules.")
+	assert_eq(result.code, "invalid_definition")
+	assert_true(result.message.contains("dim"), result.message)
+	assert_false(db.is_bootstrapped())
+
+
+func _fixture_event_effect_delta() -> Dictionary:
+	return {
+		"id": "event_test_bond",
+		"kind": "dialogue",
+		"once": true,
+		"steps": [
+			{"type": "line", "speaker": "洛弦", "text_zh": "篝火剩最后一点火星了。"},
+			{"type": "line", "speaker": "弥砂", "text_zh": "那就再聊一会儿，反正明天风小。"},
+			{"type": "effect", "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 12}},
+		],
+	}
+
+
+func _fixture_event_effect_delta_bad_dim() -> Dictionary:
+	var event: Dictionary = _fixture_event_effect_delta()
+	event["id"] = "event_test_bond_bad"
+	(event["steps"][2] as Dictionary)["relation_delta"] = {"char_id": "luoxian", "dim": "loyalty", "delta": 12}
+	return event
 
 
 func _new_db() -> Node:

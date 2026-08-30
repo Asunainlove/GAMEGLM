@@ -68,6 +68,15 @@
             "type": {"const": "effect"},
             "flag_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
             "flag_value": {"type": "boolean"},
+            "relation_delta": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "char_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+                "dim": {"enum": ["affection", "trust", "ideology"]},
+                "delta": {"type": "integer", "minimum": -100, "maximum": 100}
+              }
+            },
             "grant_items": {
               "type": "array",
               "items": {
