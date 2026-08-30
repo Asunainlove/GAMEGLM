@@ -183,6 +183,47 @@ func test_corrupt_primary_recovers_from_valid_backup() -> void:
 	assert_eq(loaded.value["revision"], 2)
 
 
+func test_delete_slot_removes_all_three_generations_and_reports_count() -> void:
+	var slot: String = _remember_slot("delete_all_generations")
+	assert_true(_service.save_slot(slot, _snapshot_at_revision(1)).is_ok)
+	assert_true(_service.save_slot(slot, _snapshot_at_revision(2)).is_ok)
+	_write_candidate(slot, ".json.tmp", _encode(_snapshot_at_revision(3)))
+	var absolute_root: String = ProjectSettings.globalize_path(_root_path)
+
+	var deleted: AppResult = _service.delete_slot(slot)
+
+	assert_true(deleted.is_ok, "delete_slot 必须成功。")
+	assert_eq(deleted.code, "deleted")
+	assert_eq(int(deleted.details["removed"]), 3)
+	assert_false(FileAccess.file_exists(absolute_root.path_join(slot + ".json")))
+	assert_false(FileAccess.file_exists(absolute_root.path_join(slot + ".json.tmp")))
+	assert_false(FileAccess.file_exists(absolute_root.path_join(slot + ".json.bak")))
+	assert_false(_service.load_slot(slot).is_ok, "删除后 load 必须返回无档。")
+
+
+func test_delete_slot_reports_absent_when_slot_has_no_files() -> void:
+	var slot: String = _remember_slot("delete_absent_slot")
+
+	var deleted: AppResult = _service.delete_slot(slot)
+
+	assert_true(deleted.is_ok, "槽无文件时 delete_slot 必须以 absent 成功。")
+	assert_eq(deleted.code, "absent")
+	assert_eq(int(deleted.details["removed"]), 0)
+
+
+func test_delete_slot_rejects_unsafe_slot_name() -> void:
+	var deleted: AppResult = _service.delete_slot("../escape")
+
+	assert_false(deleted.is_ok, "路径穿越槽名必须被拒绝。")
+	assert_eq(deleted.code, "invalid_slot")
+	assert_false(
+		FileAccess.file_exists(
+			ProjectSettings.globalize_path(_root_path).path_join("escape.json")
+		),
+		"被拒绝的删除不得产生任何文件系统副作用。"
+	)
+
+
 func test_slot_path_traversal_is_rejected_for_save_and_load() -> void:
 	var snapshot: Dictionary = _snapshot_at_revision(1)
 	var save_result: AppResult = _service.save_slot("../escape", snapshot)

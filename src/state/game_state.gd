@@ -73,6 +73,15 @@ func restore_snapshot(loaded_snapshot: Dictionary) -> AppResult:
 	return AppResult.success(snapshot(), "restored_for_load")
 
 
+## 重新开始生命周期专用：把运行时状态归零为与 _init 一致的全新初始态。
+## revision 归 0、applied_patch_sources 清空，restore_snapshot 的新鲜约束
+## （restore_requires_fresh_state）随之重新满足。仅用于"重新开始"流
+## （删除存档槽后、场景重载前归零 Autoload/注入 store）；常规 gameplay
+## 不得调用本方法，一切游戏内变更必须走 begin_patch()/commit()。
+func reset_to_initial() -> void:
+	_state = _make_initial_state()
+
+
 func _apply_operation(working: Dictionary, operation: Dictionary) -> AppResult:
 	if typeof(operation.get("type")) != TYPE_STRING:
 		return AppResult.failure("invalid_operation", "Operation type must be a string.")

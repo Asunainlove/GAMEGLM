@@ -82,6 +82,30 @@ func load_slot(slot: String) -> AppResult:
 	return AppResult.success(best_snapshot, "loaded", {"source": best_source})
 
 
+## 删除指定槽的全部三代候选文件（primary/.tmp/.bak，存在才删）。路径构造复用
+## load/save 的同一 _slot_paths 私有实现（无镜像命名），槽名经 _is_safe_slot
+## 校验，路径穿越防护与 save_slot/load_slot 完全一致。槽无任何文件时以
+## "absent" 成功返回；任一候选删除失败即整体失败并保留其余候选。
+func delete_slot(slot: String) -> AppResult:
+	if not _is_safe_slot(slot):
+		return AppResult.failure("invalid_slot", "Slot may only contain ASCII letters, digits, underscore, and hyphen.")
+	var paths: Dictionary = _slot_paths(slot)
+	var removed: int = 0
+	for candidate_path: String in [paths["primary"], paths["tmp"], paths["backup"]]:
+		if not FileAccess.file_exists(candidate_path):
+			continue
+		var remove_error: Error = DirAccess.remove_absolute(candidate_path)
+		if remove_error != OK:
+			return AppResult.failure(
+				"slot_delete_failed",
+				"Could not delete save candidate '%s' (error %d)." % [candidate_path, remove_error]
+			)
+		removed += 1
+	if removed == 0:
+		return AppResult.success(null, "absent", {"slot": slot, "removed": 0})
+	return AppResult.success(null, "deleted", {"slot": slot, "removed": removed})
+
+
 func _write_text(absolute_path: String, text: String) -> AppResult:
 	var file: FileAccess = FileAccess.open(absolute_path, FileAccess.WRITE)
 	if file == null:

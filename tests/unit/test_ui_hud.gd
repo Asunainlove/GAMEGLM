@@ -10,6 +10,20 @@ const THEME_PATH: String = "res://themes/starsoil_theme.tres"
 ## 因此替身必须保存在测试实例字段中保活。
 var _fake: FakeSnapshotProvider = null
 
+## 信号监听器宿主：同样必须存测试实例字段保活（Callable 只持 ObjectID）。
+var _spy: MenuSignalSpy = null
+
+
+class MenuSignalSpy:
+	var save_calls: int = 0
+	var restart_calls: int = 0
+
+	func on_save_requested() -> void:
+		save_calls += 1
+
+	func on_restart_requested() -> void:
+		restart_calls += 1
+
 var _fake_names: Dictionary = {
 	"starsoil_dust": "星壤尘",
 	"lumen_shard": "辉砂晶片",
@@ -173,13 +187,45 @@ func test_hud_polls_snapshot_every_quarter_second() -> void:
 	assert_false(timer.is_stopped(), "Poll timer must be running for periodic polling.")
 
 
-func test_hud_menu_panel_has_resume_and_help_buttons() -> void:
+func test_hud_menu_panel_has_four_menu_buttons() -> void:
 	var hud: Hud = _make_hud(_basic_payload())
 	var buttons: Array[Button] = _buttons_under(hud.get_node("MenuPanel"))
-	assert_eq(buttons.size(), 2, "MenuPanel must contain exactly two buttons.")
-	if buttons.size() == 2:
+	assert_eq(buttons.size(), 4, "MenuPanel must contain exactly four buttons.")
+	if buttons.size() == 4:
 		assert_eq(buttons[0].text, "继续")
-		assert_eq(buttons[1].text, "说明")
+		assert_eq(buttons[1].text, "保存")
+		assert_eq(buttons[2].text, "说明")
+		assert_eq(buttons[3].text, "重新开始")
+
+
+func test_hud_declares_save_and_restart_signals() -> void:
+	var hud: Hud = _make_hud(_basic_payload())
+	assert_true(hud.has_signal("save_requested"), "Hud must declare save_requested signal.")
+	assert_true(hud.has_signal("restart_requested"), "Hud must declare restart_requested signal.")
+
+
+func test_save_and_restart_buttons_emit_signals_to_field_kept_listener() -> void:
+	var hud: Hud = _make_hud(_basic_payload())
+	_spy = MenuSignalSpy.new()
+	hud.save_requested.connect(_spy.on_save_requested)
+	hud.restart_requested.connect(_spy.on_restart_requested)
+	watch_signals(hud)
+
+	hud._unhandled_input(_action_event("menu"))
+	assert_true(
+		(hud.get_node("MenuPanel") as Control).visible,
+		"Menu must be open before the button presses under test."
+	)
+
+	var buttons: Array[Button] = _buttons_under(hud.get_node("MenuPanel"))
+	(buttons[1] as Button).pressed.emit()
+	(buttons[3] as Button).pressed.emit()
+
+	assert_signal_emitted(hud, "save_requested", "保存 press must emit save_requested.")
+	assert_signal_emitted(hud, "restart_requested", "重新开始 press must emit restart_requested.")
+	assert_eq(_spy.save_calls, 1, "Field-kept listener must receive save_requested.")
+	assert_eq(_spy.restart_calls, 1, "Field-kept listener must receive restart_requested.")
+	assert_true((hud.get_node("MenuPanel") as Control).visible, "保存 press must keep the menu open.")
 
 
 # ---------------------------------------------------------------- snapshot rendering
@@ -317,18 +363,45 @@ func test_resume_button_closes_menu_unpauses_and_emits_signal() -> void:
 	assert_false(get_tree().paused, "Resume must unpause the tree.")
 
 
-func test_help_button_toggles_help_text() -> void:
+func test_help_button_toggles_help_panel_with_operation_text() -> void:
 	var hud: Hud = _make_hud(_basic_payload())
-	var help_text: Label = hud.get_node("MenuPanel/Content/HelpText") as Label
+	var help_panel: Control = hud.get_node("MenuPanel/Content/HelpPanel") as Control
+	assert_not_null(help_panel, "MenuPanel must contain a HelpPanel grey box.")
+	if help_panel == null:
+		return
 	var buttons: Array[Button] = _buttons_under(hud.get_node("MenuPanel"))
-	var help_button: Button = buttons[1]
+	var help_button: Button = buttons[2]
 	assert_eq(help_button.text, "说明")
 
-	assert_false(help_text.visible)
+	assert_false(help_panel.visible)
 	help_button.pressed.emit()
-	assert_true(help_text.visible, "说明 button must reveal the help text.")
+	assert_true(help_panel.visible, "说明 button must reveal the help panel.")
 	help_button.pressed.emit()
-	assert_false(help_text.visible, "说明 button must hide the help text again.")
+	assert_false(help_panel.visible, "说明 button must hide the help panel again.")
+
+	var help_text: Label = hud.get_node("MenuPanel/Content/HelpPanel/HelpText") as Label
+	assert_not_null(help_text, "HelpPanel must carry the operation text label.")
+	if help_text != null:
+		for keyword: String in ["采集", "放置", "菜单"]:
+			assert_true(
+				help_text.text.contains(keyword),
+				"Help text must mention %s (got: %s)." % [keyword, help_text.text]
+			)
+
+
+func test_flash_notice_overrides_and_restores_objective_label() -> void:
+	var hud: Hud = _make_hud(_basic_payload())
+	var objective: Label = hud.get_node("ObjectiveLabel") as Label
+	var baseline: String = objective.text
+	assert_ne(baseline, "")
+
+	hud.flash_notice("已保存")
+	assert_eq(objective.text, "已保存", "flash_notice must surface the transient notice.")
+	hud.refresh()
+	assert_eq(objective.text, "已保存", "Poll re-render must not wipe an active notice.")
+
+	hud.clear_notice()
+	assert_eq(objective.text, baseline, "clear_notice must restore the objective text.")
 
 
 # ---------------------------------------------------------------- objective_for table

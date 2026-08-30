@@ -67,9 +67,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -180.0
-offset_top = -150.0
+offset_top = -200.0
 offset_right = 180.0
-offset_bottom = 150.0
+offset_bottom = 200.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
@@ -90,14 +90,40 @@ custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 text = "继续"
 
+[node name="SaveButton" type="Button" parent="MenuPanel/Content"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "保存"
+
 [node name="HelpButton" type="Button" parent="MenuPanel/Content"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 text = "说明"
 
-[node name="HelpText" type="Label" parent="MenuPanel/Content"]
+[node name="RestartButton" type="Button" parent="MenuPanel/Content"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "重新开始"
+
+[node name="HelpPanel" type="PanelContainer" parent="MenuPanel/Content"]
 visible = false
-custom_minimum_size = Vector2(0, 72)
+custom_minimum_size = Vector2(0, 132)
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="HelpText" type="Label" parent="MenuPanel/Content/HelpPanel"]
 layout_mode = 2
 autowrap_mode = 3
-text = "提示：Esc 键打开或关闭本菜单；I 或 Tab 键切换背包；E 键与环境互动。当前为灰盒垂直切片，正式美术尚未接入。"
+text = "操作说明（灰盒）
+移动：WASD 或方向键
+采集：鼠标左键 或 空格键
+放置建筑：鼠标右键 或 F 键
+交互：E 键
+背包：I 键 或 Tab 键
+矿脉覆盖层：O 键
+菜单：Esc 键
+
+当前为灰盒垂直切片，正式美术尚未接入。"
