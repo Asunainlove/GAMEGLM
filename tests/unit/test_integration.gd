@@ -13,7 +13,7 @@ const GAME_STATE_SCRIPT: Script = preload("res://src/state/game_state.gd")
 const COMBAT_ENGINE_SCRIPT: Script = preload("res://src/combat/combat_engine.gd")
 
 const RENDERED_CHUNK_ID: String = "chunk_0_0"
-const EXPECTED_DEFINITION_COUNT: int = 40
+const EXPECTED_DEFINITION_COUNT: int = 45
 const MAX_BATTLE_GUARD: int = 200
 
 ## 每个 before_each 生成互不重用的存档根，杜绝自动读档串场。
@@ -292,6 +292,163 @@ func test_event_chain_choice_applies_flags_world_response_and_completion() -> vo
 	assert_true((snapshot["completed_events"] as Array).has("event_station_mode"))
 
 
+# ---------------------------------------------------------------- 信任经济（W002-GAP1）
+
+
+func test_event_chain_effect_relation_delta_lands_relationships() -> void:
+	# effect 步骤的 relation_delta 经 EventRunner deferred_ops + 集成层落账。
+	_make_session()
+	_patch_flags([
+		"event_event_prologue_landing_done",
+		"event_event_first_mining_done",
+		"encounter_first_drift_won",
+	])
+	session.tick()
+	assert_eq(session.active_event_id, "event_drift_aftermath", "首战胜利后必须推进到篝火复盘事件。")
+	_advance_lines()
+	assert_eq(session.active_event_id, "", "台词播完后事件必须结束。")
+	var snapshot: Dictionary = store.snapshot()
+	var relationships: Dictionary = snapshot["relationships"]
+	assert_eq(
+		int((relationships["luoxian"] as Dictionary)["trust"]), 12,
+		"drift_aftermath 必须给洛弦 trust +12。"
+	)
+	assert_eq(
+		int((relationships["misa"] as Dictionary)["affection"]), 5,
+		"drift_aftermath 必须给弥砂 affection +5。"
+	)
+
+
+func test_event_chain_effect_relation_delta_clamps_to_hundred() -> void:
+	_make_session()
+	_patch_relationship("luoxian", "trust", 95)
+	_patch_flags([
+		"event_event_prologue_landing_done",
+		"event_event_first_mining_done",
+		"encounter_first_drift_won",
+	])
+	session.tick()
+	assert_eq(session.active_event_id, "event_drift_aftermath")
+	_advance_lines()
+	var relationships: Dictionary = store.snapshot()["relationships"]
+	assert_eq(
+		int((relationships["luoxian"] as Dictionary)["trust"]), 100,
+		"95 + 12 必须被钳制到 100。"
+	)
+
+
+func test_trust_economy_curve_reaches_sanctuary_and_symbiosis() -> void:
+	# 信任经济曲线（evidence 逐事件累计表）：
+	# drift_aftermath +12 → misa_campfire +8 → husk_aftermath +12 →
+	# station_mode 共生 +10 → echo_resonance +8 → approach_direct +5 →
+	# policy 时 trust=55 ≥ 40（sanctuary 可选）→ leviathan_aftermath +15 → 70（symbiosis 可达）。
+	# 两场小遭遇与 Boss 战的战斗链由遭遇专项测试覆盖，此处按胜利 flag 模拟。
+	_make_session()
+	_play_event("event_prologue_landing")
+
+	_patch_flags(["first_mining_done"])
+	_play_event("event_first_mining")
+
+	_patch_flags(["encounter_first_drift_won"])
+	_play_event("event_drift_aftermath")
+	assert_eq(_luoxian_trust(), 12, "drift_aftermath 后 trust=12。")
+
+	_patch_flags(["first_anchor_placed", "anchor_workshop_placed"])
+	_play_event("event_first_anchor")
+	_play_event("event_workshop_guide")
+	_play_event("event_misa_campfire")
+	assert_eq(_luoxian_trust(), 20, "misa_campfire 后 trust=20。")
+	assert_eq(_misa_affection(), 13, "misa_campfire 后弥砂 affection=5+8。")
+
+	_patch_flags(["encounter_husk_ambush_won"])
+	_play_event("event_husk_aftermath")
+	assert_eq(_luoxian_trust(), 32, "husk_aftermath 后 trust=32。")
+
+	_patch_flags(["echo_chamber_active"])
+	_play_event_choice("event_station_mode", 2)
+	assert_eq(_luoxian_trust(), 42, "station_mode 共生后 trust=42。")
+	_play_event("event_echo_resonance")
+	assert_eq(_luoxian_trust(), 50, "echo_resonance 后 trust=50。")
+
+	_play_event_choice("event_approach", 0)
+	assert_eq(_luoxian_trust(), 55, "approach_direct 后 trust=55。")
+
+	# policy：trust ≥ 40 → sanctuary 可选（按钮未禁用）。
+	_play_event_to_choice("event_policy")
+	assert_true(_luoxian_trust() >= 40, "policy 选择时洛弦 trust 必须 ≥ 40。")
+	var policy_options: VBoxContainer = dialogue.get_node("Panel/OptionsBox")
+	assert_eq(policy_options.get_child_count(), 2)
+	var sanctuary_button: Button = policy_options.get_child(1) as Button
+	assert_not_null(sanctuary_button)
+	if sanctuary_button != null:
+		assert_false(
+			sanctuary_button.disabled,
+			"trust 达标时 sanctuary 选项不得被禁用。"
+		)
+		sanctuary_button.pressed.emit()
+	assert_eq(session.active_event_id, "", "sanctuary 选择后 policy 事件完成。")
+	assert_true(
+		bool((store.snapshot()["flags"] as Dictionary).get("encounter_leviathan_due", false)),
+		"policy_chosen 信号必须把 Boss 遭遇置为 due（两场胜利已在手）。"
+	)
+
+	_play_event("event_leviathan_pact")
+	_patch_flags(["encounter_leviathan_won"])
+	_play_event("event_leviathan_aftermath")
+	assert_eq(_luoxian_trust(), 70, "leviathan_aftermath 后 trust=70，symbiosis 结局可达。")
+	assert_eq(_misa_affection(), 26, "弥砂 affection 累计 5+8+5+8=26。")
+
+
+func test_trust_locked_option_is_disabled_and_choice_never_softlocks() -> void:
+	# 软锁死回归（W002-GAP1）：trust=0 走到 policy 时 sanctuary 预检禁用；
+	# 即使强行触发拒绝（trust_insufficient），选项必须弹回、事件可继续、tick 不停摆。
+	_make_session()
+	# 用 done 标记跳过全部羁绊事件，模拟一条低信任到达 policy 的路径。
+	_patch_flags([
+		"event_event_prologue_landing_done",
+		"event_event_first_mining_done",
+		"event_event_drift_aftermath_done",
+		"event_event_first_anchor_done",
+		"event_event_workshop_guide_done",
+		"event_event_misa_campfire_done",
+		"event_event_husk_aftermath_done",
+		"event_event_station_mode_done",
+		"event_event_echo_resonance_done",
+		"station_mode_seal",
+	])
+	_play_event_choice("event_approach", 1)
+	assert_eq(_luoxian_trust(), 0, "本路径没有任何 trust 收入。")
+
+	_play_event_to_choice("event_policy")
+	var options_box: VBoxContainer = dialogue.get_node("Panel/OptionsBox")
+	assert_eq(options_box.get_child_count(), 2)
+	var sanctuary_button: Button = options_box.get_child(1) as Button
+	assert_not_null(sanctuary_button)
+	if sanctuary_button != null:
+		assert_true(sanctuary_button.disabled, "trust 不足时 sanctuary 必须被预检禁用。")
+		assert_true(
+			sanctuary_button.text.contains("（信任不足）"),
+			"禁用的 sanctuary 必须展示（信任不足）后缀。"
+		)
+		# 强行 emit（模拟禁用态被绕过）：choose_option 拒绝 → 弹回选项。
+		sanctuary_button.pressed.emit()
+
+	assert_eq(
+		session.active_event_id, "event_policy",
+		"trust_insufficient 拒绝后事件不得停摆。"
+	)
+	var popped_box: VBoxContainer = dialogue.get_node("Panel/OptionsBox")
+	assert_gt(popped_box.get_child_count(), 0, "拒绝后必须重新弹出选项。")
+	var extraction_button: Button = popped_box.get_child(0) as Button
+	assert_false(extraction_button.disabled, "弹回后可用选项保持可点。")
+	extraction_button.pressed.emit()
+	assert_eq(session.active_event_id, "", "选择可用选项后事件必须完成。")
+
+	# 完成后 tick 继续运转（无到期事件/遭遇/结局时不报错不卡死）。
+	session.tick()
+	assert_eq(session.active_event_id, "", "tick 不得重新卡进已完成的事件。")
+
+
 # ---------------------------------------------------------------- 遭遇链
 
 
@@ -480,6 +637,8 @@ func test_startup_screen_does_not_block_input_during_fade() -> void:
 
 func test_ending_chain_shows_ending_when_ready_and_quiet() -> void:
 	_make_session()
+	# W002-GAP1：事件链新增 5 个羁绊事件，结局链前提（due_event 为空）要求
+	# 它们的 done 标记一并置位。
 	_patch_flags([
 		"station_mode_exploit",
 		"encounter_first_drift_won",
@@ -489,10 +648,15 @@ func test_ending_chain_shows_ending_when_ready_and_quiet() -> void:
 		"event_event_first_mining_done",
 		"event_event_first_anchor_done",
 		"event_event_workshop_guide_done",
+		"event_event_drift_aftermath_done",
+		"event_event_misa_campfire_done",
+		"event_event_husk_aftermath_done",
 		"event_event_station_mode_done",
+		"event_event_echo_resonance_done",
 		"event_event_approach_done",
 		"event_event_policy_done",
 		"event_event_leviathan_pact_done",
+		"event_event_leviathan_aftermath_done",
 		"event_event_ending_luoxian_done",
 		"event_event_ending_misa_done",
 	])
@@ -632,6 +796,48 @@ func _patch_flags(flag_ids: Array) -> void:
 		patch.set_flag(flag_id, true)
 	var committed: AppResult = store.commit(patch)
 	assert_true(committed.is_ok, committed.message)
+
+
+func _patch_relationship(char_id: String, dim: String, value: int) -> void:
+	var revision := int(store.snapshot()["revision"])
+	var patch: StatePatch = store.begin_patch(
+		"test_gap1_rel_%s_%s_%d" % [char_id, dim, revision], revision
+	)
+	patch.set_relationship(char_id, dim, value)
+	assert_true(store.commit(patch).is_ok)
+
+
+func _luoxian_trust() -> int:
+	return Relations.trust(store.snapshot(), "luoxian")
+
+
+func _misa_affection() -> int:
+	return Relations.get_dim(store.snapshot(), "misa", "affection")
+
+
+## 推进一个纯台词事件：tick 启动 → 逐行播完 → 事件结束。
+func _play_event(expected_id: String) -> void:
+	session.tick()
+	assert_eq(session.active_event_id, expected_id, "tick 必须启动 %s。" % expected_id)
+	_advance_lines()
+	assert_eq(session.active_event_id, "", "%s 必须在台词播完后结束。" % expected_id)
+
+
+## 推进一个 choice 事件到选项处：tick 启动 → 台词推进到选项按钮出现。
+func _play_event_to_choice(expected_id: String) -> void:
+	session.tick()
+	assert_eq(session.active_event_id, expected_id, "tick 必须启动 %s。" % expected_id)
+	_advance_lines()
+	var options_box: VBoxContainer = dialogue.get_node("Panel/OptionsBox")
+	assert_gt(options_box.get_child_count(), 0, "%s 必须展示选项按钮。" % expected_id)
+
+
+## 推进一个 choice 事件并按下第 option_index 个选项。
+func _play_event_choice(expected_id: String, option_index: int) -> void:
+	_play_event_to_choice(expected_id)
+	var options_box: VBoxContainer = dialogue.get_node("Panel/OptionsBox")
+	assert_gt(options_box.get_child_count(), option_index, "%s 选项数量不足。" % expected_id)
+	(options_box.get_child(option_index) as Button).pressed.emit()
 
 
 func _advance_lines(max_steps: int = 24) -> void:

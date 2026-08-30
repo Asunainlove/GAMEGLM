@@ -1,0 +1,12 @@
+{
+  "id": "event_echo_resonance",
+  "kind": "dialogue",
+  "requires_flag": "echo_chamber_active",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "回响舱第一次共处校准。规程要求两人同时值守读数——正好是我们两个。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "你听，矿脉的回声在跟着你的呼吸走。它开始信你了。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "……那就让它多信一点。后半夜的表交给我，你去睡。"},
+    {"type": "effect", "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 8}}
+  ]
+}

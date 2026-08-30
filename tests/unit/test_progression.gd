@@ -114,59 +114,108 @@ func test_due_event_done_flag_matches_event_runner_template() -> void:
 func test_due_event_walks_full_chain_to_empty() -> void:
 	if not _require_progression():
 		return
+	# W002-GAP1 后的 15 事件有序链：5 个羁绊事件按各自前置 flag 插入，
+	# 顺序保证 Sanctuary 在 policy 前达标、Symbiosis 在结局前达标。
 	var flags: Dictionary = {}
 
-	# 1) prologue 完成、尚未采集 → 链上无前置满足者，等待。
+	# 1) prologue。
+	assert_eq(_progression.due_event({"flags": flags}), "event_prologue_landing")
 	flags[_done_flag("event_prologue_landing")] = true
-	assert_eq(_progression.due_event({"flags": flags}), "", "Without mining the chain waits after the prologue.")
 
-	# 2) 采集 → event_first_mining。
+	# 2) 采集 → event_first_mining；drift_aftermath 因首战未胜被跳过。
 	flags["first_mining_done"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_first_mining")
 	flags[_done_flag("event_first_mining")] = true
 
-	# 3) 首个锚块 → event_first_anchor。
+	# 3) 首战未胜 → 链等待；胜利 → event_drift_aftermath（trust +12）。
+	assert_eq(_progression.due_event({"flags": flags}), "", "Without the first-drift victory the chain waits.")
+	flags["encounter_first_drift_won"] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_drift_aftermath")
+	flags[_done_flag("event_drift_aftermath")] = true
+
+	# 4) 首个锚块 → event_first_anchor。
 	flags["first_anchor_placed"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_first_anchor")
 	flags[_done_flag("event_first_anchor")] = true
 
-	# 4) 锚居工坊 → event_workshop_guide。
+	# 5) 锚居工坊 → event_workshop_guide，随后同前置的 event_misa_campfire（trust +8）。
 	flags["anchor_workshop_placed"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_workshop_guide")
 	flags[_done_flag("event_workshop_guide")] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_misa_campfire")
+	flags[_done_flag("event_misa_campfire")] = true
 
-	# 5) 回响舱 → event_station_mode。
+	# 6) 碎壳伏击未胜 → 等待；胜利 → event_husk_aftermath（trust +12）。
+	assert_eq(_progression.due_event({"flags": flags}), "", "Without the husk victory the chain waits.")
+	flags["encounter_husk_ambush_won"] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_husk_aftermath")
+	flags[_done_flag("event_husk_aftermath")] = true
+
+	# 7) 回响舱激活 → event_station_mode，随后 event_echo_resonance（trust +8）。
 	flags["echo_chamber_active"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_station_mode")
 	flags[_done_flag("event_station_mode")] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_echo_resonance")
+	flags[_done_flag("event_echo_resonance")] = true
 
-	# 6) 任一 station_mode_* → event_approach。
-	flags["station_mode_seal"] = true
+	# 8) 任一 station_mode_* → event_approach；approach 选项 flag → event_policy。
+	flags["station_mode_symbiosis"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_approach")
 	flags[_done_flag("event_approach")] = true
-
-	# 7) 任一 approach_* → event_policy。
 	flags["approach_direct"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_policy")
 	flags[_done_flag("event_policy")] = true
 
-	# 8) 遭遇 due flag → event_leviathan_pact。
+	# 9) 遭遇 due flag → event_leviathan_pact。
 	flags["encounter_leviathan_due"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_leviathan_pact")
 	flags[_done_flag("event_leviathan_pact")] = true
 
-	# 9) 结局未就绪（缺三场胜利）→ 等待。
-	assert_eq(_progression.due_event({"flags": flags}), "", "Endings stay hidden until ending_ready.")
-	flags["encounter_first_drift_won"] = true
-	flags["encounter_husk_ambush_won"] = true
+	# 10) Boss 未胜 → 等待；胜利 → event_leviathan_aftermath（trust +15）。
+	assert_eq(_progression.due_event({"flags": flags}), "", "Without the leviathan victory the chain waits.")
 	flags["encounter_leviathan_won"] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_leviathan_aftermath")
+	flags[_done_flag("event_leviathan_aftermath")] = true
+
+	# 11) 结局就绪 → 两个结局事件；全完 → ""。
 	assert_eq(_progression.due_event({"flags": flags}), "event_ending_luoxian")
 	flags[_done_flag("event_ending_luoxian")] = true
-
-	# 10) 洛弦结局完成后 → event_ending_misa；全完 → ""。
 	assert_eq(_progression.due_event({"flags": flags}), "event_ending_misa")
 	flags[_done_flag("event_ending_misa")] = true
 	assert_eq(_progression.due_event({"flags": flags}), "", "A fully consumed chain yields an empty id.")
+
+
+func test_due_event_bond_events_gate_on_their_own_victory_flags() -> void:
+	if not _require_progression():
+		return
+	# 羁绊事件未满足自己的前置 flag 时必须被跳过，既不阻塞链也不抢先触发：
+	# 首战/伏击均未胜，但建造链前置齐全 → 链上第一个可跑者是 workshop_guide。
+	var flags: Dictionary = {
+		_done_flag("event_prologue_landing"): true,
+		_done_flag("event_first_mining"): true,
+		_done_flag("event_first_anchor"): true,
+		"anchor_workshop_placed": true,
+		"echo_chamber_active": true,
+	}
+	assert_eq(
+		_progression.due_event({"flags": flags}), "event_workshop_guide",
+		"Unmet bond-event flags must be skipped in chain order."
+	)
+
+
+func test_due_event_drift_aftermath_unblocks_exactly_on_victory_flag() -> void:
+	if not _require_progression():
+		return
+	var flags: Dictionary = {
+		_done_flag("event_prologue_landing"): true,
+		_done_flag("event_first_mining"): true,
+	}
+	assert_eq(_progression.due_event({"flags": flags}), "", "The chain waits before the first-drift victory.")
+	flags["encounter_first_drift_won"] = true
+	assert_eq(
+		_progression.due_event({"flags": flags}), "event_drift_aftermath",
+		"The drift aftermath unblocks exactly when its victory flag is set."
+	)
 
 
 func test_due_event_skips_events_with_unsatisfied_prerequisites() -> void:

@@ -186,6 +186,11 @@ func choose_option(
 
 ## Applies an effect step in one patch: flag_id -> set_flag (flag_value default
 ## true), grant_items -> add_item, due_encounter -> set_flag(due_encounter, true).
+## A relation_delta (W002-GAP1, same shape as choice options) is NOT committed
+## directly: like choose_option it is computed against the store snapshot's
+## relationships (missing values default to 0), clamped to 0..100 and returned
+## as a deferred op in AppResult.value["deferred_ops"] for the post-merge
+## integration layer. A delta-only step commits no patch.
 func apply_effect_step(event_id: String, step: Dictionary, store: Object = null) -> AppResult:
 	if String(step.get("type", "")) != "effect":
 		return AppResult.failure("invalid_step", "apply_effect_step requires an effect step.")
@@ -214,7 +219,12 @@ func apply_effect_step(event_id: String, step: Dictionary, store: Object = null)
 			"flag_id": due_encounter,
 			"enabled": true,
 		})
-	return _commit_operations(store, "event_%s_effect" % event_id, operations)
+	var deferred_ops: Array[Dictionary] = _deferred_relation_ops(_state_snapshot(store), step)
+	if not operations.is_empty():
+		var commit_result: AppResult = _commit_operations(store, "event_%s_effect" % event_id, operations)
+		if not commit_result.is_ok:
+			return commit_result
+	return AppResult.success({"deferred_ops": deferred_ops})
 
 
 ## Marks an event as finished through the main-existing set_flag operation,
@@ -324,3 +334,17 @@ func _current_revision(store_object: Object) -> int:
 		if typeof(snapshot) == TYPE_DICTIONARY:
 			return int((snapshot as Dictionary).get("revision", 0))
 	return 0
+
+
+## Store snapshot derivation shared with apply_effect_step's relation_delta
+## clamp computation; null store falls back to the GameState autoload
+## (contract §0), stores without a snapshot method yield an empty dictionary.
+func _state_snapshot(store: Object) -> Dictionary:
+	var store_object: Object = store
+	if store_object == null:
+		store_object = _default_store()
+	if store_object.has_method("snapshot"):
+		var snapshot: Variant = store_object.call("snapshot")
+		if typeof(snapshot) == TYPE_DICTIONARY:
+			return snapshot
+	return {}

@@ -32,6 +32,8 @@ const BOSS_ESCALATED_MULTIPLIER: float = 1.2
 
 ## 按契约 §7 事件顺序返回应触发的事件 id：第一个未 done 且前置满足者；
 ## 全部完成返回 ""。done = flags[EVENT_DONE_FLAG_FORMAT % 事件 id] == true。
+## W002-GAP1：5 个羁绊事件按各自前置 flag 插入有序链，恢复信任经济曲线——
+## Sanctuary（trust≥40）在 policy 前达标、Symbiosis（trust≥70）在结局前达标。
 static func due_event(state: Dictionary) -> String:
 	for entry: Dictionary in _event_chain():
 		var event_id: String = String(entry["id"])
@@ -121,12 +123,17 @@ static func _event_chain() -> Array[Dictionary]:
 	return [
 		{"id": "event_prologue_landing"},
 		{"id": "event_first_mining", "requires_all": [FIRST_MINING_FLAG]},
+		{"id": "event_drift_aftermath", "requires_all": [FIRST_DRIFT_WON_FLAG]},
 		{"id": "event_first_anchor", "requires_all": [FIRST_ANCHOR_FLAG]},
 		{"id": "event_workshop_guide", "requires_all": [ANCHOR_WORKSHOP_FLAG]},
+		{"id": "event_misa_campfire", "requires_all": [ANCHOR_WORKSHOP_FLAG]},
+		{"id": "event_husk_aftermath", "requires_all": [HUSK_AMBUSH_WON_FLAG]},
 		{"id": "event_station_mode", "requires_all": [ECHO_CHAMBER_EFFECT_FLAG]},
+		{"id": "event_echo_resonance", "requires_all": [ECHO_CHAMBER_EFFECT_FLAG]},
 		{"id": "event_approach", "requires_any_prefix": STATION_MODE_PREFIX},
 		{"id": "event_policy", "requires_any_prefix": APPROACH_PREFIX},
 		{"id": "event_leviathan_pact", "requires_all": [LEVIATHAN_DUE_FLAG]},
+		{"id": "event_leviathan_aftermath", "requires_all": [LEVIATHAN_WON_FLAG]},
 		{"id": "event_ending_luoxian", "requires_ending_ready": true},
 		{"id": "event_ending_misa", "requires_ending_ready": true},
 	]

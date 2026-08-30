@@ -561,7 +561,7 @@ func _validate_step(step: Dictionary, path: String) -> AppResult:
 					return result
 			return AppResult.success()
 		"effect":
-			var result: AppResult = _reject_unknown_fields(step, ["type", "flag_id", "flag_value", "grant_items", "due_encounter"], path)
+			var result: AppResult = _reject_unknown_fields(step, ["type", "flag_id", "flag_value", "grant_items", "due_encounter", "relation_delta"], path)
 			if not result.is_ok:
 				return result
 			result = _optional_stable_id(step, "flag_id", path)
@@ -570,6 +570,10 @@ func _validate_step(step: Dictionary, path: String) -> AppResult:
 			result = _optional_bool(step, "flag_value", path)
 			if not result.is_ok:
 				return result
+			if step.has("relation_delta"):
+				result = _validate_relation_delta(step["relation_delta"], path)
+				if not result.is_ok:
+					return result
 			if step.has("grant_items"):
 				result = _validate_array(step, "grant_items", path, -1)
 				if not result.is_ok:
@@ -608,22 +612,28 @@ func _validate_choice_option(option: Dictionary, path: String) -> AppResult:
 	if not result.is_ok:
 		return result
 	if option.has("relation_delta"):
-		if typeof(option["relation_delta"]) != TYPE_DICTIONARY:
-			return _fail(path, "relation_delta must be an object.")
-		var delta: Dictionary = option["relation_delta"]
-		result = _reject_unknown_fields(delta, RELATION_DELTA_FIELDS, path)
-		if not result.is_ok:
-			return result
-		result = _optional_stable_id(delta, "char_id", path)
-		if not result.is_ok:
-			return result
-		result = _optional_enum(delta, "dim", RELATION_DIMS, path)
-		if not result.is_ok:
-			return result
-		result = _optional_integer(delta, "delta", path, -100, 100)
+		result = _validate_relation_delta(option["relation_delta"], path)
 		if not result.is_ok:
 			return result
 	return AppResult.success()
+
+
+## relation_delta 语义校验（W002-GAP1 起 choice option 与 effect step 共用）：
+## 单对象 {char_id, dim, delta}，char_id 为稳定 ID，dim ∈ affection/trust/ideology，
+## delta ∈ [-100, 100]。
+func _validate_relation_delta(delta: Dictionary, path: String) -> AppResult:
+	if typeof(delta) != TYPE_DICTIONARY:
+		return _fail(path, "relation_delta must be an object.")
+	var result: AppResult = _reject_unknown_fields(delta, RELATION_DELTA_FIELDS, path)
+	if not result.is_ok:
+		return result
+	result = _optional_stable_id(delta, "char_id", path)
+	if not result.is_ok:
+		return result
+	result = _optional_enum(delta, "dim", RELATION_DIMS, path)
+	if not result.is_ok:
+		return result
+	return _optional_integer(delta, "delta", path, -100, 100)
 
 
 func _validate_encounter(definition: Dictionary, path: String) -> AppResult:
