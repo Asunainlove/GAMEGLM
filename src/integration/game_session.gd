@@ -8,7 +8,12 @@ extends Node
 ##   （tool_tier=2；中间敲击进度为暂态，由本节点按格暂存）→ 耗尽时
 ##   Progression.react(mined)。
 ## - 建造链：player.place_requested → BuildingRules.attempt_build（缺省
-##   anchor_block，数字键 1-6 可选建筑）→ Progression.react(built)。
+##   anchor_block，数字键 1-6 可选建筑）→ PowerGrid.evaluate 供电门控（新建筑
+##   位于 placed_buildings 末尾，供给不足时最先断电；同 id 多实例按计数差判定
+##   本次新建实例）→ Progression.react(built, powered)：只有供电的 effect_flag
+##   建筑（stabilizer_pylon/echo_chamber）才置 effect_flag。effect_flag 单调：
+##   断电不撤销已置位 flag，仅在新建时按供电判定置位（详见
+##   ops/evidence/W001-P05.md）。
 ## - 事件链：每帧 tick 检查 Progression.due_event → EventRunner 驱动
 ##   DialogueBox（line 批量逐行、choice 交由玩家）→ choose_option +
 ##   apply_effect_step + complete_event；deferred_ops 经
@@ -20,7 +25,8 @@ extends Node
 ##   胜利时 Progression.react(encounter_won)；卸载战斗场景，战败保留 due flag。
 ## - 结局链：Progression.ending_ready 且 due_event 为空且无战斗 → ending.tscn。
 ## - 存档链：每次 patch 提交后节流 SaveService.save_slot("auto")；启动时尝试
-##   load → restore_snapshot。
+##   load → restore_snapshot。主菜单手动保存写 "manual" 槽并在 HUD 闪现提示；
+##   重新开始删除 auto/manual 槽全部候选文件后重载当前场景。
 ##
 ## 表现层约束：本节点绝不直接改持久字典，一切变更经注入 store（契约 §0：
 ## null → GameState autoload）的各模块 API / patch 提交完成。
@@ -39,16 +45,23 @@ const ENDING_SCENE_PATH: String = "res://scenes/ending.tscn"
 const DEFAULT_SAVE_SLOT: String = "auto"
 const DEFAULT_SAVE_THROTTLE_SECONDS: float = 2.0
 const MAX_LINES_PER_BATCH: int = 32
+const MANUAL_SAVE_SLOT: String = "manual"
+const SAVE_NOTICE_TEXT: String = "已保存"
+const SAVE_NOTICE_SECONDS: float = 1.5
+## 存档槽候选文件后缀，与 SaveService._slot_paths 的命名约定保持镜像
+## （SaveService 无删除 API 且 src/save 冻结，见 W001-P05 evidence）。
+const SAVE_FILE_SUFFIXES: Array[String] = [".json", ".json.tmp", ".json.bak"]
 
 ## 契约 §0 注入模式：持久层 store，null → GameState autoload。
 var store: Object = null
 
 ## 注入点：缺省在 _ready 从场景树解析（app.tscn 的 %World / %DialogueBox /
-## %ModalLayer 唯一名）。
+## %ModalLayer / %Hud 唯一名）。
 var world: Node2D = null
 var dialogue_box: DialogueBox = null
 var modal_layer: CanvasLayer = null
 var player: Node = null
+var hud: Hud = null
 
 var tool_tier: int = TOOL_TIER
 var battle_scene_path: String = BATTLE_SCENE_PATH
@@ -57,8 +70,19 @@ var save_slot: String = DEFAULT_SAVE_SLOT
 var save_throttle_seconds: float = DEFAULT_SAVE_THROTTLE_SECONDS
 var autosave_enabled: bool = true
 
+## 存档根（user:// 路径）；空串回退 SaveService.DEFAULT_SAVE_ROOT。测试注入
+## 与 SaveService.configure_root_for_tests 相同的路径以断言删档行为。
+var save_root: String = ""
+
+## 注入点：重新开始时的场景重载；缺省 get_tree().reload_current_scene()。
+## 测试注入 spy 避免重载 GUT 测试场景。
+var scene_reloader: Callable = Callable()
+
 ## 当前选中建筑（建造链缺省 anchor_block）。
 var selected_building_id: String = DEFAULT_BUILDING_ID
+
+## effect_flag 单调巡检最近结果（只读观察用）：当前断电的 effect_flag 建筑 id。
+var unpowered_effect_flags: Array[String] = []
 
 ## 事件链运行态（只读观察用）。
 var active_event_id: String = ""
@@ -80,7 +104,9 @@ func _ready() -> void:
 	_ensure_content_bootstrapped()
 	_resolve_nodes()
 	_bind_player()
+	_bind_hud()
 	_try_load_autosave()
+	_reconcile_effect_flags()
 
 
 func _process(_delta: float) -> void:
@@ -160,7 +186,7 @@ func request_mine(cell: Vector2i) -> AppResult:
 
 
 ## 一次放置请求：BuildingRules.attempt_build（含地形/邻接/材料校验，零修改
-## 失败）→ Progression.react(built)。
+## 失败）→ PowerGrid.evaluate 供电门控 → Progression.react(built, powered)。
 func request_place(cell: Vector2i) -> AppResult:
 	var building_def := _selected_building_def()
 	if building_def.is_empty():
@@ -173,11 +199,94 @@ func request_place(cell: Vector2i) -> AppResult:
 	if not result.is_ok:
 		return result
 	var react_result := Progression.react(
-		_snapshot(), "built", {"building_id": selected_building_id, "powered": true}, store)
+		_snapshot(), "built",
+		{"building_id": selected_building_id, "powered": _new_building_powered(selected_building_id)},
+		store)
 	if not react_result.is_ok:
 		push_warning("GameSession: Progression.react(built) failed: %s" % react_result.message)
+	_reconcile_effect_flags()
 	_schedule_autosave()
 	return result
+
+
+## 建造链供电门控：对建造后的全量 placed_buildings 评估 PowerGrid，判定本次
+## 新建建筑（GameState._apply_place_building 保证追加在数组末尾）是否获电。
+## 同 id 多实例时不能直接 `powered_ids.has(building_id)`——旧实例获电会掩盖新
+## 实例断电；改用计数差判定：新建筑加入前后该 id 在 powered_ids 中的出现次数
+## 只增不减（供给按输入序分配，尾部追加不会改变前缀分配），增量 > 0 当且仅当
+## 本次新建实例获电。注意：power_draw == 0 的建筑按 PowerGrid 契约不会进入
+## powered_ids（无需用电），而 Progression 只对 power_draw > 0 的 effect_flag
+## 建筑（stabilizer_pylon/echo_chamber）检查 powered，语义自洽。
+func _new_building_powered(building_id: String) -> bool:
+	var snapshot := _snapshot()
+	var buildings: Array = snapshot.get("placed_buildings", [])
+	var post_count := _count_powered_instances(buildings, building_id)
+	var pre_buildings := buildings.duplicate()
+	if pre_buildings.is_empty():
+		return false
+	pre_buildings.pop_back()
+	return post_count > _count_powered_instances(pre_buildings, building_id)
+
+
+## PowerGrid.evaluate 结果中某建筑 id 的获电实例数。
+func _count_powered_instances(buildings: Array, building_id: String) -> int:
+	var evaluation := PowerGrid.evaluate(buildings, _building_power_defs())
+	var powered_ids: Array = evaluation.get("powered_ids", [])
+	return powered_ids.count(building_id)
+
+
+## 从 ContentDB 全集构造 PowerGrid.evaluate 所需的 defs：
+## building_id → {"power_draw", "power_supply", "requires_room"}。
+func _building_power_defs() -> Dictionary:
+	var defs := {}
+	if not ContentDB.is_bootstrapped():
+		return defs
+	for building_id: String in ContentDB.ids_of("building"):
+		var definition := ContentDB.get_building(building_id)
+		defs[building_id] = {
+			"power_draw": int(definition.get("power_draw", 0)),
+			"power_supply": int(definition.get("power_supply", 0)),
+			"requires_room": bool(definition.get("requires_room", false)),
+		}
+	return defs
+
+
+## effect_flag 单调一致性巡检：_ready（读档后）与每次建造后各执行一次。
+## 策略为单调保持——当前断电而 flag 已置位的建筑**不主动撤销**（撤销语义超出
+## 本包冻结范围，见 ops/evidence/W001-P05.md 限制记录）；flag 置位只发生在
+## 新建时按供电判定。本巡检仅把存在断电实例的 effect_flag 建筑记录到
+## unpowered_effect_flags 供表现层与测试只读观察。判定按 id 计数比较（该 id
+## 的 placed 实例数 > powered_ids 中的获电数 ⇒ 存在断电实例），避免同 id 旧
+## 实例获电掩盖新实例断电。
+func _reconcile_effect_flags() -> void:
+	unpowered_effect_flags.clear()
+	if not ContentDB.is_bootstrapped():
+		return
+	var snapshot := _snapshot()
+	var buildings: Array = snapshot.get("placed_buildings", [])
+	var evaluation := PowerGrid.evaluate(buildings, _building_power_defs())
+	var powered_ids: Array = evaluation.get("powered_ids", [])
+	var entry_totals: Dictionary = {}
+	for building_value: Variant in buildings:
+		var entry := building_value as Dictionary
+		if entry == null:
+			continue
+		var entry_id := str(entry.get("building_id", ""))
+		entry_totals[entry_id] = int(entry_totals.get(entry_id, 0)) + 1
+	for building_value: Variant in buildings:
+		var placed := building_value as Dictionary
+		if placed == null:
+			continue
+		var building_id := str(placed.get("building_id", ""))
+		if building_id.is_empty() or unpowered_effect_flags.has(building_id):
+			continue
+		var definition := ContentDB.get_building(building_id)
+		if int(definition.get("power_draw", 0)) <= 0:
+			continue
+		if not str(definition.get("effect_flag", "")).is_empty():
+			var powered_count := powered_ids.count(building_id)
+			if powered_count < int(entry_totals.get(building_id, 0)):
+				unpowered_effect_flags.append(building_id)
 
 
 ## 选择待放置建筑；定义不存在时保持原选择并返回 false。
@@ -201,6 +310,51 @@ func save_now() -> AppResult:
 ## 启动/恢复入口：尝试读取 save_slot 并 restore 进 store（仅新鲜状态可收）。
 func try_load_autosave() -> bool:
 	return _try_load_autosave()
+
+
+# ---------------------------------------------------------------- 主菜单保存与重启链
+
+
+## 主菜单"保存"：立即写 manual 槽，成功后在 HUD 闪现短暂提示。
+func _on_save_requested() -> void:
+	var result := SaveService.save_slot(MANUAL_SAVE_SLOT, _snapshot())
+	if not result.is_ok:
+		push_warning("GameSession: manual save failed: %s" % result.message)
+		return
+	if hud != null:
+		hud.flash_notice(SAVE_NOTICE_TEXT, SAVE_NOTICE_SECONDS)
+
+
+## 主菜单"重新开始"：删除 auto/manual 槽全部候选文件后重载当前场景。
+## 重启后无档，GameSession._ready 的读档逻辑天然兼容（读档失败即初始状态）。
+func _on_restart_requested() -> void:
+	_delete_save_slots()
+	_reload_current_scene()
+
+
+## 删除存档槽候选文件（primary/tmp/backup）。文件命名与 SaveService._slot_paths
+## 保持镜像；SaveService 无删除 API 且 src/save 冻结（W001-P05 evidence 记录）。
+func _delete_save_slots() -> void:
+	var root := save_root
+	if root.is_empty():
+		root = SaveService.DEFAULT_SAVE_ROOT
+	var directory := DirAccess.open(root)
+	if directory == null:
+		push_warning("GameSession: cannot open save root '%s' for deletion." % root)
+		return
+	for slot: String in [save_slot, MANUAL_SAVE_SLOT]:
+		for suffix: String in SAVE_FILE_SUFFIXES:
+			var file_name := slot + suffix
+			if directory.file_exists(file_name) and directory.remove(file_name) != OK:
+				push_warning("GameSession: failed to remove save file '%s'." % file_name)
+
+
+func _reload_current_scene() -> void:
+	if scene_reloader.is_valid():
+		scene_reloader.call()
+		return
+	if get_tree() != null:
+		get_tree().reload_current_scene()
 
 
 # ---------------------------------------------------------------- 事件链内部
@@ -444,6 +598,17 @@ func _bind_player() -> void:
 		player.connect("mine_requested", _on_mine_requested)
 	if not player.is_connected("place_requested", _on_place_requested):
 		player.connect("place_requested", _on_place_requested)
+
+
+func _bind_hud() -> void:
+	if hud == null:
+		hud = get_node_or_null("%Hud") as Hud
+	if hud == null:
+		return
+	if not hud.save_requested.is_connected(_on_save_requested):
+		hud.save_requested.connect(_on_save_requested)
+	if not hud.restart_requested.is_connected(_on_restart_requested):
+		hud.restart_requested.connect(_on_restart_requested)
 
 
 func _find_player() -> Node:

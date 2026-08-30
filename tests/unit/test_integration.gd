@@ -19,6 +19,20 @@ const MAX_BATTLE_GUARD: int = 200
 ## 每个 before_each 生成互不重用的存档根，杜绝自动读档串场。
 static var _save_root_seq: int = 0
 
+## 场景重载 spy 宿主：必须存测试实例字段保活（Callable 只持 ObjectID）。
+var _reload_spy: SceneReloadSpy = null
+
+## 当前隔离存档根；注入 GameSession.save_root 以断言删档行为（生产环境
+## GameSession 回退 SaveService.DEFAULT_SAVE_ROOT，与真实存档根一致）。
+var _save_root: String = ""
+
+
+class SceneReloadSpy:
+	var calls: int = 0
+
+	func reload_current_scene() -> void:
+		calls += 1
+
 var store: Node
 var world: Node2D
 var dialogue: DialogueBox
@@ -30,8 +44,8 @@ func before_each() -> void:
 		var boot: AppResult = ContentDB.bootstrap()
 		assert_true(boot.is_ok, "ContentDB bootstrap must succeed: %s" % boot.message)
 	_save_root_seq += 1
-	var save_root := "user://saves_wp04_integration_%d_%d" % [Time.get_ticks_msec(), _save_root_seq]
-	assert_true(SaveService.configure_root_for_tests(save_root).is_ok)
+	_save_root = "user://saves_wp04_integration_%d_%d" % [Time.get_ticks_msec(), _save_root_seq]
+	assert_true(SaveService.configure_root_for_tests(_save_root).is_ok)
 	store = GAME_STATE_SCRIPT.new()
 	world = _make_world()
 	dialogue = _make_dialogue()
@@ -157,6 +171,81 @@ func test_place_chain_without_materials_changes_nothing() -> void:
 	assert_true((snapshot["inventory"] as Dictionary).is_empty(), "失败建造不得扣材料。")
 
 
+func test_place_chain_gates_effect_flag_on_powered_build() -> void:
+	_make_session()
+	_give_item("starsoil_dust", 10)
+	_give_item("resonant_core", 2)
+	assert_true(_place_at("anchor_block", Vector2i(20, 20)).is_ok)
+	assert_true(_place_at("anchor_workshop", Vector2i(20, 21)).is_ok)
+	assert_true(_place_at("echo_chamber", Vector2i(20, 22)).is_ok)
+	var snapshot: Dictionary = store.snapshot()
+	assert_true(
+		bool((snapshot["flags"] as Dictionary).get("echo_chamber_active", false)),
+		"工坊供电充足且成房间时，回响舱必须置位 effect_flag。"
+	)
+	assert_true(session.unpowered_effect_flags.is_empty(), "供电充足时不得记录断电 effect 建筑。")
+
+
+func test_place_chain_withholds_effect_flag_without_supply() -> void:
+	_make_session()
+	_give_item("resonant_core", 2)
+	_preplace_building("anchor_block", Vector2i(20, 20))
+	assert_true(_place_at("echo_chamber", Vector2i(20, 21)).is_ok)
+	var snapshot: Dictionary = store.snapshot()
+	assert_false(
+		bool((snapshot["flags"] as Dictionary).get("echo_chamber_active", false)),
+		"无电源时新建回响舱不得置位 effect_flag。"
+	)
+	assert_true(
+		session.unpowered_effect_flags.has("echo_chamber"),
+		"断电的 effect 建筑必须被单调巡检记录。"
+	)
+
+
+func test_place_chain_withholds_effect_flag_without_room() -> void:
+	_make_session()
+	_give_item("resonant_core", 2)
+	_preplace_building("anchor_workshop", Vector2i(20, 20))
+	# Chebyshev 距离 2 满足放置邻接，但 4 连通距离 4 未成房间。
+	assert_true(_place_at("echo_chamber", Vector2i(22, 22)).is_ok)
+	var snapshot: Dictionary = store.snapshot()
+	assert_false(
+		bool((snapshot["flags"] as Dictionary).get("echo_chamber_active", false)),
+		"供给充足但未成房间时，回响舱不得置位 effect_flag。"
+	)
+
+
+func test_place_chain_does_not_recommit_flag_for_unpowered_duplicate_effect_building() -> void:
+	_make_session()
+	_give_item("starsoil_dust", 10)
+	_give_item("resonant_core", 4)
+	assert_true(_place_at("anchor_block", Vector2i(20, 20)).is_ok)
+	assert_true(_place_at("anchor_workshop", Vector2i(20, 21)).is_ok)
+	assert_true(_place_at("echo_chamber", Vector2i(20, 22)).is_ok)
+	var snapshot: Dictionary = store.snapshot()
+	assert_true(bool((snapshot["flags"] as Dictionary).get("echo_chamber_active", false)))
+	var revision_before: int = int(snapshot["revision"])
+
+	# 工坊供给 10 已被首座回响舱(draw 8)占去 8，只剩 2：第二座回响舱(draw 8)
+	# 断电。判定对象是"本次新建建筑"，不得因同 id 旧实例在 powered_ids 中而
+	# 把 powered=true 误报给 Progression（那样会多提交一个冗余 flag patch，
+	# revision 将 +2 而非建造 patch 本身的 +1）。
+	assert_true(_place_at("echo_chamber", Vector2i(20, 23)).is_ok)
+	var after: Dictionary = store.snapshot()
+	assert_eq(
+		int(after["revision"]), revision_before + 1,
+		"断电的新建回响舱只应提交建造 patch 本身，不得再触发 effect_flag 落账 patch。"
+	)
+	assert_true(
+		bool((after["flags"] as Dictionary).get("echo_chamber_active", false)),
+		"已置位 effect_flag 保持单调，不因新实例断电而撤销。"
+	)
+	assert_true(
+		session.unpowered_effect_flags.has("echo_chamber"),
+		"断电的新实例必须被单调巡检记录。"
+	)
+
+
 # ---------------------------------------------------------------- 事件链
 
 
@@ -272,6 +361,112 @@ func test_save_chain_roundtrips_inventory_and_flags() -> void:
 	assert_eq(int((payload["chunk_deltas"][RENDERED_CHUNK_ID] as Array).size()), 1)
 
 
+func test_ready_restores_autosave_into_fresh_store() -> void:
+	_make_session()
+	_give_item("starsoil_dust", 3)
+	assert_true(session.save_now().is_ok, "预置 auto 槽存档必须成功。")
+
+	var fresh_store: Node = GAME_STATE_SCRIPT.new()
+	var fresh_session := GameSession.new()
+	fresh_session.store = fresh_store
+	fresh_session.world = world
+	fresh_session.dialogue_box = dialogue
+	add_child_autofree(fresh_session)
+	var payload: Dictionary = fresh_store.snapshot()
+	fresh_session.free()
+	fresh_store.free()
+	assert_eq(
+		int((payload["inventory"] as Dictionary).get("starsoil_dust", 0)), 3,
+		"启动读档流必须把 auto 槽快照 restore 进全新 store。"
+	)
+
+
+# ---------------------------------------------------------------- 主菜单保存与重启链
+
+
+func test_manual_save_request_persists_manual_slot_and_flashes_notice() -> void:
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+	_give_item("starsoil_dust", 5)
+
+	hud.save_requested.emit()
+
+	var loaded: AppResult = SaveService.load_slot("manual")
+	assert_true(loaded.is_ok, "save_requested 必须经 SaveService 写入 manual 槽。")
+	assert_eq(int((loaded.value["inventory"] as Dictionary).get("starsoil_dust", 0)), 5)
+	var objective: Label = hud.get_node("ObjectiveLabel") as Label
+	assert_eq(objective.text, "已保存", "手动保存后 ObjectiveLabel 必须闪现'已保存'。")
+	hud.clear_notice()
+	assert_eq(objective.text, Hud.objective_for(store.snapshot()), "提示结束后必须恢复目标文案。")
+
+
+func test_restart_request_clears_save_slots_and_reloads_scene() -> void:
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+	_give_item("starsoil_dust", 2)
+	assert_true(session.save_now().is_ok, "auto 槽预置存档必须成功。")
+	assert_true(SaveService.save_slot("manual", store.snapshot()).is_ok, "manual 槽预置存档必须成功。")
+	_reload_spy = SceneReloadSpy.new()
+	session.scene_reloader = _reload_spy.reload_current_scene
+
+	hud.restart_requested.emit()
+
+	assert_eq(_reload_spy.calls, 1, "restart_requested 必须触发场景重载。")
+	assert_false(SaveService.load_slot(session.save_slot).is_ok, "重启后 auto 槽必须被清空。")
+	assert_false(SaveService.load_slot("manual").is_ok, "重启后 manual 槽必须被清空。")
+
+
+# ---------------------------------------------------------------- 启动屏淡出
+
+
+func test_startup_screen_fades_out_and_remains_in_tree() -> void:
+	var packed := load(APP_SCENE_PATH) as PackedScene
+	assert_not_null(packed, "app.tscn must load.")
+	if packed == null:
+		return
+	var app: Node = packed.instantiate()
+	add_child_autofree(app)
+	var startup: Control = app.get_node_or_null("UILayer/StartupScreen") as Control
+	assert_not_null(startup, "UILayer/StartupScreen 必须存在。")
+	if startup == null:
+		return
+	assert_true(startup.visible, "启动屏初始必须可见。")
+
+	app.call("finish_startup_fade")
+
+	assert_false(startup.visible, "淡出完成后启动屏必须隐藏。")
+	assert_true(startup.is_inside_tree(), "淡出后启动屏节点必须保留。")
+	assert_not_null(
+		app.get_node_or_null("UILayer/StartupScreen/Layout/Title"),
+		"淡出后启动屏文案必须保留。"
+	)
+
+
+func test_startup_screen_does_not_block_input_during_fade() -> void:
+	# 淡出（约 2s）不得阻塞输入：启动屏根与其布局容器都必须 IGNORE 鼠标，
+	# 否则全屏 ColorRect / 居中 VBoxContainer 会在淡出窗口期吞掉点击。
+	var packed := load(APP_SCENE_PATH) as PackedScene
+	assert_not_null(packed, "app.tscn must load.")
+	if packed == null:
+		return
+	var app: Node = packed.instantiate()
+	add_child_autofree(app)
+	var startup: Control = app.get_node_or_null("UILayer/StartupScreen") as Control
+	assert_not_null(startup)
+	if startup != null:
+		assert_eq(
+			startup.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+			"StartupScreen must ignore mouse input during the fade."
+		)
+	var layout: Control = app.get_node_or_null("UILayer/StartupScreen/Layout") as Control
+	assert_not_null(layout)
+	if layout != null:
+		assert_eq(
+			layout.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+			"StartupScreen layout must not swallow clicks while fading."
+		)
+
+
 # ---------------------------------------------------------------- 结局链
 
 
@@ -327,7 +522,44 @@ func _make_session() -> void:
 	session.store = store
 	session.world = world
 	session.dialogue_box = dialogue
+	session.save_root = _save_root
 	add_child_autofree(session)
+
+
+func _make_hud() -> Hud:
+	var packed := load("res://scenes/ui_hud.tscn") as PackedScene
+	var hud := packed.instantiate() as Hud
+	hud.snapshot_provider = Callable(store, "snapshot")
+	add_child_autofree(hud)
+	return hud
+
+
+func _make_session_with_hud(hud: Hud) -> void:
+	session = GameSession.new()
+	session.store = store
+	session.world = world
+	session.dialogue_box = dialogue
+	session.hud = hud
+	session.save_root = _save_root
+	add_child_autofree(session)
+
+
+func _place_at(building_id: String, cell: Vector2i) -> AppResult:
+	assert_true(
+		session.select_building(building_id),
+		"select_building(%s) must succeed." % building_id
+	)
+	return session.request_place(cell)
+
+
+func _preplace_building(building_id: String, cell: Vector2i) -> void:
+	var revision := int(store.snapshot()["revision"])
+	var patch: StatePatch = store.begin_patch(
+		"test_wp05_preplace_%s_%d" % [building_id, revision], revision
+	)
+	patch.place_building(building_id, RENDERED_CHUNK_ID, cell.x, cell.y)
+	var committed: AppResult = store.commit(patch)
+	assert_true(committed.is_ok, committed.message)
 
 
 func _total_definition_count() -> int:
