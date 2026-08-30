@@ -8,12 +8,17 @@ extends Node
 ##   （tool_tier=2；中间敲击进度为暂态，由本节点按格暂存）→ 耗尽时
 ##   Progression.react(mined)。
 ## - 建造链：player.place_requested → BuildingRules.attempt_build（缺省
-##   anchor_block，数字键 1-6 可选建筑）→ PowerGrid.evaluate 供电门控（新建筑
-##   位于 placed_buildings 末尾，供给不足时最先断电；同 id 多实例按计数差判定
-##   本次新建实例）→ Progression.react(built, powered)：只有供电的 effect_flag
-##   建筑（stabilizer_pylon/echo_chamber）才置 effect_flag。effect_flag 单调：
-##   断电不撤销已置位 flag，仅在新建时按供电判定置位（详见
+##   anchor_block，数字键 1-6 或 HUD 建造热键栏可选建筑）→ PowerGrid.evaluate
+##   供电门控（新建筑位于 placed_buildings 末尾，供给不足时最先断电；同 id 多
+##   实例按计数差判定本次新建实例）→ Progression.react(built, powered)：只有
+##   供电的 effect_flag 建筑（stabilizer_pylon/echo_chamber）才置 effect_flag。
+##   effect_flag 单调：断电不撤销已置位 flag，仅在新建时按供电判定置位（详见
 ##   ops/evidence/W001-P05.md）。
+## - 精炼链（W002-GAP4）：HUD 背包配方区 → craft_requested → CraftingService.craft
+##   （单 patch：remove_item 输入 + add_item 输出，recipe_provider 只暴露已建成
+##   且供电建筑的配方）。
+## - 道具经济（W002-GAP4）：BattleScene 结束时把盟友实际道具消耗并入 outcome，
+##   经 EncounterDirector.finish 的 remove_item 回写库存（victory/defeat 均回写）。
 ## - 事件链：每帧 tick 检查 Progression.due_event → EventRunner 驱动
 ##   DialogueBox（line 批量逐行、choice 交由玩家）→ choose_option +
 ##   apply_effect_step + complete_event；deferred_ops 经
@@ -296,6 +301,115 @@ func select_building(building_id: String) -> bool:
 		return false
 	selected_building_id = building_id
 	return true
+
+
+# ---------------------------------------------------------------- 精炼闭环（W002-GAP4）
+
+
+## 当前可用配方（表现层 provider）：仅已建成且供电的配方建筑展开，
+## 并附带 craftable 判定供 HUD 置灰。返回元素形如
+## {building_id, recipe, craftable}。
+func recipe_entries() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	if not ContentDB.is_bootstrapped():
+		return entries
+	var state := _snapshot()
+	var defs := {}
+	for building_id: String in ContentDB.ids_of("building"):
+		defs[building_id] = ContentDB.get_building(building_id)
+	var powered: Array[String] = []
+	var evaluation := PowerGrid.evaluate(state.get("placed_buildings", []), _building_power_defs())
+	for powered_value: Variant in evaluation.get("powered_ids", []):
+		powered.append(str(powered_value))
+	for entry: Dictionary in CraftingService.available_recipes(state, defs, powered):
+		entry["craftable"] = CraftingService.can_craft(state, entry["recipe"])
+		entries.append(entry)
+	return entries
+
+
+## HUD"合成"回调：经 CraftingService 原子提交一次精炼；失败仅告警（玩家可重试），
+## 成功后节流自动存档（revision 变化会驱动 HUD 轮询刷新背包与配方区）。
+func _on_craft_requested(building_id: String, recipe: Dictionary) -> void:
+	var result := CraftingService.craft(_snapshot(), building_id, recipe, store)
+	if not result.is_ok:
+		push_warning("GameSession: craft rejected: %s" % result.message)
+		return
+	_schedule_autosave()
+
+
+# ---------------------------------------------------------------- 建造热键栏（W002-GAP4）
+
+
+## BuildBar 目录：building_id → {name_zh, cost_text, affordable}。affordable 按
+## 当前背包库存与建筑 inputs 判定；成本文案由集成层组装（HUD 不读 ContentDB）。
+func _build_catalog() -> Array[Dictionary]:
+	var catalog: Array[Dictionary] = []
+	if not ContentDB.is_bootstrapped():
+		return catalog
+	var inventory: Dictionary = _snapshot().get("inventory", {})
+	for building_id: String in ContentDB.ids_of("building"):
+		var definition := ContentDB.get_building(building_id)
+		var cost_parts: Array[String] = []
+		var affordable := true
+		for input_value: Variant in definition.get("inputs", []):
+			var input := input_value as Dictionary
+			if input == null:
+				continue
+			var item_id := str(input.get("item_id", ""))
+			var count := int(input.get("count", 0))
+			cost_parts.append("%s×%d" % [str(ContentDB.get_item(item_id).get("name_zh", item_id)), count])
+			if int(inventory.get(item_id, 0)) < count:
+				affordable = false
+		catalog.append({
+			"building_id": building_id,
+			"name_zh": str(definition.get("name_zh", building_id)),
+			"cost_text": " ".join(cost_parts),
+			"affordable": affordable,
+		})
+	return catalog
+
+
+## BuildBar 选中态 provider。
+func _current_building_selection() -> String:
+	return selected_building_id
+
+
+## 存在断电实例的耗电建筑 id 列表（BuildBar 小红点判定）：按 id 计数比较
+## （placed 实例数 > powered_ids 获电数 ⇒ 有实例断电），与 effect_flag 巡检
+## 同一口径，但覆盖全部 power_draw > 0 的建筑。
+func unpowered_building_ids() -> Array[String]:
+	var result: Array[String] = []
+	if not ContentDB.is_bootstrapped():
+		return result
+	var snapshot := _snapshot()
+	var buildings: Array = snapshot.get("placed_buildings", [])
+	var evaluation := PowerGrid.evaluate(buildings, _building_power_defs())
+	var powered_ids: Array = evaluation.get("powered_ids", [])
+	var entry_totals: Dictionary = {}
+	for building_value: Variant in buildings:
+		var entry := building_value as Dictionary
+		if entry == null:
+			continue
+		var entry_id := str(entry.get("building_id", ""))
+		entry_totals[entry_id] = int(entry_totals.get(entry_id, 0)) + 1
+	for building_value: Variant in buildings:
+		var placed := building_value as Dictionary
+		if placed == null:
+			continue
+		var building_id := str(placed.get("building_id", ""))
+		if building_id.is_empty() or result.has(building_id):
+			continue
+		if int(ContentDB.get_building(building_id).get("power_draw", 0)) <= 0:
+			continue
+		if powered_ids.count(building_id) < int(entry_totals.get(building_id, 0)):
+			result.append(building_id)
+	return result
+
+
+## BuildBar 槽位点击：走既有 select_building（定义缺失保持原选择）。
+func _on_build_bar_selected(building_id: String) -> void:
+	if not select_building(building_id):
+		push_warning("GameSession: build bar selected unknown building '%s'." % building_id)
 
 
 # ---------------------------------------------------------------- 存档链
@@ -725,6 +839,15 @@ func _bind_hud() -> void:
 		hud.save_requested.connect(_on_save_requested)
 	if not hud.restart_requested.is_connected(_on_restart_requested):
 		hud.restart_requested.connect(_on_restart_requested)
+	# W002-GAP4：建造热键栏与背包配方区的只读 provider + 信号接线。
+	hud.build_catalog = _build_catalog
+	hud.selected_provider = _current_building_selection
+	hud.unpowered_provider = unpowered_building_ids
+	hud.recipe_provider = recipe_entries
+	if not hud.build_selected.is_connected(_on_build_bar_selected):
+		hud.build_selected.connect(_on_build_bar_selected)
+	if not hud.craft_requested.is_connected(_on_craft_requested):
+		hud.craft_requested.connect(_on_craft_requested)
 
 
 func _find_player() -> Node:

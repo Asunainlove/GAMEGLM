@@ -38,9 +38,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -240.0
-offset_top = -180.0
+offset_top = -220.0
 offset_right = 240.0
-offset_bottom = 180.0
+offset_bottom = 220.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
@@ -57,6 +57,30 @@ text = "背包"
 [node name="ItemsBox" type="VBoxContainer" parent="InventoryPanel/Content"]
 layout_mode = 2
 theme_override_constants/separation = 4
+
+[node name="RecipesTitle" type="Label" parent="InventoryPanel/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "配方"
+
+[node name="RecipesBox" type="VBoxContainer" parent="InventoryPanel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BuildBar" type="HBoxContainer" parent="."]
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -68.0
+offset_right = 400.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = ExtResource("2_theme")
 
 [node name="MenuPanel" type="PanelContainer" parent="."]
 visible = false
@@ -120,7 +144,9 @@ autowrap_mode = 3
 text = "操作说明（灰盒）
 移动：WASD 或方向键
 采集：鼠标左键 或 空格键
+选择建筑：数字键 1-6 或点击底部建造栏
 放置建筑：鼠标右键 或 F 键
+合成：背包（I/Tab）内配方行点击合成
 交互：E 键
 背包：I 键 或 Tab 键
 矿脉覆盖层：O 键

@@ -334,6 +334,27 @@ func test_buildings_pack_count_and_schema() -> void:
 			_assert_stable_id(recipe.get("output_item_id"), context + ".recipe.output_item_id")
 			_assert_int(recipe, "input_count", 1, -1, context + ".recipe")
 			_assert_int(recipe, "output_count", 1, -1, context + ".recipe")
+			if recipe.has("extra_input_item_id") or recipe.has("extra_input_count"):
+				_assert_stable_id(recipe.get("extra_input_item_id"), context + ".recipe.extra_input_item_id")
+				_assert_int(recipe, "extra_input_count", 1, -1, context + ".recipe")
+		# W002-GAP4：recipes 数组（元素形状同 recipe，含可选第二输入）。
+		if building.has("recipes"):
+			assert_true(
+				typeof(building.get("recipes")) == TYPE_ARRAY and (building["recipes"] as Array).size() >= 1,
+				"%s: recipes must be a non-empty array." % context
+			)
+			for recipe_entry: Variant in building.get("recipes", []) as Array:
+				assert_true(typeof(recipe_entry) == TYPE_DICTIONARY, "%s: recipes entries must be objects." % context)
+				if typeof(recipe_entry) != TYPE_DICTIONARY:
+					continue
+				var recipe_def: Dictionary = recipe_entry
+				_assert_stable_id(recipe_def.get("input_item_id"), context + ".recipes.input_item_id")
+				_assert_stable_id(recipe_def.get("output_item_id"), context + ".recipes.output_item_id")
+				_assert_int(recipe_def, "input_count", 1, -1, context + ".recipes")
+				_assert_int(recipe_def, "output_count", 1, -1, context + ".recipes")
+				if recipe_def.has("extra_input_item_id") or recipe_def.has("extra_input_count"):
+					_assert_stable_id(recipe_def.get("extra_input_item_id"), context + ".recipes.extra_input_item_id")
+					_assert_int(recipe_def, "extra_input_count", 1, -1, context + ".recipes")
 		_assert_optional_bool(building, "requires_room", context)
 		_assert_int(building, "power_draw", 0, -1, context)
 		_assert_int(building, "power_supply", 0, -1, context)
@@ -351,6 +372,8 @@ func test_buildings_match_contract_section7() -> void:
 		str([{"item_id": "starsoil_dust", "count": 2}]),
 		"anchor_block inputs must be starsoil_dust x2."
 	)
+	# W002-GAP4（D2）：锚块基础供能 2 点，参与全站供电平衡。
+	assert_eq(int(anchor.get("power_supply", -1)), 2, "anchor_block power_supply must be 2 (D2).")
 
 	var workshop := _assert_entry_present(_buildings, "anchor_workshop", "buildings.json")
 	assert_eq(
@@ -358,7 +381,8 @@ func test_buildings_match_contract_section7() -> void:
 		str([{"item_id": "starsoil_dust", "count": 4}]),
 		"anchor_workshop inputs must be starsoil_dust x4."
 	)
-	assert_eq(int(workshop.get("power_supply", -1)), 10, "anchor_workshop power_supply must be 10.")
+	# W002-GAP4（D2）合法断言更新：供电平衡裁定 10 -> 16（evidence 布局计算）。
+	assert_eq(int(workshop.get("power_supply", -1)), 16, "anchor_workshop power_supply must be 16 (D2).")
 
 	var refiner := _assert_entry_present(_buildings, "dust_refiner", "buildings.json")
 	assert_eq(int(refiner.get("power_draw", -1)), 4, "dust_refiner power_draw must be 4.")
@@ -384,11 +408,25 @@ func test_buildings_match_contract_section7() -> void:
 		"resonance_loom inputs must be resonant_core x1."
 	)
 	assert_eq(int(loom.get("power_draw", -1)), 5, "resonance_loom power_draw must be 5.")
-	assert_eq(
-		str(loom.get("recipe", {})),
-		str({"input_item_id": "lumen_shard", "input_count": 2, "output_item_id": "sedative_mist", "output_count": 1}),
-		"resonance_loom recipe must be 2x lumen_shard -> 1x sedative_mist."
-	)
+	# W002-GAP4（D3）合法断言更新：织机改为 recipes 数组承载契约 §7 的两条配方。
+	var loom_recipes: Array = loom.get("recipes", []) as Array
+	assert_eq(loom_recipes.size(), 2, "resonance_loom must carry both §7 recipes.")
+	if loom_recipes.size() == 2:
+		assert_eq(
+			str(loom_recipes[0]),
+			str({"input_item_id": "lumen_shard", "input_count": 2, "output_item_id": "sedative_mist", "output_count": 1}),
+			"resonance_loom recipe 1 must be 2x lumen_shard -> 1x sedative_mist."
+		)
+		assert_eq(
+			str(loom_recipes[1]),
+			str({
+				"input_item_id": "lumen_shard", "input_count": 2,
+				"extra_input_item_id": "resonant_core", "extra_input_count": 1,
+				"output_item_id": "shock_trap", "output_count": 1,
+			}),
+			"resonance_loom recipe 2 must be 2x lumen_shard + 1x resonant_core -> 1x shock_trap (§7)."
+		)
+	assert_false(loom.has("recipe"), "loom uses the recipes array; the single recipe field is retired for it.")
 
 	var chamber := _assert_entry_present(_buildings, "echo_chamber", "buildings.json")
 	assert_eq(
@@ -643,10 +681,12 @@ func test_encounters_match_contract_section7() -> void:
 	assert_eq(str(husk.get("trigger_flag", "")), "encounter_husk_ambush_due", "husk_ambush trigger_flag (§7).")
 	assert_eq(str(husk.get("on_victory_flag", "")), "encounter_husk_ambush_won", "husk_ambush on_victory_flag.")
 	assert_eq(int(husk.get("seed", -1)), 1002, "husk_ambush seed must be 1002.")
+	# W002-GAP4（C3）合法断言更新：精英 veinwarden_echo 替换 drift_swarmling 上场，
+	# 使章程锁定的"一个精英"不再是死内容（evidence 有符合性说明）。
 	assert_eq(
 		str(husk.get("enemies", [])),
-		str([{"unit_id": "shard_husk", "track": "mid"}, {"unit_id": "drift_swarmling", "track": "front"}]),
-		"husk_ambush enemies must be shard_husk (mid) + drift_swarmling (front)."
+		str([{"unit_id": "shard_husk", "track": "mid"}, {"unit_id": "veinwarden_echo", "track": "mid"}]),
+		"husk_ambush enemies must be shard_husk (mid) + veinwarden_echo (mid, elite)."
 	)
 
 	var leviathan := _assert_entry_present(_encounters, "encounter_leviathan", "encounters.json")
@@ -909,6 +949,15 @@ func test_cross_references_resolve() -> void:
 			var recipe: Dictionary = building.get("recipe", {})
 			_assert_resolves(item_ids, str(recipe.get("input_item_id", "")), context + ".recipe.input")
 			_assert_resolves(item_ids, str(recipe.get("output_item_id", "")), context + ".recipe.output")
+		# W002-GAP4：recipes 数组（含可选第二输入）的引用同样必须可解析。
+		for recipe_entry: Variant in building.get("recipes", []) as Array:
+			if typeof(recipe_entry) != TYPE_DICTIONARY:
+				continue
+			var recipe_def: Dictionary = recipe_entry
+			_assert_resolves(item_ids, str(recipe_def.get("input_item_id", "")), context + ".recipes.input")
+			_assert_resolves(item_ids, str(recipe_def.get("output_item_id", "")), context + ".recipes.output")
+			if recipe_def.has("extra_input_item_id"):
+				_assert_resolves(item_ids, str(recipe_def.get("extra_input_item_id", "")), context + ".recipes.extra_input")
 
 	for entry: Variant in _units:
 		var unit: Dictionary = entry
