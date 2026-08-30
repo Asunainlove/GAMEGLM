@@ -175,6 +175,14 @@
       "depends_on": [
         "W001-P05"
       ]
+    },
+    {
+      "id": "W002-GAP1",
+      "title": "Trust economy + dialogue softlock fix (P0)",
+      "status": "verified",
+      "depends_on": [
+        "WP08"
+      ]
     }
   ]
 }
