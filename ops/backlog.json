@@ -24,16 +24,16 @@
     },
     {
       "id": "W000-P03",
-      "title": "Single-Chunk walking skeleton",
-      "status": "backlog",
+      "title": "Single-Chunk walking skeleton (superseded by WP02/WP03 + W000-P04-INTEGRATION, all verified)",
+      "status": "verified",
       "depends_on": [
         "W000-P02"
       ]
     },
     {
       "id": "W000-P04",
-      "title": "Integration verification and handoff",
-      "status": "backlog",
+      "title": "Integration verification and handoff (superseded by WP02/WP03 + W000-P04-INTEGRATION, all verified)",
+      "status": "verified",
       "depends_on": [
         "W000-P03"
       ]
@@ -158,6 +158,22 @@
       "status": "verified",
       "depends_on": [
         "WP14"
+      ]
+    },
+    {
+      "id": "W001-P05",
+      "title": "PowerGrid build gating + menu flow",
+      "status": "verified",
+      "depends_on": [
+        "WP07"
+      ]
+    },
+    {
+      "id": "W001-P06",
+      "title": "Reset-to-initial + SaveService.delete_slot",
+      "status": "verified",
+      "depends_on": [
+        "W001-P05"
       ]
     }
   ]

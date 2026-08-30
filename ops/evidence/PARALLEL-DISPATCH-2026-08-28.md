@@ -19,3 +19,12 @@
 - Concurrency constraint: platform user-concurrency limit allowed only ONE subagent at a time; packets ran serially via synchronous dispatch instead of 15-way parallel.
 - Limitations: G6 art assets excluded (provenance + human approval required per AGENTS.md); export templates not installed locally; PowerGrid not yet gating the build chain (powered=true passthrough); menu key toggles HUD menu only (save is throttled auto-save + boot-time load).
 - Next: install Godot 4.7.2 export templates -> rerun Verify-Slice GATE4 -> G7 RC checklist (45-60min playthrough of all three endings, save/reload, performance sampling, external playtest gate).
+
+# Follow-up checkpoint: post-roadmap completion (2026-08-30)
+
+- Export templates installed from official 4.7.2-stable tpz (SHA verified via unzip -t) to %APPDATA%\Godot\export_templates\4.7.2.stable\.
+- W001-P05 (power gating in build chain via PowerGrid.evaluate + four-button menu flow with save/restart/help + startup fade, commit da97775+a618f5e) and W001-P06 (GameState.reset_to_initial + SaveService.delete_slot + restart chain rewrite, commit b6dab49) merged via feature/p06-reset-delete; tagged packet/p05-power-menu, packet/p06-reset-delete.
+- P05 TDD catches fixed during completion: powered_ids misattribution for duplicate building ids (count-delta comparison), restart slot cleanup, startup fade mouse_filter=IGNORE.
+- Final main state: 366/366 tests, 3262 asserts, Run-Gut/Verify-Toolchain/Verify-Slice all exit 0, GATE4 EXPORT_SMOKE PASS -> build/starsoil/starsoil.exe (109MB).
+- Performance smoke recorded in docs/rc-checklist.md: headless boot 2227/2199/2354 ms over three runs.
+- Remaining G7 items are human-only: 45-60min three-ending playthrough, external playtest, originality final review. Recorded in ops/state.json known_blockers.

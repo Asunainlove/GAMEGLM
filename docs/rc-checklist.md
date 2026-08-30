@@ -93,3 +93,20 @@ godot --headless --path . --export-release "Windows" build\starsoil\starsoil.exe
   - [ ] 中文文案可读性与错别字报告。
 - [ ] 通过标准：无 P0（崩溃/无法推进/存档丢失）问题；核心假设复述成功 ≥ 2/3 人；节奏偏差在记录后由协调者裁定是否阻塞。
 - [ ] 全部问题入库 `ops/backlog.json`，P0/P1 修复后重跑 §1 自动门禁 + 对应人工抽检，方可宣布 G7 RC 通过。
+
+## 状态记录（2026-08-30 协调者更新）
+
+自动门禁全部达成：
+
+- [x] Run-Gut 全套件 366/366 通过（3261 断言），exit 0
+- [x] Verify-Toolchain 五道门禁 exit 0
+- [x] Verify-Slice 四道门禁 exit 0，**GATE4 真实导出 PASS**：`build/starsoil/starsoil.exe`（109MB，Windows Desktop 预设）
+- [x] 内容数据 schema 校验：Validate-Content 40 定义 exit 0
+- [x] 性能 smoke（灰盒基线）：headless 启动计时 2227/2199/2354 ms（三次采样）；战斗确定性由 test_combat_engine 同种子同结果测试锁定
+- [x] 存档重载：test_save_service + test_integration 覆盖三代轮转/迁移/golden 往返/启动读档
+
+仍需人工执行的 G7 门禁（不可自动化）：
+
+- [ ] 45–60 分钟真人试玩：三分支结局（开采/封存/共生）全到达，检验 charter 核心假设"玩家行为改变世界与结局"
+- [ ] 外部试玩门禁：至少 3 名外部玩家，收集 charter 假设复述率
+- [ ] 原创性与资产溯源终审（当前全灰盒无外部资产，GUT 9.7.1 vendor 已登记 THIRD_PARTY_NOTICES.md）
