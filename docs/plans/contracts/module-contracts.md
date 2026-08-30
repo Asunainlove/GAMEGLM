@@ -93,7 +93,7 @@ data/encounters/encounters.json    # 三场遭遇配置
 ## 7. 冻结的游戏内容 ID（跨包引用只能用这些）
 
 - 材料/物品：`starsoil_dust`（星壤尘）、`lumen_shard`（辉砂晶片）、`resonant_core`（共鸣核）、`echo_seed`（余辉之种，剧情核心）、`sedative_mist`（定神雾，沙盒战斗道具）、`shock_trap`（震颤陷阱，沙盒战斗道具）。
-- 建筑（6）：`anchor_block`（锚块）、`anchor_workshop`（锚居工坊，power_supply=10）、`dust_refiner`（尘精炼器，power_draw=4，配方 3×starsoil_dust→1×resonant_core）、`stabilizer_pylon`（稳定塔，power_draw=6，effect_flag=`pylon_stabilized`）、`resonance_loom`（共鸣织机，power_draw=5，配方 2×lumen_shard→1×sedative_mist 与 2×lumen_shard+1×resonant_core→1×shock_trap）、`echo_chamber`（回响舱，power_draw=8，requires_room=true，effect_flag=`echo_chamber_active`）。
+- 建筑（6）：`anchor_block`（锚块，power_supply=2，GAP4 修订）、`anchor_workshop`（锚居工坊，power_supply=16，2026-08-30 GAP4 供电平衡修订，原 10）、`dust_refiner`（尘精炼器，power_draw=4，配方 3×starsoil_dust→1×resonant_core）、`stabilizer_pylon`（稳定塔，power_draw=6，effect_flag=`pylon_stabilized`）、`resonance_loom`（共鸣织机，power_draw=5，配方 2×lumen_shard→1×sedative_mist 与 2×lumen_shard+1×resonant_core→1×shock_trap）、`echo_chamber`（回响舱，power_draw=8，requires_room=true，effect_flag=`echo_chamber_active`）。
 - 角色：`luoxian`（洛弦）、`misa`（弥砂）；关系维度 `affection/trust/ideology`，flag 形态 `rel_<char>_<dim>` 仅作显示名，数值存 `relationships`。
 - 战斗单位：盟友 `luoxian_fighter`（front）、`misa_weaver`（mid）；普通 `drift_swarmling`（front）、`shard_husk`（mid）；精英 `veinwarden_echo`（mid）；Boss `lumen_leviathan`（front，两阶段 `leviathan_p1`/`leviathan_p2`，0.5 血量切换）。
 - 遭遇：`encounter_first_drift`（trigger_flag `encounter_first_drift_due`）、`encounter_husk_ambush`（`encounter_husk_ambush_due`）、`encounter_leviathan`（`encounter_leviathan_due`）；胜利 flag `encounter_<id>_won`。
