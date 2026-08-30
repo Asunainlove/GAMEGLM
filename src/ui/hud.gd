@@ -8,9 +8,12 @@ extends CanvasLayer
 ## 唯一的"写"操作是引擎级 UI 状态（节点可见性与 get_tree().paused）。
 
 signal menu_resumed
+signal save_requested
+signal restart_requested
 
 const POLL_INTERVAL_SECONDS: float = 0.25
 const MAX_BAR_SLOTS: int = 8
+const DEFAULT_NOTICE_SECONDS: float = 1.5
 
 const _CHOICE_FLAGS: PackedStringArray = [
 	"station_mode_exploit",
@@ -33,12 +36,16 @@ var name_resolver: Callable = Callable()
 @onready var _inventory_panel: PanelContainer = $InventoryPanel
 @onready var _menu_panel: PanelContainer = $MenuPanel
 @onready var _inventory_items_box: VBoxContainer = $InventoryPanel/Content/ItemsBox
-@onready var _menu_help_text: Label = $MenuPanel/Content/HelpText
+@onready var _menu_help_panel: PanelContainer = $MenuPanel/Content/HelpPanel
 @onready var _resume_button: Button = $MenuPanel/Content/ResumeButton
+@onready var _save_button: Button = $MenuPanel/Content/SaveButton
 @onready var _help_button: Button = $MenuPanel/Content/HelpButton
+@onready var _restart_button: Button = $MenuPanel/Content/RestartButton
 
 var _cached_revision: int = -1
 var _poll_timer: Timer
+var _notice_text: String = ""
+var _notice_timer: Timer = null
 
 
 func _ready() -> void:
@@ -51,7 +58,9 @@ func _ready() -> void:
 			push_warning("Hud.name_resolver 无效，回退为直接显示物品 ID。")
 		name_resolver = _default_name_resolver
 	_resume_button.pressed.connect(_on_resume_pressed)
+	_save_button.pressed.connect(_on_save_pressed)
 	_help_button.pressed.connect(_on_help_pressed)
+	_restart_button.pressed.connect(_on_restart_pressed)
 	_poll_timer = Timer.new()
 	_poll_timer.name = "PollTimer"
 	_poll_timer.wait_time = POLL_INTERVAL_SECONDS
@@ -193,7 +202,9 @@ func _revision_of(snapshot: Dictionary) -> int:
 func _render(snapshot: Dictionary) -> void:
 	_render_inventory_bar(snapshot)
 	_render_inventory_panel(snapshot)
-	_objective_label.text = objective_for(snapshot)
+	# 通知窗口期内保持提示文案，避免轮询重渲染覆盖短暂提示。
+	if _notice_text.is_empty():
+		_objective_label.text = objective_for(snapshot)
 
 
 func _render_inventory_bar(snapshot: Dictionary) -> void:
@@ -269,8 +280,45 @@ func _on_resume_pressed() -> void:
 	menu_resumed.emit()
 
 
+func _on_save_pressed() -> void:
+	# 表现层只发意图信号；落账由集成层经 SaveService 完成。
+	save_requested.emit()
+
+
+func _on_restart_pressed() -> void:
+	restart_requested.emit()
+
+
 func _on_help_pressed() -> void:
-	_menu_help_text.visible = not _menu_help_text.visible
+	_menu_help_panel.visible = not _menu_help_panel.visible
+
+
+## 短暂提示：把 ObjectiveLabel 文案替换为 text，seconds 秒后恢复目标短语。
+## 轮询重渲染在通知窗口期内不覆盖提示（见 _render）。仅引擎级 UI 状态。
+func flash_notice(text_value: String, seconds: float = DEFAULT_NOTICE_SECONDS) -> void:
+	_notice_text = text_value
+	_objective_label.text = text_value
+	if _notice_timer == null:
+		_notice_timer = Timer.new()
+		_notice_timer.name = "NoticeTimer"
+		_notice_timer.one_shot = true
+		_notice_timer.timeout.connect(_on_notice_timeout)
+		add_child(_notice_timer)
+	_notice_timer.stop()
+	_notice_timer.wait_time = maxf(seconds, 0.0)
+	_notice_timer.start()
+
+
+## 立即结束短暂提示并恢复目标短语。
+func clear_notice() -> void:
+	if _notice_timer != null:
+		_notice_timer.stop()
+	_on_notice_timeout()
+
+
+func _on_notice_timeout() -> void:
+	_notice_text = ""
+	_objective_label.text = objective_for(_current_snapshot())
 
 
 func _append_label(parent: Node, text_value: String) -> void:
