@@ -17,6 +17,8 @@
         "set_flag": "policy_sanctuary",
         "requires_trust": 40
       }
-    ]}
+    ]},
+    {"type": "line", "speaker": "洛弦", "text_zh": "配额令签下去，矿脉深处就传来第三声闷响。巨兽在躁动，我们得记住这个代价。", "requires_flag": "boss_condition_escalated"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "禁采区立起来了。晶尘落在哪里，明天就开在哪里。", "requires_flag": "policy_sanctuary"}
   ]
 }

@@ -623,6 +623,121 @@ func test_apply_effect_step_skips_malformed_relation_delta_defensively() -> void
 	] as Array[Dictionary], "Direct ops must survive a malformed relation_delta.")
 
 
+# ---------------------------------------------------------------- 条件行可见性（W003-A2）
+
+
+func _conditional_line_event() -> Dictionary:
+	return {
+		"id": "event_test_conditional",
+		"kind": "mixed",
+		"steps": [
+			{"type": "line", "speaker": "洛弦", "text_zh": "无条件开场白。"},
+			{
+				"type": "line", "speaker": "弥砂", "text_zh": "只给开采立场听的话。",
+				"requires_flag": "world_response_exploited",
+			},
+			{
+				"type": "line", "speaker": "洛弦", "text_zh": "没开采过才听得到的鼓励。",
+				"requires_flag_absent": "world_response_exploited",
+			},
+		],
+	}
+
+
+func test_line_is_visible_without_conditions_is_always_true() -> void:
+	var script: Script = load(EVENT_RUNNER_PATH) as Script
+	assert_not_null(script, "EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
+	if script == null:
+		return
+	var line: Dictionary = {"type": "line", "speaker": "洛弦", "text_zh": "无条件台词。"}
+	assert_true(script.call("line_is_visible", line, {}), "无条件行在空状态下必须可见。")
+	assert_true(
+		script.call("line_is_visible", line, {"flags": {"any_flag": true}}),
+		"无条件行在带旗标状态下必须可见。"
+	)
+
+
+func test_line_is_visible_hides_line_until_required_flag_is_set() -> void:
+	# W003-A2 游标路径一（flag 置/未置）：requires_flag 行仅在 flags[flag]==true 时可见。
+	var script: Script = load(EVENT_RUNNER_PATH) as Script
+	assert_not_null(script, "EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
+	if script == null:
+		return
+	var line: Dictionary = _conditional_line_event()["steps"][1]
+	assert_false(
+		script.call("line_is_visible", line, {"flags": {}}),
+		"required flag 未置时条件行必须不可见。"
+	)
+	assert_false(
+		script.call("line_is_visible", line, {"flags": {"world_response_exploited": false}}),
+		"required flag 为 false 时条件行必须不可见。"
+	)
+	assert_true(
+		script.call("line_is_visible", line, {"flags": {"world_response_exploited": true}}),
+		"required flag 置位后条件行必须可见。"
+	)
+
+
+func test_line_is_visible_hides_line_once_forbidden_flag_is_set() -> void:
+	# W003-A2 游标路径二：requires_flag_absent 行仅在该 flag 未置时可见。
+	var script: Script = load(EVENT_RUNNER_PATH) as Script
+	assert_not_null(script, "EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
+	if script == null:
+		return
+	var line: Dictionary = _conditional_line_event()["steps"][2]
+	assert_true(
+		script.call("line_is_visible", line, {"flags": {}}),
+		"absent flag 未置时条件行必须可见。"
+	)
+	assert_true(
+		script.call("line_is_visible", line, {"flags": {"world_response_exploited": false}}),
+		"absent flag 为 false 时条件行必须可见。"
+	)
+	assert_false(
+		script.call("line_is_visible", line, {"flags": {"world_response_exploited": true}}),
+		"absent flag 置位后条件行必须隐藏。"
+	)
+
+
+func test_line_is_visible_combines_both_conditions_with_and_semantics() -> void:
+	var script: Script = load(EVENT_RUNNER_PATH) as Script
+	assert_not_null(script, "EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
+	if script == null:
+		return
+	var line: Dictionary = {
+		"type": "line",
+		"speaker": "弥砂",
+		"text_zh": "双条件台词。",
+		"requires_flag": "station_mode_exploit",
+		"requires_flag_absent": "diplomatic_stance",
+	}
+	assert_false(script.call("line_is_visible", line, {"flags": {}}), "required 未置必须不可见。")
+	assert_false(
+		script.call("line_is_visible", line, {"flags": {"station_mode_exploit": true, "diplomatic_stance": true}}),
+		"absent 已置时双条件行必须不可见。"
+	)
+	assert_true(
+		script.call("line_is_visible", line, {"flags": {"station_mode_exploit": true, "diplomatic_stance": false}}),
+		"required 置位且 absent 未置时双条件行必须可见。"
+	)
+
+
+func test_next_step_returns_conditional_line_steps_verbatim() -> void:
+	# W003-A2 分工：next_step 保持既有游标语义（按索引原样返回步骤，条件字段
+	# 原文随行携带），条件跳过由展示层（DialogueBox.show_lines）负责。
+	var script: Script = load(EVENT_RUNNER_PATH) as Script
+	assert_not_null(script, "EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
+	if script == null:
+		return
+	var event_def: Dictionary = _conditional_line_event()
+	var first: Dictionary = script.call("next_step", event_def, 0)
+	assert_eq(String(first.get("text_zh")), "无条件开场白。")
+	var gated: Dictionary = script.call("next_step", event_def, 1)
+	assert_eq(String(gated.get("requires_flag")), "world_response_exploited", "条件字段必须原样随行返回。")
+	var absent_gated: Dictionary = script.call("next_step", event_def, 2)
+	assert_eq(String(absent_gated.get("requires_flag_absent")), "world_response_exploited")
+
+
 # ---------------------------------------------------------------- complete_event
 
 

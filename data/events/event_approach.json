@@ -18,6 +18,8 @@
         "set_flag": "approach_diplomatic",
         "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 5}
       }
-    ]}
+    ]},
+    {"type": "line", "speaker": "弥砂", "text_zh": "灯架立起来的那一刻，它的心跳乱了一拍。记下来，这是它第一次怕。", "requires_flag": "approach_direct"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "它朝黑暗里亮了一下，像在回应我们熄灯的诚意。", "requires_flag": "diplomatic_stance"}
   ]
 }

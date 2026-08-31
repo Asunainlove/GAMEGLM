@@ -183,3 +183,84 @@ func test_show_choice_without_disabled_list_keeps_all_options_enabled() -> void:
 			button.disabled,
 			"The legacy single-argument call must leave every option enabled."
 		)
+
+
+# ---------------------------------------------------------------- 条件行过滤（W003-A2）
+
+
+func _mixed_conditional_lines() -> Array[Dictionary]:
+	return [
+		{"speaker": "洛弦", "text_zh": "无条件开场。"},
+		{"speaker": "弥砂", "text_zh": "只给开采者听的话。", "requires_flag": "world_response_exploited"},
+		{"speaker": "弥砂", "text_zh": "没开采过才听到的鼓励。", "requires_flag_absent": "world_response_exploited"},
+	]
+
+
+func test_show_lines_skips_required_flag_line_while_flag_is_unset() -> void:
+	# W003-A2 游标路径一（flag 未置）：requires_flag 行被跳过，requires_flag_absent
+	# 行保留；DialogueBox 行游标照常推进，隐藏行不占展示位。
+	var box: Node = _load_box()
+	if box == null:
+		return
+	box.set("snapshot_provider", func() -> Dictionary: return {"flags": {}})
+	watch_signals(box)
+	box.call("show_lines", _mixed_conditional_lines())
+
+	var name_label: Label = box.get_node("Panel/NameLabel") as Label
+	var text_label: Label = box.get_node("Panel/TextLabel") as Label
+	assert_eq(name_label.text, "洛弦", "无条件行必须先显示。")
+	assert_eq(text_label.text, "无条件开场。")
+
+	box.call("_advance")
+	assert_eq(text_label.text, "没开采过才听到的鼓励。", "flag 未置时 requires_flag 行必须被跳过。")
+	assert_signal_not_emitted(box, "finished", "还有可见行时 finished 不得提前发出。")
+
+	box.call("_advance")
+	assert_signal_emitted(box, "finished", "隐藏行不占展示位，游标直接走到结尾。")
+
+
+func test_show_lines_shows_required_flag_line_once_flag_is_set() -> void:
+	# W003-A2 游标路径二（flag 已置）：requires_flag 行显示，requires_flag_absent 行被跳过。
+	var box: Node = _load_box()
+	if box == null:
+		return
+	box.set("snapshot_provider", func() -> Dictionary: return {"flags": {"world_response_exploited": true}})
+	watch_signals(box)
+	box.call("show_lines", _mixed_conditional_lines())
+
+	var text_label: Label = box.get_node("Panel/TextLabel") as Label
+	assert_eq(text_label.text, "无条件开场。")
+
+	box.call("_advance")
+	assert_eq(text_label.text, "只给开采者听的话。", "flag 置位后 requires_flag 行必须显示。")
+
+	box.call("_advance")
+	assert_signal_emitted(box, "finished", "flag 已置时 requires_flag_absent 行必须被跳过。")
+
+
+func test_show_lines_without_provider_falls_back_to_game_state_autoload() -> void:
+	# 生产路径：未注入 snapshot_provider 时回退 GameState autoload（与 Hud 同款），
+	# 用真实 patch 管线置位/清理 flag，验证回退口径下的过滤。
+	var box: Node = _load_box()
+	if box == null:
+		return
+	var revision: int = int(GameState.snapshot()["revision"])
+	var probe: StatePatch = GameState.begin_patch("wp08_a2_flag_probe", revision)
+	probe.set_flag("world_response_exploited", true)
+	assert_true(GameState.commit(probe).is_ok, "probe patch must commit.")
+
+	watch_signals(box)
+	box.call("show_lines", _mixed_conditional_lines())
+	var text_label: Label = box.get_node("Panel/TextLabel") as Label
+	assert_eq(text_label.text, "无条件开场。")
+
+	box.call("_advance")
+	assert_eq(text_label.text, "只给开采者听的话。", "回退 autoload 时已置 flag 的行必须显示。")
+
+	box.call("_advance")
+	assert_signal_emitted(box, "finished", "回退 autoload 时 requires_flag_absent 行必须被跳过。")
+
+	var cleanup_revision: int = int(GameState.snapshot()["revision"])
+	var cleanup: StatePatch = GameState.begin_patch("wp08_a2_flag_probe_cleanup", cleanup_revision)
+	cleanup.set_flag("world_response_exploited", false)
+	assert_true(GameState.commit(cleanup).is_ok, "cleanup patch must commit.")

@@ -7,6 +7,7 @@
     {"type": "line", "speaker": "洛弦", "text_zh": "装罐、密封、贴标，按配比入账。记住：尘越纯，共鸣越危险。"},
     {"type": "line", "speaker": "弥砂", "text_zh": "……洛弦，你有没有觉得四周安静得有点过分？连风都停了。"},
     {"type": "line", "speaker": "洛弦", "text_zh": "共鸣会引来东西。握紧工具，别离开光照范围。"},
-    {"type": "effect", "due_encounter": "encounter_first_drift_due"}
+    {"type": "effect", "due_encounter": "encounter_first_drift_due"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "别被这种安静吓住。我们不贪多，它就不会怪我们。", "requires_flag_absent": "world_response_exploited"}
   ]
 }

@@ -24,6 +24,9 @@
         "set_flag": "station_mode_symbiosis",
         "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 10}
       }
-    ]}
+    ]},
+    {"type": "line", "speaker": "弥砂", "text_zh": "产量会很好看。只是矿脉的呼吸，从今晚起会一声比一声沉。", "requires_flag": "station_mode_exploit"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "谢谢你替它把声音留下了。静默也是一种照看。", "requires_flag": "station_mode_seal"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "那就按它的呼吸排班。表我来排，夜班也归我。", "requires_flag": "station_mode_symbiosis"}
   ]
 }

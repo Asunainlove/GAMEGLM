@@ -560,13 +560,21 @@ func _validate_step(step: Dictionary, path: String) -> AppResult:
 	var step_type: String = step["type"]
 	match step_type:
 		"line":
-			var result: AppResult = _reject_unknown_fields(step, ["type", "speaker", "text_zh"], path)
+			# W003-A2：line 步骤可选 requires_flag / requires_flag_absent（稳定 ID），
+			# 展示层按 flags 过滤；两者语义互为镜像，均接受，字段校验同 requires_flag。
+			var result: AppResult = _reject_unknown_fields(step, ["type", "speaker", "text_zh", "requires_flag", "requires_flag_absent"], path)
 			if not result.is_ok:
 				return result
 			result = _optional_nonempty_string(step, "speaker", path)
 			if not result.is_ok:
 				return result
-			return _optional_nonempty_string(step, "text_zh", path)
+			result = _optional_nonempty_string(step, "text_zh", path)
+			if not result.is_ok:
+				return result
+			result = _optional_stable_id(step, "requires_flag", path)
+			if not result.is_ok:
+				return result
+			return _optional_stable_id(step, "requires_flag_absent", path)
 		"choice":
 			var result: AppResult = _reject_unknown_fields(step, ["type", "choice_id", "prompt_zh", "options"], path)
 			if not result.is_ok:
