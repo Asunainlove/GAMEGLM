@@ -9,6 +9,16 @@ extends Node2D
 ## submit_action——引擎内置的敌方回合循环随后自动结算，直到轮到下一位盟友
 ## 或战斗结束。结束时经 EncounterDirector.finish（store 注入，null → GameState）
 ## 落账并发出 encounter_finished。表现层不直接改持久状态，全部经 store 注入路径。
+##
+## W003-A4 战斗表现增强（缺口报告 C2）：场景只消费引擎 log，不改引擎——
+## - 相位横幅：log 出现 phase_change → 屏幕上方红橙横幅（2s 淡出）；
+## - 回合横幅：每回合开始 → "第 N 回合" 短横幅（1s）；
+## - 战报面板：UI 右侧最近 3 条 log 的中文摘要（行动名+目标+数字，error 暗色）；
+## - 胜负横幅：finished → 全屏 "胜利！"/"败北……"（胜利金/败北暗紫）；横幅与
+##   encounter_finished 同帧同步——信号时序不变（game_session 的卸载流程与
+##   既有集成测试均依赖 finish 当帧落账+发信号），横幅期间输入锁定禁止再提交行动；
+## - 失稳标记：destabilized 单位色块闪紫 + 标签"失稳"；guard 单位标签"防护"。
+## 测试注入缝：engine_script 可替换为同 static 签名的桩引擎（默认真实引擎）。
 
 signal encounter_finished(encounter_id: String, outcome: Dictionary)
 
@@ -25,13 +35,57 @@ const ENEMY_COLOR: Color = Color(0.62, 0.4, 0.38)
 const BOSS_COLOR: Color = Color(0.72, 0.5, 0.2)
 const MAX_AUTO_TURNS: int = 64
 
+# --- W003-A4 表现层常量（文案全原创中文；只消费引擎 log）---------------------------
+
+const PHASE_BANNER_FORMAT: String = "⚠ 相位失稳！%s变了样子！"
+const ROUND_BANNER_FORMAT: String = "第 %d 回合"
+const VICTORY_TEXT: String = "胜利！"
+const DEFEAT_TEXT: String = "败北……"
+const BANNER_FADE_SECONDS: float = 0.4
+const FLASH_SPEED: float = 6.0
+const PHASE_BANNER_COLOR: Color = Color(1.0, 0.45, 0.2)
+const ROUND_BANNER_COLOR: Color = Color(0.95, 0.88, 0.62)
+const VICTORY_COLOR: Color = Color(1.0, 0.84, 0.28)
+const DEFEAT_COLOR: Color = Color(0.5, 0.33, 0.66)
+const DESTABILIZED_COLOR: Color = Color(0.62, 0.3, 0.82)
+const DESTABILIZED_TAG: String = "失稳"
+const GUARD_TAG: String = "防护"
+const TAG_SEPARATOR: String = "｜"
+const REPORT_MAX_LINES: int = 3
+const REPORT_TEXT_COLOR: Color = Color(0.92, 0.92, 0.9)
+const REPORT_ERROR_COLOR: Color = Color(0.45, 0.45, 0.5)
+const ERROR_CODE_TEXT: Dictionary = {
+	"battle_finished": "战斗已结束",
+	"unknown_unit": "未知单位",
+	"not_active_unit": "该单位不在行动中",
+	"unknown_action": "未知行动",
+	"invalid_target": "无效目标",
+	"insufficient_cost": "费用不足",
+}
+
 ## 契约 §0 注入模式：落账 store，null → GameState autoload。
 var store: Object = null
+
+## W003-A4 测试注入缝：战斗引擎脚本（须提供与 CombatEngine 同签名的 static
+## create_battle/submit_action/is_finished/active_unit/outcome）；默认真实引擎。
+var engine_script: Script = COMBAT_ENGINE_SCRIPT
+
+## W003-A4 表现层时序（可注入；默认＝任务书 2s/1s/2s）。
+var phase_banner_seconds: float = 2.0
+var round_banner_seconds: float = 1.0
+var finish_banner_seconds: float = 2.0
 
 var _encounter_def: Dictionary = {}
 var _config: Dictionary = {}
 var _battle: Dictionary = {}
 var _last_finish_result: AppResult = null
+
+# W003-A4 表现层内部状态（全部瞬态，不入持久状态）。
+var _processed_log_count: int = 0
+var _input_locked: bool = false
+var _phase_tween: Tween = null
+var _round_tween: Tween = null
+var _flash_clock: float = 0.0
 
 
 # --- 对外流程 --------------------------------------------------------------------
@@ -42,7 +96,12 @@ var _last_finish_result: AppResult = null
 func begin_encounter(encounter_def: Dictionary, content: Dictionary) -> void:
 	_encounter_def = encounter_def.duplicate(true)
 	_config = DIRECTOR_SCRIPT.start(_encounter_def, content)
-	_battle = COMBAT_ENGINE_SCRIPT.create_battle(_config)
+	_battle = engine_script.create_battle(_config)
+	_processed_log_count = 0
+	_input_locked = false
+	# 第 1 回合同样是"回合开始"：点亮回合横幅，再消费开局已有的 log 增量。
+	_show_round_banner(int(_battle.get("turn", 1)))
+	_consume_log_events()
 	_resolve_enemy_turns()
 
 
@@ -57,15 +116,17 @@ func last_finish_result() -> AppResult:
 
 ## 盟友行动入口（ActionsBox 按钮按下同样走这里）：自动选目标并提交；
 ## 引擎在结算后自动推进并连续结算敌方回合，直到轮到下一位盟友或战斗结束。
+## W003-A4：胜负横幅期间（输入锁定）禁止再提交行动。
 func play_ally_action(action_id: String) -> void:
-	if COMBAT_ENGINE_SCRIPT.is_finished(_battle):
+	if _input_locked or engine_script.is_finished(_battle):
 		return
-	var active: Dictionary = COMBAT_ENGINE_SCRIPT.active_unit(_battle)
+	var active: Dictionary = engine_script.active_unit(_battle)
 	if active.is_empty() or str(active.get("side", "")) != "ally":
 		return
 	var action := str(action_id)
 	var target_key := _auto_target(_battle, active, action)
-	_battle = COMBAT_ENGINE_SCRIPT.submit_action(_battle, str(active.get("key", "")), action, target_key)
+	_battle = engine_script.submit_action(_battle, str(active.get("key", "")), action, target_key)
+	_consume_log_events()
 	_resolve_enemy_turns()
 
 
@@ -76,13 +137,14 @@ func play_ally_action(action_id: String) -> void:
 ## 开局先手为敌方、以及任何返回时 active 仍为敌方的边界（带安全上限）。
 func _resolve_enemy_turns() -> void:
 	var guard := 0
-	while not COMBAT_ENGINE_SCRIPT.is_finished(_battle) and guard < MAX_AUTO_TURNS:
-		var active: Dictionary = COMBAT_ENGINE_SCRIPT.active_unit(_battle)
+	while not engine_script.is_finished(_battle) and guard < MAX_AUTO_TURNS:
+		var active: Dictionary = engine_script.active_unit(_battle)
 		if active.is_empty() or str(active.get("side", "")) != "enemy":
 			break
-		_battle = COMBAT_ENGINE_SCRIPT.submit_action(_battle, str(active.get("key", "")), "", "")
+		_battle = engine_script.submit_action(_battle, str(active.get("key", "")), "", "")
+		_consume_log_events()
 		guard += 1
-	if COMBAT_ENGINE_SCRIPT.is_finished(_battle):
+	if engine_script.is_finished(_battle):
 		_finish_battle()
 	else:
 		_refresh_view()
@@ -127,7 +189,11 @@ func _lowest_hp_living_key(battle: Dictionary, side: String) -> String:
 
 
 func _finish_battle() -> void:
-	var outcome: Dictionary = COMBAT_ENGINE_SCRIPT.outcome(_battle)
+	var outcome: Dictionary = engine_script.outcome(_battle)
+	# W003-A4：胜负横幅与 finish 同帧同步——先点亮横幅并锁定输入，再照常落账、
+	# 发信号（encounter_finished 时序不变，game_session 据此卸载场景）。
+	_input_locked = true
+	_show_finish_banner(str(outcome.get("result", "")))
 	# W002-GAP4 道具经济：把盟友战斗中的实际道具消耗并入 outcome，
 	# 经 director.finish 的 remove_item 通道回写库存（victory/defeat 均回写）。
 	var spent: Dictionary = DIRECTOR_SCRIPT.spent_items(
@@ -159,6 +225,7 @@ func _refresh_view() -> void:
 	_rebuild_tracks()
 	_refresh_turn_label()
 	_refresh_actions()
+	_refresh_report()
 
 
 func _track_row(track: String) -> Node2D:
@@ -213,22 +280,33 @@ func _build_unit_node(unit: Dictionary, column: int) -> Node2D:
 		color = BOSS_COLOR
 	elif side == "ally":
 		color = ALLY_COLOR
+	# W003-A4：失稳单位色块立即置紫（此后 _process 按帧在基色与紫色间闪动）。
+	var destabilized := bool(unit.get("destabilized", false))
 	var box := ColorRect.new()
 	box.name = "Box"
 	box.position = Vector2(-28.0, -20.0)
 	box.size = Vector2(56.0, 40.0)
-	box.color = color
+	box.color = DESTABILIZED_COLOR if destabilized else color
 	unit_node.add_child(box)
+	unit_node.set_meta("base_color", color)
+	unit_node.set_meta("destabilized", destabilized)
 
 	var label := Label.new()
 	label.name = "Label"
 	label.position = Vector2(-36.0, -42.0)
 	label.size = Vector2(72.0, 18.0)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.text = "%s %d/%d" % [
+	# W003-A4：失稳/防护状态标签（失稳优先，二者可并存）。
+	var tags := ""
+	if destabilized:
+		tags += TAG_SEPARATOR + DESTABILIZED_TAG
+	if float(unit.get("guard_ratio", 0.0)) > 0.0:
+		tags += TAG_SEPARATOR + GUARD_TAG
+	label.text = "%s %d/%d%s" % [
 		str(unit.get("name_zh", "")),
 		int(unit.get("hp", 0)),
 		int(unit.get("max_hp", 0)),
+		tags,
 	]
 	unit_node.add_child(label)
 	return unit_node
@@ -268,9 +346,9 @@ func _refresh_actions() -> void:
 	if actions_box == null:
 		return
 	_clear_children(actions_box)
-	if COMBAT_ENGINE_SCRIPT.is_finished(_battle):
+	if _input_locked or engine_script.is_finished(_battle):
 		return
-	var active: Dictionary = COMBAT_ENGINE_SCRIPT.active_unit(_battle)
+	var active: Dictionary = engine_script.active_unit(_battle)
 	if active.is_empty() or str(active.get("side", "")) != "ally":
 		return
 	var action_defs: Dictionary = _as_dictionary(_battle.get("action_defs", {}))
@@ -286,6 +364,239 @@ func _on_action_button_pressed(action_id: String) -> void:
 	# 延迟到空闲帧执行：refresh 会同步 free 发出 pressed 信号的按钮本身，
 	# 信号发射过程中立即 free 发射者不安全，因此先让发射完成。
 	play_ally_action.call_deferred(action_id)
+
+
+# --- W003-A4 表现层：log 消费与横幅 -------------------------------------------------
+
+## 消费 _battle.log 的未处理增量（场景只读 log，绝不写回）：
+## phase_change → 相位横幅；round_start → 回合横幅；随后刷新战报面板。
+func _consume_log_events() -> void:
+	var entries: Array = _as_array(_battle.get("log", []))
+	while _processed_log_count < entries.size():
+		var entry: Dictionary = _as_dictionary(entries[_processed_log_count])
+		_processed_log_count += 1
+		match str(entry.get("type", "")):
+			"phase_change":
+				_show_phase_banner(entry)
+			"round_start":
+				_show_round_banner(int(entry.get("turn", 1)))
+	_refresh_report()
+
+
+func _ui_layer() -> CanvasLayer:
+	return get_node_or_null("UI") as CanvasLayer
+
+
+func _banner_label(node_path: String) -> Label:
+	var ui: CanvasLayer = _ui_layer()
+	if ui == null:
+		return null
+	return ui.get_node_or_null(node_path) as Label
+
+
+## 闪现横幅：立即整幅可见，保持 seconds - BANNER_FADE_SECONDS 后淡出并隐藏；
+## 同一横幅重复点亮时先终止上一次的淡出动画，避免双动画争抢。
+func _flash_banner(label: Label, text: String, seconds: float, previous: Tween) -> Tween:
+	if previous != null and previous.is_valid():
+		previous.kill()
+	if label == null:
+		return null
+	label.text = text
+	label.modulate.a = 1.0
+	label.visible = true
+	var tween := create_tween()
+	tween.tween_interval(maxf(0.0, seconds - BANNER_FADE_SECONDS))
+	tween.tween_property(label, "modulate:a", 0.0, BANNER_FADE_SECONDS)
+	tween.tween_callback(func() -> void: label.visible = false)
+	return tween
+
+
+func _show_phase_banner(entry: Dictionary) -> void:
+	var text := PHASE_BANNER_FORMAT % _display_name(str(entry.get("unit", "")))
+	_phase_tween = _flash_banner(_banner_label("PhaseBanner"), text, phase_banner_seconds, _phase_tween)
+
+
+func _show_round_banner(turn: int) -> void:
+	var text := ROUND_BANNER_FORMAT % maxi(1, turn)
+	_round_tween = _flash_banner(_banner_label("RoundBanner"), text, round_banner_seconds, _round_tween)
+
+
+## 胜负横幅：全屏遮罩 + 居中大字（胜利金 / 败北暗紫）。与 finish 同帧点亮，
+## 持续到场景卸载；时长常量仅描述设计展示时长（信号时序不变）。
+func _show_finish_banner(result: String) -> void:
+	var ui: CanvasLayer = _ui_layer()
+	if ui == null:
+		return
+	var label: Label = ui.get_node_or_null("FinishBanner/FinishLabel") as Label
+	if label == null:
+		return
+	var victory := result == "victory"
+	label.text = VICTORY_TEXT if victory else DEFEAT_TEXT
+	label.add_theme_color_override("font_color", VICTORY_COLOR if victory else DEFEAT_COLOR)
+	label.visible = true
+	var overlay: ColorRect = ui.get_node_or_null("FinishBanner") as ColorRect
+	if overlay != null:
+		overlay.visible = true
+
+
+# --- W003-A4 表现层：战报面板 -------------------------------------------------------
+
+## UI 右侧战报面板：最近 REPORT_MAX_LINES 条 log 的中文摘要；
+## error 条目以暗色显示。逐条重渲（灰盒，条数极小）。
+func _refresh_report() -> void:
+	var ui: CanvasLayer = _ui_layer()
+	if ui == null:
+		return
+	var panel: VBoxContainer = ui.get_node_or_null("ReportPanel") as VBoxContainer
+	if panel == null:
+		return
+	_clear_children(panel)
+	for entry: Dictionary in _report_entries():
+		var line := Label.new()
+		line.text = str(entry["text"])
+		if bool(entry["error"]):
+			line.add_theme_color_override("font_color", REPORT_ERROR_COLOR)
+		else:
+			line.add_theme_color_override("font_color", REPORT_TEXT_COLOR)
+		panel.add_child(line)
+
+
+## 战报摘要文本（供测试与面板共用）：action 与其后随 damage/heal 聚合为一行
+## "行动者 → 目标：行动名 N 伤害/N 治疗"；其余 log 类型各自成行。
+func report_summary_lines() -> Array[String]:
+	var lines: Array[String] = []
+	for entry: Dictionary in _report_entries():
+		lines.append(str(entry["text"]))
+	return lines
+
+
+func _report_entries() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	var pending := ""
+	for value: Variant in _as_array(_battle.get("log", [])):
+		var entry: Dictionary = _as_dictionary(value)
+		var entry_type := str(entry.get("type", ""))
+		if entry_type == "damage" and pending != "":
+			pending += " %d 伤害" % maxi(0, int(entry.get("amount", 0)))
+			continue
+		if entry_type == "heal" and pending != "":
+			pending += " %d 治疗" % maxi(0, int(entry.get("amount", 0)))
+			continue
+		if pending != "":
+			entries.append({"text": pending, "error": false})
+			pending = ""
+		match entry_type:
+			"action":
+				pending = _action_summary(entry)
+			"damage":
+				entries.append({
+					"text": "%s 受到 %d 伤害" % [
+						_display_name(str(entry.get("target", ""))),
+						maxi(0, int(entry.get("amount", 0))),
+					],
+					"error": false,
+				})
+			"heal":
+				entries.append({
+					"text": "%s 恢复 %d 治疗" % [
+						_display_name(str(entry.get("target", ""))),
+						maxi(0, int(entry.get("amount", 0))),
+					],
+					"error": false,
+				})
+			"guard":
+				entries.append({"text": "%s：进入防护" % _display_name(str(entry.get("unit", ""))), "error": false})
+			"item_used":
+				entries.append({
+					"text": "%s：使用道具 ×%d" % [
+						_display_name(str(entry.get("unit", ""))),
+						maxi(1, int(entry.get("count", 1))),
+					],
+					"error": false,
+				})
+			"destabilized":
+				entries.append({"text": "%s：失稳！" % _display_name(str(entry.get("unit", ""))), "error": false})
+			"destabilized_recover":
+				entries.append({"text": "%s：失稳恢复" % _display_name(str(entry.get("unit", ""))), "error": false})
+			"turn_skipped":
+				entries.append({"text": "%s：跳过回合（失稳）" % _display_name(str(entry.get("unit", ""))), "error": false})
+			"action_skipped":
+				entries.append({"text": "%s：行动无法结算（费用不足）" % _display_name(str(entry.get("unit", ""))), "error": false})
+			"defeated":
+				entries.append({"text": "%s：倒下了" % _display_name(str(entry.get("unit", ""))), "error": false})
+			"phase_change":
+				entries.append({"text": "%s：进入新相位" % _display_name(str(entry.get("unit", ""))), "error": false})
+			"round_start":
+				entries.append({"text": "第 %d 回合开始" % maxi(1, int(entry.get("turn", 1))), "error": false})
+			"battle_end":
+				var result_text := "胜利" if str(entry.get("result", "")) == "victory" else "败北"
+				entries.append({"text": "战斗结束：%s" % result_text, "error": false})
+			"error":
+				entries.append({"text": "⚠ %s" % _error_text(entry), "error": true})
+			_:
+				pass
+	if pending != "":
+		entries.append({"text": pending, "error": false})
+	var latest: Array[Dictionary] = []
+	var start := maxi(0, entries.size() - REPORT_MAX_LINES)
+	for index: int in range(start, entries.size()):
+		latest.append(entries[index])
+	return latest
+
+
+func _action_summary(entry: Dictionary) -> String:
+	var actor := _display_name(str(entry.get("unit", "")))
+	var targets: Array[String] = []
+	for value: Variant in _as_array(entry.get("targets", [])):
+		targets.append(_display_name(str(value)))
+	var action_name := _action_name(str(entry.get("action", "")))
+	if targets.is_empty():
+		return "%s：%s" % [actor, action_name]
+	return "%s → %s：%s" % [actor, "、".join(targets), action_name]
+
+
+func _action_name(action_id: String) -> String:
+	var defs: Dictionary = _as_dictionary(_battle.get("action_defs", {}))
+	var name_zh := str(_as_dictionary(defs.get(action_id, {})).get("name_zh", ""))
+	return name_zh if name_zh != "" else action_id
+
+
+func _display_name(unit_key: String) -> String:
+	var unit: Dictionary = _find_unit(_battle, unit_key)
+	var name_zh := str(unit.get("name_zh", ""))
+	if name_zh != "":
+		return name_zh
+	return unit_key if unit_key != "" else "未知单位"
+
+
+func _error_text(entry: Dictionary) -> String:
+	return str(ERROR_CODE_TEXT.get(str(entry.get("code", "")), "行动无效"))
+
+
+# --- W003-A4 表现层：失稳闪紫 -------------------------------------------------------
+
+## 每帧刷新失稳单位的色块：在基色与紫色间按正弦全幅摆动（纯函数便于测试）。
+func _process(delta: float) -> void:
+	_flash_clock += delta
+	var tree := get_tree()
+	if tree == null:
+		return
+	for node: Variant in tree.get_nodes_in_group("battle_unit"):
+		var unit_node := node as Node2D
+		if unit_node == null or not bool(unit_node.get_meta("destabilized", false)):
+			continue
+		var box := unit_node.get_node_or_null("Box") as ColorRect
+		if box == null:
+			continue
+		var base: Color = unit_node.get_meta("base_color", ENEMY_COLOR)
+		box.color = destabilized_box_color(base, _flash_clock)
+
+
+## 失稳色块颜色：clock=0 → 基色与紫色的中点；clock=PI/(2*FLASH_SPEED) → 全紫；
+## clock=PI/FLASH_SPEED*1.5 → 回到基色（flash 周期的低谷）。
+static func destabilized_box_color(base: Color, clock: float) -> Color:
+	var pulse := 0.5 + 0.5 * sin(clock * FLASH_SPEED)
+	return base.lerp(DESTABILIZED_COLOR, pulse)
 
 
 # --- 内部工具 ---------------------------------------------------------------------
