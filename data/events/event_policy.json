@@ -15,7 +15,7 @@
         "id": "policy_sanctuary",
         "text_zh": "矿脉庇护案：划定禁采区，只收集自然析出的晶尘。（需要洛弦的信任达到 40）",
         "set_flag": "policy_sanctuary",
-        "requires_trust": 40
+        "requires_trust": {"char_id": "luoxian", "dim": "trust", "value": 40}
       }
     ]},
     {"type": "line", "speaker": "洛弦", "text_zh": "配额令签下去，矿脉深处就传来第三声闷响。巨兽在躁动，我们得记住这个代价。", "requires_flag": "boss_condition_escalated"},

@@ -2,20 +2,20 @@ class_name Relations
 extends RefCounted
 
 ## WP09 关系与立场纯逻辑（契约 docs/plans/contracts/module-contracts.md §0/§5/§7）。
-## get_dim/trust/policy_unlocked 为纯函数，只读快照字典，任何缺失返回 0/false。
+## get_dim/trust 为纯函数，只读快照字典，任何缺失返回 0。
 ## change 构造并提交**单个** set_relationship patch：数值钳制 0..100，
 ## 非法角色/维度在构造 patch 之前干净失败（零修改、不触碰 store）。
 ## source_id = relations_<reason>_<revision>（稳定 snake_case），同 reason+revision
 ## 重放经 GameState 的 applied_patch_sources 幂等返回 already_applied。
 ## store 注入模式按契约 §0：store 为 null 时使用 GameState autoload；
 ## 注入替身与真实 StatePatch 共用未类型化（Variant）鸭子调用路径。
+## DLX-1：移除 policy_unlocked 死 API（无生产调用方；真实门控由事件数据
+## requires_trust + EventRunner.option_meets_trust 承担）。
 
 const MIN_SCORE: int = 0
 const MAX_SCORE: int = 100
 const VALID_CHARACTERS: Array[String] = ["luoxian", "misa"]
 const VALID_DIMENSIONS: Array[String] = ["affection", "trust", "ideology"]
-const POLICY_SANCTUARY: String = "policy_sanctuary"
-const SANCTUARY_TRUST_THRESHOLD: int = 40
 
 
 static func get_dim(state: Dictionary, char_id: String, dim: String) -> int:
@@ -49,12 +49,6 @@ static func change(
 		store, "relations_%s_%d" % [reason, revision], revision)
 	patch.set_relationship(char_id, dim, target)
 	return _commit(store, patch)
-
-
-static func policy_unlocked(state: Dictionary, policy_id: String) -> bool:
-	if policy_id != POLICY_SANCTUARY:
-		return false
-	return get_dim(state, "luoxian", "trust") >= SANCTUARY_TRUST_THRESHOLD
 
 
 static func trust(state: Dictionary, char_id: String) -> int:

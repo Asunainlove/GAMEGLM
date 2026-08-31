@@ -49,7 +49,21 @@
                   "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
                   "text_zh": {"type": "string", "minLength": 1},
                   "set_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
-                  "requires_trust": {"type": "integer", "minimum": 0, "maximum": 100},
+                  "requires_trust": {
+                    "oneOf": [
+                      {"type": "integer", "minimum": 0, "maximum": 100},
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["char_id", "dim", "value"],
+                        "properties": {
+                          "char_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+                          "dim": {"enum": ["affection", "trust", "ideology"]},
+                          "value": {"type": "integer", "minimum": 0, "maximum": 100}
+                        }
+                      }
+                    ]
+                  },
                   "relation_delta": {
                     "type": "object",
                     "additionalProperties": false,

@@ -11,7 +11,11 @@ extends RefCounted
 ## the post-merge integration layer can apply them through GameState.
 
 const STEP_TYPES: Array[String] = ["line", "choice", "effect"]
-const TRUST_CHAR_ID: String = "luoxian"
+## DLX-1 requires_trust 双形态（标量兼容 + 对象）：标量 v 等价于
+## {char_id: luoxian, dim: trust, value: v}（向后兼容旧数据）。判定统一走
+## option_meets_trust 单一谓词（GameSession 预检与 choose_option 共用）。
+const SCALAR_TRUST_CHAR_ID: String = "luoxian"
+const SCALAR_TRUST_DIM: String = "trust"
 const EVENT_DONE_FLAG_FORMAT: String = "event_%s_done"
 const RELATIONSHIP_MIN: int = 0
 const RELATIONSHIP_MAX: int = 100
@@ -273,20 +277,61 @@ static func _find_option(step: Dictionary, option_id: String) -> Dictionary:
 	return {}
 
 
+## DLX-1 单一信任门判定源：预检（GameSession._trust_locked_option_ids）与
+## choose_option 的 _check_trust_requirement 共用本谓词，消除双实现漂移。
+## requires_trust 双形态：标量 int v（兼容旧数据 = luoxian.trust ≥ v）或对象
+## {char_id, dim, value}。缺失 / 0 / 非法形态视为无门控（恒通过）；缺失角色
+## 或维度按 0 处理。
+static func option_meets_trust(state: Dictionary, option: Dictionary) -> bool:
+	var requirement: Dictionary = _trust_requirement(option)
+	if requirement.is_empty():
+		return true
+	var relationships: Dictionary = state.get("relationships", {}) as Dictionary
+	var record: Dictionary = relationships.get(String(requirement["char_id"]), {}) as Dictionary
+	return int(record.get(String(requirement["dim"]), 0)) >= int(requirement["value"])
+
+
+## 归一化 requires_trust：返回 {char_id, dim, value}；无门控返回空字典。
+static func _trust_requirement(option: Dictionary) -> Dictionary:
+	var raw: Variant = option.get("requires_trust")
+	if raw == null:
+		return {}
+	if typeof(raw) == TYPE_INT or typeof(raw) == TYPE_FLOAT:
+		var scalar := int(raw)
+		if scalar <= 0:
+			return {}
+		return {
+			"char_id": SCALAR_TRUST_CHAR_ID,
+			"dim": SCALAR_TRUST_DIM,
+			"value": scalar,
+		}
+	if typeof(raw) == TYPE_DICTIONARY:
+		var gate: Dictionary = raw
+		var char_id := String(gate.get("char_id", ""))
+		var dim := String(gate.get("dim", ""))
+		var value := int(gate.get("value", 0))
+		if char_id.is_empty() or dim.is_empty() or value <= 0:
+			return {}
+		return {"char_id": char_id, "dim": dim, "value": value}
+	return {}
+
+
 static func _check_trust_requirement(state: Dictionary, option: Dictionary) -> AppResult:
-	var requires_trust: int = int(option.get("requires_trust", 0))
-	if requires_trust <= 0:
+	if option_meets_trust(state, option):
 		return AppResult.success()
-	var relationships: Dictionary = state.get("relationships", {})
-	var trust: int = 0
-	if relationships.has(TRUST_CHAR_ID) and typeof(relationships[TRUST_CHAR_ID]) == TYPE_DICTIONARY:
-		trust = int((relationships[TRUST_CHAR_ID] as Dictionary).get("trust", 0))
-	if trust < requires_trust:
-		return AppResult.failure(
-			"trust_insufficient",
-			"Option requires trust %d but %s trust is %d." % [requires_trust, TRUST_CHAR_ID, trust]
-		)
-	return AppResult.success()
+	var requirement: Dictionary = _trust_requirement(option)
+	var relationships: Dictionary = state.get("relationships", {}) as Dictionary
+	var record: Dictionary = relationships.get(String(requirement["char_id"]), {}) as Dictionary
+	var current := int(record.get(String(requirement["dim"]), 0))
+	return AppResult.failure(
+		"trust_insufficient",
+		"Option requires %s.%s >= %d but current value is %d." % [
+			String(requirement["char_id"]),
+			String(requirement["dim"]),
+			int(requirement["value"]),
+			current,
+		]
+	)
 
 
 static func _deferred_relation_ops(state: Dictionary, option: Dictionary) -> Array[Dictionary]:

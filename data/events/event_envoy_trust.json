@@ -1,0 +1,12 @@
+{
+  "id": "event_envoy_trust",
+  "kind": "mixed",
+  "requires_flag": "approach_diplomatic",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "昨夜的接触你全程都在场。洛弦，问一句实话——先礼后探，在你的账本里算不算一种正确？"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "我核对过记录：熄灯的那晚，它的回声比往常清晰了半格。你的分寸经得起复核——这一条，我认。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "那就把它写进值班日志：信任不是让出来的，是两次各自正确的相互确认。"},
+    {"type": "effect", "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 5}}
+  ]
+}
