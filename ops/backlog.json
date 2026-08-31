@@ -288,6 +288,14 @@
         "WP15",
         "W002-GAP1"
       ]
+    },
+    {
+      "id": "DLX-2",
+      "title": "Declarative event chain + test de-hardcoding",
+      "status": "verified",
+      "depends_on": [
+        "DLX-1"
+      ]
     }
   ]
 }
