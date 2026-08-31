@@ -9,6 +9,8 @@ const FIXTURE_ROOT: String = "user://starsoil_test_content"
 const MISSING_DIR: String = "user://starsoil_test_content_missing_dir"
 const EFFECT_DELTA_ROOT: String = "user://starsoil_test_content_effect_delta"
 const EFFECT_DELTA_BAD_ROOT: String = "user://starsoil_test_content_effect_delta_bad"
+const FLAG_LINE_ROOT: String = "user://starsoil_test_content_flag_line"
+const FLAG_LINE_BAD_ROOT: String = "user://starsoil_test_content_flag_line_bad"
 
 var _db_script: Script
 
@@ -29,6 +31,8 @@ func before_all() -> void:
 		FIXTURE_ROOT + "_hash_b",
 		EFFECT_DELTA_ROOT,
 		EFFECT_DELTA_BAD_ROOT,
+		FLAG_LINE_ROOT,
+		FLAG_LINE_BAD_ROOT,
 	]:
 		_remove_dir_recursive(tree)
 	_write_fixture_tree(FIXTURE_ROOT, "")
@@ -44,6 +48,8 @@ func before_all() -> void:
 	_write_text_file(FIXTURE_ROOT + "_hash_b/content/beta.json", '{"stack_limit": 99, "kind": "material", "name_zh": "星壤尘", "id": "starsoil_dust"}')
 	_write_json(EFFECT_DELTA_ROOT + "/events/event_test_bond.json", _fixture_event_effect_delta())
 	_write_json(EFFECT_DELTA_BAD_ROOT + "/events/event_test_bond_bad.json", _fixture_event_effect_delta_bad_dim())
+	_write_json(FLAG_LINE_ROOT + "/events/event_test_flag_line.json", _fixture_event_flag_line())
+	_write_json(FLAG_LINE_BAD_ROOT + "/events/event_test_flag_line_bad.json", _fixture_event_flag_line_bad())
 
 
 func after_all() -> void:
@@ -61,6 +67,8 @@ func after_all() -> void:
 		FIXTURE_ROOT + "_hash_b",
 		EFFECT_DELTA_ROOT,
 		EFFECT_DELTA_BAD_ROOT,
+		FLAG_LINE_ROOT,
+		FLAG_LINE_BAD_ROOT,
 	]:
 		_remove_dir_recursive(tree)
 
@@ -364,6 +372,65 @@ func _fixture_event_effect_delta_bad_dim() -> Dictionary:
 	var event: Dictionary = _fixture_event_effect_delta()
 	event["id"] = "event_test_bond_bad"
 	(event["steps"][2] as Dictionary)["relation_delta"] = {"char_id": "luoxian", "dim": "loyalty", "delta": 12}
+	return event
+
+
+# ---------------------------------------------------------------- line 步骤条件字段（W003-A2）
+
+
+func test_bootstrap_accepts_line_step_flag_conditions() -> void:
+	# W003-A2：line 步骤新增可选 requires_flag / requires_flag_absent（稳定 ID），
+	# 展示层按 flags 过滤；ContentDB step 校验必须原样接受并保留字段。
+	var db: Node = _new_db()
+	if db == null:
+		return
+	var result: AppResult = db.bootstrap(FLAG_LINE_ROOT)
+	assert_true(result.is_ok, result.message)
+	var event: Dictionary = db.get_event("event_test_flag_line")
+	assert_false(event.is_empty(), "The flag-line fixture event must load.")
+	var gated: Dictionary = event["steps"][1]
+	assert_eq(str(gated.get("requires_flag")), "world_response_exploited", "requires_flag loads verbatim.")
+	var absent_gated: Dictionary = event["steps"][2]
+	assert_eq(
+		str(absent_gated.get("requires_flag_absent")), "world_response_exploited",
+		"requires_flag_absent loads verbatim."
+	)
+
+
+func test_bootstrap_rejects_line_step_flag_condition_with_bad_id() -> void:
+	var db: Node = _new_db()
+	if db == null:
+		return
+	var result: AppResult = db.bootstrap(FLAG_LINE_BAD_ROOT)
+	assert_false(result.is_ok, "Line-step flag conditions must follow the stable-id regex.")
+	assert_eq(result.code, "invalid_definition")
+	assert_true(result.message.contains("requires_flag"), result.message)
+	assert_false(db.is_bootstrapped())
+
+
+func _fixture_event_flag_line() -> Dictionary:
+	return {
+		"id": "event_test_flag_line",
+		"kind": "mixed",
+		"once": true,
+		"steps": [
+			{"type": "line", "speaker": "洛弦", "text_zh": "无条件开场白。"},
+			{
+				"type": "line", "speaker": "弥砂", "text_zh": "只给开采立场听的话。",
+				"requires_flag": "world_response_exploited",
+			},
+			{
+				"type": "line", "speaker": "洛弦", "text_zh": "没开采过才听得到的鼓励。",
+				"requires_flag_absent": "world_response_exploited",
+			},
+		],
+	}
+
+
+func _fixture_event_flag_line_bad() -> Dictionary:
+	var event: Dictionary = _fixture_event_flag_line()
+	event["id"] = "event_test_flag_line_bad"
+	(event["steps"][1] as Dictionary)["requires_flag"] = "Bad_Flag_Id"
 	return event
 
 

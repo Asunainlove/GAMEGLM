@@ -775,9 +775,11 @@ func _validate_event_def(event_def: Dictionary, context: String) -> void:
 				_validate_choice_step(step_def, context)
 			"effect":
 				_validate_effect_step(step_def, context)
+	# W003-A2 合法断言更新：line 步骤新增条件回应行（requires_flag/_absent，
+	# 展示层按 flags 过滤），事件行数上限 4 → 6；既有事件补回应后最多 5 行。
 	assert_true(
-		line_count >= 2 and line_count <= 4,
-		"%s: must contain 2..4 dialogue lines (got %d)." % [context, line_count]
+		line_count >= 2 and line_count <= 6,
+		"%s: must contain 2..6 dialogue lines (got %d)." % [context, line_count]
 	)
 
 

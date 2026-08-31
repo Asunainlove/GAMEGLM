@@ -130,6 +130,9 @@ static func available_events(events: Array, state: Dictionary) -> Array[String]:
 
 
 ## Returns the step at `step_index`, or {} for negative/out-of-range indexes.
+## W003-A2：条件 line（requires_flag / requires_flag_absent）原样随行返回——
+## 本方法保持既有游标语义，不做过滤；条件跳过由展示层（DialogueBox.show_lines）
+## 调用 line_is_visible 完成。
 static func next_step(event_def: Dictionary, step_index: int) -> Dictionary:
 	var steps: Array = event_def.get("steps", [])
 	if step_index < 0 or step_index >= steps.size():
@@ -138,6 +141,22 @@ static func next_step(event_def: Dictionary, step_index: int) -> Dictionary:
 	if typeof(step) != TYPE_DICTIONARY:
 		return {}
 	return (step as Dictionary).duplicate(true)
+
+
+## W003-A2 条件行可见性（纯函数）：line 步骤可选 requires_flag /
+## requires_flag_absent。requires_flag 仅当 state.flags[flag] == true 时可见；
+## requires_flag_absent 仅当该 flag 未置（false 或缺失）时可见；两者同时存在
+## 时取交集。无条件字段（或 state 缺 flags）的行始终可见。缺失键按空值处理，
+## 与 available_events 的旗标口径一致。
+static func line_is_visible(step: Dictionary, state: Dictionary) -> bool:
+	var flags: Dictionary = state.get("flags", {})
+	var required: String = String(step.get("requires_flag", ""))
+	if not required.is_empty() and not bool(flags.get(required, false)):
+		return false
+	var forbidden: String = String(step.get("requires_flag_absent", ""))
+	if not forbidden.is_empty() and bool(flags.get(forbidden, false)):
+		return false
+	return true
 
 
 ## Applies the direct effects of a chosen option (main-existing set_flag only)
