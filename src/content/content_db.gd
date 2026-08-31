@@ -44,9 +44,16 @@ const DROP_FIELDS: Array[String] = ["item_id", "amount"]
 const COST_FIELDS: Array[String] = ["item_id", "count"]
 const OPTION_FIELDS: Array[String] = ["id", "text_zh", "set_flag", "requires_trust", "relation_delta"]
 const RELATION_DELTA_FIELDS: Array[String] = ["char_id", "dim", "delta"]
+## DLX-1：requires_trust 对象形态字段集（标量 int 形态保持兼容）。
+const REQUIRES_TRUST_FIELDS: Array[String] = ["char_id", "dim", "value"]
 const GRANT_FIELDS: Array[String] = ["item_id", "amount"]
 const ALLY_FIELDS: Array[String] = ["unit_id", "track", "item_ids"]
 const ENEMY_FIELDS: Array[String] = ["unit_id", "track"]
+
+## DLX-1：数据保留文件名——由对应模块自身经 FileAccess 读取并按其 schema 校验，
+## 不参与 ContentDB 的 kind 分派与定义校验（endings.json 由 Endings 模块装载，
+## 其条目无 kind 字段，否则 ContentDB bootstrap 会整包失败）。
+const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json"]
 
 var _bootstrapped: bool = false
 var _content_hash: String = ""
@@ -267,7 +274,7 @@ func _collect_json_files(tree_root: String, files: Array[String]) -> void:
 		if dir.current_is_dir():
 			if entry != "." and entry != "..":
 				_collect_json_files(tree_root.path_join(entry), files)
-		elif entry.ends_with(".json"):
+		elif entry.ends_with(".json") and not RESERVED_DATA_FILENAMES.has(entry):
 			files.append(tree_root.path_join(entry))
 		entry = dir.get_next()
 	dir.list_dir_end()
@@ -643,7 +650,7 @@ func _validate_choice_option(option: Dictionary, path: String) -> AppResult:
 	result = _optional_stable_id(option, "set_flag", path)
 	if not result.is_ok:
 		return result
-	result = _optional_integer(option, "requires_trust", path, 0, 100)
+	result = _validate_requires_trust(option, path)
 	if not result.is_ok:
 		return result
 	if option.has("relation_delta"):
@@ -651,6 +658,32 @@ func _validate_choice_option(option: Dictionary, path: String) -> AppResult:
 		if not result.is_ok:
 			return result
 	return AppResult.success()
+
+
+## DLX-1：requires_trust 双形态结构校验 —— 标量 int（兼容旧数据，语义为
+## luoxian.trust 门）或对象 {char_id, dim, value}。语义判定统一在
+## EventRunner.option_meets_trust（单一判定源），本校验只约束结构：
+## char_id 为稳定 ID，dim ∈ affection/trust/ideology，value ∈ [0, 100]。
+func _validate_requires_trust(option: Dictionary, path: String) -> AppResult:
+	if not option.has("requires_trust"):
+		return AppResult.success()
+	var raw: Variant = option["requires_trust"]
+	if typeof(raw) != TYPE_DICTIONARY:
+		return _optional_integer(option, "requires_trust", path, 0, 100)
+	var gate: Dictionary = raw
+	var result: AppResult = _reject_unknown_fields(gate, REQUIRES_TRUST_FIELDS, path)
+	if not result.is_ok:
+		return result
+	result = _require_fields(gate, REQUIRES_TRUST_FIELDS, path)
+	if not result.is_ok:
+		return result
+	result = _require_stable_id(gate, "char_id", path)
+	if not result.is_ok:
+		return result
+	result = _optional_enum(gate, "dim", RELATION_DIMS, path)
+	if not result.is_ok:
+		return result
+	return _require_integer(gate, "value", path, 0, 100)
 
 
 ## relation_delta 语义校验（W002-GAP1 起 choice option 与 effect step 共用）：
