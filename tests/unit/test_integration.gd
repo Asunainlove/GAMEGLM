@@ -18,7 +18,10 @@ const RENDERED_CHUNK_ID: String = "chunk_0_0"
 # W003-A1 合法断言更新（缺口报告 F1 内容量扩充，逐条说明见 ops/evidence/W003-A1.md）：
 # data/events 新增 9 个事件 JSON，全量定义总数 46 → 55
 # （6 item + 6 building + 6 unit + 9 action + 25 event + 3 encounter）。
-const EXPECTED_DEFINITION_COUNT: int = 55
+# DLX-1 合法断言更新：新增 event_envoy_trust.json（外交路线信任经济均等），
+# 全量定义总数 55 → 56（6 item + 6 building + 6 unit + 9 action + 26 event + 3 encounter），
+# 逐条说明见 ops/evidence/DLX-1.md。
+const EXPECTED_DEFINITION_COUNT: int = 56
 const MAX_BATTLE_GUARD: int = 200
 
 ## 每个 before_each 生成互不重用的存档根，杜绝自动读档串场。
@@ -521,9 +524,134 @@ func test_trust_economy_curve_reaches_sanctuary_and_symbiosis() -> void:
 	assert_eq(_misa_affection(), 26, "弥砂 affection 累计 5+8+5+8=26。")
 
 
+func test_trust_economy_diplomatic_route_reaches_symbiosis_threshold() -> void:
+	# DLX-1 P0 裁决：外交路线（approach_diplomatic）与直接路线在完整正常流程下
+	# 都必须 trust ≥ 70（共生结局可达）。逐事件累计表（ops/evidence/DLX-1.md）：
+	# drift_aftermath +12 → misa_campfire +8 → husk_aftermath +12 →
+	# station_mode 共生 +10 → echo_resonance +8 → approach_diplomatic +0 →
+	# event_envoy_trust +5 → leviathan_aftermath +15 → 70。
+	# policy 时 trust=55 ≥ 40，sanctuary 与直接路线同轨可选。
+	_make_session()
+	_play_event("event_prologue_landing")
+
+	_patch_flags(["first_mining_done"])
+	_play_event("event_first_mining")
+
+	_patch_flags(["encounter_first_drift_won"])
+	_play_event("event_drift_aftermath")
+	assert_eq(_luoxian_trust(), 12, "drift_aftermath 后 trust=12。")
+
+	_patch_flags(["first_anchor_placed", "anchor_workshop_placed"])
+	_play_event("event_first_anchor")
+	_play_event("event_workshop_guide")
+	_play_event("event_misa_campfire")
+	assert_eq(_luoxian_trust(), 20, "misa_campfire 后 trust=20。")
+
+	_patch_flags(["encounter_husk_ambush_won"])
+	_play_event("event_husk_aftermath")
+	assert_eq(_luoxian_trust(), 32, "husk_aftermath 后 trust=32。")
+
+	_patch_flags(["echo_chamber_active"])
+	_play_event_choice("event_station_mode", 2)
+	assert_eq(_luoxian_trust(), 42, "station_mode 共生后 trust=42。")
+	_play_event("event_echo_resonance")
+	assert_eq(_luoxian_trust(), 50, "echo_resonance 后 trust=50。")
+
+	_play_event_choice("event_approach", 1)
+	assert_eq(
+		_luoxian_trust(), 50,
+		"approach_diplomatic 选项本身不涨洛弦 trust（+5 给弥砂 affection）。"
+	)
+
+	# DLX-1：外交路线专属信任事件——approach 完成后的下一 tick 到期。
+	_play_event("event_envoy_trust")
+	assert_eq(_luoxian_trust(), 55, "envoy_trust 后 trust=55，与直接路线同轨。")
+
+	# policy：trust ≥ 40 → sanctuary 可选（与直接路线等权，按钮未禁用）。
+	_play_event_to_choice("event_policy")
+	assert_true(_luoxian_trust() >= 40, "policy 选择时洛弦 trust 必须 ≥ 40。")
+	var policy_options: VBoxContainer = dialogue.get_node("Panel/OptionsBox")
+	assert_eq(policy_options.get_child_count(), 2)
+	var sanctuary_button: Button = policy_options.get_child(1) as Button
+	assert_not_null(sanctuary_button)
+	if sanctuary_button != null:
+		assert_false(
+			sanctuary_button.disabled,
+			"外交路线 trust 达标时 sanctuary 选项同样不得被禁用。"
+		)
+		sanctuary_button.pressed.emit()
+	assert_eq(session.active_event_id, "", "sanctuary 选择后 policy 事件完成。")
+
+	# 外交路线的世界回应事件（diplomatic_stance + echo_chamber_active 双守卫达成）。
+	_play_event_choice("event_diplomat_envoy", 0)
+
+	_play_event("event_leviathan_pact")
+	_patch_flags(["encounter_leviathan_won"])
+	_play_event("event_leviathan_aftermath")
+	assert_eq(_luoxian_trust(), 70, "外交路线终局 trust=70，共生结局数学可达。")
+
+	# 数据驱动交叉验证：从 ContentDB 事件定义（而非测试硬编码）累计本次路线的
+	# luoxian.trust 增量，实况值必须与数据侧总和一致且达到 70。
+	var route: Array = [
+		["event_drift_aftermath", ""],
+		["event_misa_campfire", ""],
+		["event_husk_aftermath", ""],
+		["event_station_mode", "station_mode_symbiosis"],
+		["event_echo_resonance", ""],
+		["event_approach", "approach_diplomatic"],
+		["event_envoy_trust", ""],
+		["event_leviathan_aftermath", ""],
+	]
+	var data_total := 0
+	for entry: Array in route:
+		data_total += _luoxian_trust_delta_from_data(String(entry[0]), String(entry[1]))
+	assert_eq(
+		data_total, 70,
+		"数据侧累计：外交路线全流程 luoxian.trust 增量必须为 70（含 event_envoy_trust +5）。"
+	)
+	assert_eq(_luoxian_trust(), data_total, "实况 trust 必须等于数据驱动累计。")
+
+
+## 数据驱动累计（DLX-1）：从 ContentDB 事件定义汇总某事件的 luoxian.trust 增量。
+## effect 步 relation_delta 全额计入；choice 步只计被选选项（chosen_option_id
+## 为空表示该事件无 choice 或未选项影响 trust）。数据改动自动反映，无需改测试。
+func _luoxian_trust_delta_from_data(event_id: String, chosen_option_id: String) -> int:
+	var event_def := ContentDB.get_event(event_id)
+	assert_false(event_def.is_empty(), "事件 %s 必须在 ContentDB 中存在。" % event_id)
+	var total := 0
+	for step_value: Variant in event_def.get("steps", []) as Array:
+		var step := step_value as Dictionary
+		if step == null:
+			continue
+		match String(step.get("type", "")):
+			"effect":
+				total += _luoxian_trust_delta_of(step.get("relation_delta"))
+			"choice":
+				for option_value: Variant in step.get("options", []) as Array:
+					var option := option_value as Dictionary
+					if option == null:
+						continue
+					if chosen_option_id == "" or String(option.get("id", "")) != chosen_option_id:
+						continue
+					total += _luoxian_trust_delta_of(option.get("relation_delta"))
+	return total
+
+
+func _luoxian_trust_delta_of(delta_value: Variant) -> int:
+	var delta := delta_value as Dictionary
+	if delta == null:
+		return 0
+	if String(delta.get("char_id", "")) != "luoxian" or String(delta.get("dim", "")) != "trust":
+		return 0
+	return int(delta.get("delta", 0))
+
+
 func test_trust_locked_option_is_disabled_and_choice_never_softlocks() -> void:
-	# 软锁死回归（W002-GAP1）：trust=0 走到 policy 时 sanctuary 预检禁用；
+	# 软锁死回归（W002-GAP1）：trust 走到 policy 时 sanctuary 预检禁用；
 	# 即使强行触发拒绝（trust_insufficient），选项必须弹回、事件可继续、tick 不停摆。
+	# DLX-1 合法断言更新：外交路线（approach 选项 1）完成后 event_envoy_trust
+	# 到期并给予 luoxian.trust +5（信任经济均等），本路径 trust=5 仍远低于 40，
+	# sanctuary 禁用断言语义不变。
 	_make_session()
 	# 用 done 标记跳过全部羁绊事件，模拟一条低信任到达 policy 的路径。
 	_patch_flags([
@@ -539,7 +667,9 @@ func test_trust_locked_option_is_disabled_and_choice_never_softlocks() -> void:
 		"station_mode_seal",
 	])
 	_play_event_choice("event_approach", 1)
-	assert_eq(_luoxian_trust(), 0, "本路径没有任何 trust 收入。")
+	assert_eq(_luoxian_trust(), 0, "approach_diplomatic 选项本身不涨洛弦 trust。")
+	_play_event("event_envoy_trust")
+	assert_eq(_luoxian_trust(), 5, "envoy_trust 后 trust=5（外交路线专属收入）。")
 
 	_play_event_to_choice("event_policy")
 	var options_box: VBoxContainer = dialogue.get_node("Panel/OptionsBox")

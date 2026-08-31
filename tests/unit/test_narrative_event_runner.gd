@@ -218,7 +218,8 @@ func test_load_events_from_fails_on_unknown_step_type() -> void:
 
 func test_available_events_filters_by_requires_flag_gate() -> void:
 	var script: Script = load(EVENT_RUNNER_PATH) as Script
-	if not assert_not_null(script):
+	if script == null:
+		fail_test("EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
 		return
 	var events: Array = [_event_touchdown(), _event_relay_choice()]
 
@@ -236,24 +237,29 @@ func test_available_events_filters_by_requires_flag_gate() -> void:
 
 func test_available_events_excludes_finished_once_events() -> void:
 	var script: Script = load(EVENT_RUNNER_PATH) as Script
-	if not assert_not_null(script):
+	if script == null:
+		fail_test("EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
 		return
+	# 修正（DLX-1 解封本测试时发现的原有缺陷）：替身表中 once=false 的事件
+	# 必须使用独立 id，否则其 id 与已完成事件相同，"once=false 忽略完成记录"
+	# 的断言与 "已完成事件隐藏" 的断言自相矛盾，永远无法同时成立。
 	var events: Array = [_event_touchdown()]
-	var once_false: Dictionary = _event_touchdown()
-	once_false["once"] = false
-	events.append(once_false)
+	var repeatable: Dictionary = _event_touchdown()
+	repeatable["id"] = "event_test_touchdown_repeatable"
+	repeatable["once"] = false
+	events.append(repeatable)
 
 	var completed_state: Dictionary = _base_state()
 	completed_state["completed_events"] = ["event_test_touchdown"]
 	var completed_result: Array = script.call("available_events", events, completed_state)
 	assert_does_not_have(completed_result, "event_test_touchdown", "Once events hide after completed_events entry.")
-	assert_has(completed_result, "event_test_touchdown", "once=false events ignore completion records.")
+	assert_has(completed_result, "event_test_touchdown_repeatable", "once=false events ignore completion records.")
 
 	var flagged_state: Dictionary = _base_state()
-	flagged_state["flags"] = {"event_test_touchdown_done": true}
+	flagged_state["flags"] = {"event_event_test_touchdown_done": true}
 	var flagged_result: Array = script.call("available_events", events, flagged_state)
 	assert_does_not_have(flagged_result, "event_test_touchdown", "Once events hide after their done flag.")
-	assert_has(flagged_result, "event_test_touchdown", "once=false events ignore the done flag.")
+	assert_has(flagged_result, "event_test_touchdown_repeatable", "once=false events ignore the done flag.")
 
 
 # ---------------------------------------------------------------- next_step
@@ -261,7 +267,8 @@ func test_available_events_excludes_finished_once_events() -> void:
 
 func test_next_step_returns_requested_step_or_empty_for_invalid_index() -> void:
 	var script: Script = load(EVENT_RUNNER_PATH) as Script
-	if not assert_not_null(script):
+	if script == null:
+		fail_test("EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
 		return
 	var event_def: Dictionary = _event_touchdown()
 
@@ -753,3 +760,151 @@ func test_complete_event_writes_done_flag() -> void:
 	assert_eq(duck.operations, [
 		{"type": "set_flag", "flag_id": "event_event_test_touchdown_done", "enabled": true},
 	] as Array[Dictionary])
+
+
+# ---------------------------------------------------------------- DLX-1 requires_trust 对象化
+
+
+## 对象形态门控的替身选项：{char_id, dim, value} 三字段，本例门在弥砂 ideology。
+func _object_gate_option() -> Dictionary:
+	return {
+		"id": "test_object_gate_open",
+		"text_zh": "采纳她的方案。",
+		"set_flag": "test_object_gate_opened",
+		"requires_trust": {"char_id": "misa", "dim": "ideology", "value": 30},
+	}
+
+
+func _object_gate_step() -> Dictionary:
+	return {
+		"type": "choice",
+		"choice_id": "test_object_gate",
+		"prompt_zh": "如何回应弥砂的方案？",
+		"options": [_object_gate_option()],
+	}
+
+
+func test_option_meets_trust_scalar_form_defaults_to_luoxian_trust() -> void:
+	var script: Script = load(EVENT_RUNNER_PATH)
+	if script == null:
+		fail_test("EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
+		return
+	var scalar_option: Dictionary = {"id": "o", "requires_trust": 40}
+	var met_at_40: Variant = script.call("option_meets_trust", {"relationships": {"luoxian": {"trust": 40}}}, scalar_option)
+	assert_true(
+		met_at_40,
+		"标量 40 必须按兼容语义解读为 luoxian.trust ≥ 40。"
+	)
+	var met_at_39: Variant = script.call("option_meets_trust", {"relationships": {"luoxian": {"trust": 39}}}, scalar_option)
+	assert_false(
+		met_at_39,
+		"标量 40 边界下侧（39）必须不达标。"
+	)
+	var no_gate: Variant = script.call("option_meets_trust", {}, {"id": "o"})
+	assert_true(no_gate, "无门控选项必须恒通过。")
+	var zero_gate: Variant = script.call("option_meets_trust", {}, {"id": "o", "requires_trust": 0})
+	assert_true(zero_gate, "标量 0 视为无门控。")
+
+
+func test_option_meets_trust_object_form_reads_char_and_dim() -> void:
+	var script: Script = load(EVENT_RUNNER_PATH)
+	if script == null:
+		fail_test("EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
+		return
+	var object_option: Dictionary = _object_gate_option()
+	var met_at_30: Variant = script.call("option_meets_trust", {"relationships": {"misa": {"ideology": 30}}}, object_option)
+	assert_true(
+		met_at_30,
+		"对象形态按字段读取：misa.ideology=30 达标。"
+	)
+	var met_at_29: Variant = script.call("option_meets_trust", {"relationships": {"misa": {"ideology": 29}}}, object_option)
+	assert_false(
+		met_at_29,
+		"对象形态边界下侧（29）必须不达标。"
+	)
+	var wrong_dim: Variant = script.call(
+		"option_meets_trust",
+		{"relationships": {"misa": {"trust": 100}}},
+		object_option
+	)
+	assert_false(
+		wrong_dim,
+		"对象形态只看声明的维度：misa.trust 再高也不能替 ideology 达标。"
+	)
+	var missing_char: Variant = script.call("option_meets_trust", {}, object_option)
+	assert_false(
+		missing_char,
+		"缺失角色/维度按 0 处理，视为不达标。"
+	)
+
+
+func test_option_meets_trust_agrees_with_choose_option_gate() -> void:
+	# 单一判定源（DLX-1）：预检谓词与 choose_option 的门控在边界两侧结论一致，
+	# 消除 GameSession 预检与 EventRunner 双实现漂移。
+	var runner := _new_runner()
+	if runner == null:
+		return
+	var script: Script = load(EVENT_RUNNER_PATH)
+	if script == null:
+		fail_test("EventRunner script must exist at %s." % EVENT_RUNNER_PATH)
+		return
+	var step: Dictionary = _choice_step()
+	var gated_option: Dictionary = step["options"][1]
+	var option_ref: Dictionary = {"id": "test_tap_core"}
+	for trust_value: int in [39, 40, 41]:
+		var state: Dictionary = _base_state()
+		state["relationships"] = {"luoxian": {"trust": trust_value}}
+		var predicate: Variant = script.call("option_meets_trust", state, gated_option)
+		var result: AppResult = runner.call(
+			"choose_option", state, _event_relay_choice(), step, option_ref, _duck_store()
+		)
+		assert_eq(
+			predicate,
+			result.is_ok,
+			"option_meets_trust 与 choose_option 必须同源同判定（trust=%d）。" % trust_value
+		)
+
+
+func test_choose_option_honors_object_requires_trust_shape() -> void:
+	var runner := _new_runner()
+	if runner == null:
+		return
+	var duck := _duck_store()
+	var step: Dictionary = _object_gate_step()
+	var state_low: Dictionary = _base_state()
+	state_low["relationships"] = {"misa": {"ideology": 29}}
+	var denied: AppResult = runner.call(
+		"choose_option", state_low, _event_relay_choice(), step, {"id": "test_object_gate_open"}, duck
+	)
+	assert_false(denied.is_ok, "对象形态 requires_trust 未达标必须拒绝。")
+	assert_eq(denied.code, "trust_insufficient")
+	assert_eq(duck.commit_calls, 0, "拒绝必须零写入。")
+
+	var state_met: Dictionary = _base_state()
+	state_met["relationships"] = {"misa": {"ideology": 30}}
+	var allowed: AppResult = runner.call(
+		"choose_option", state_met, _event_relay_choice(), step, {"id": "test_object_gate_open"}, duck
+	)
+	assert_true(allowed.is_ok, "对象形态 requires_trust 达标必须放行。")
+	assert_eq(duck.operations, [
+		{"type": "set_flag", "flag_id": "test_object_gate_opened", "enabled": true},
+	] as Array[Dictionary])
+
+
+func test_choose_option_scalar_requires_trust_still_gates_luoxian_trust() -> void:
+	# 向后兼容：旧数据标量形态在对象化之后语义不变（= luoxian.trust 门）。
+	var runner := _new_runner()
+	if runner == null:
+		return
+	var duck := _duck_store()
+	var step: Dictionary = _choice_step()
+	var state_low: Dictionary = _base_state()
+	state_low["relationships"] = {"misa": {"trust": 100}, "luoxian": {"trust": 39}}
+	var denied: AppResult = runner.call(
+		"choose_option", state_low, _event_relay_choice(), step, {"id": "test_tap_core"}, duck
+	)
+	assert_false(
+		denied.is_ok,
+		"标量门只认 luoxian.trust：misa.trust=100 不能替 39 的洛弦达标。"
+	)
+	assert_eq(denied.code, "trust_insufficient")

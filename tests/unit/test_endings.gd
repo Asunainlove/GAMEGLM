@@ -133,7 +133,8 @@ func _summary_ids() -> Array[String]:
 ## 实例化结局场景并在进入树前注入假快照 provider（_ready 会读取它）。
 func _instantiate_ending_with(provider_state: Dictionary) -> Node:
 	var scene: PackedScene = load(ENDING_SCENE_PATH) as PackedScene
-	if not assert_not_null(scene, "Ending scene must exist and load at %s." % ENDING_SCENE_PATH):
+	if scene == null:
+		fail_test("Ending scene must exist and load at %s." % ENDING_SCENE_PATH)
 		return null
 	var ending: Node = (scene as PackedScene).instantiate()
 	ending.set("snapshot_provider", func() -> Dictionary: return provider_state)
@@ -274,7 +275,8 @@ func test_scene_defaults_to_game_state_snapshot_when_provider_unset() -> void:
 	if not _require_endings():
 		return
 	var scene: PackedScene = load(ENDING_SCENE_PATH) as PackedScene
-	if not assert_not_null(scene, "Ending scene must exist and load at %s." % ENDING_SCENE_PATH):
+	if scene == null:
+		fail_test("Ending scene must exist and load at %s." % ENDING_SCENE_PATH)
 		return
 	var ending: Node = (scene as PackedScene).instantiate()
 	add_child_autofree(ending)
@@ -294,7 +296,8 @@ func test_scene_defaults_to_game_state_snapshot_when_provider_unset() -> void:
 
 func test_snapshot_provider_defaults_to_invalid_callable() -> void:
 	var scene: PackedScene = load(ENDING_SCENE_PATH) as PackedScene
-	if not assert_not_null(scene, "Ending scene must exist and load at %s." % ENDING_SCENE_PATH):
+	if scene == null:
+		fail_test("Ending scene must exist and load at %s." % ENDING_SCENE_PATH)
 		return
 	var ending: Node = (scene as PackedScene).instantiate()
 	autofree(ending)
@@ -311,7 +314,7 @@ func test_show_ending_refreshes_after_provider_swap() -> void:
 	var ending: Node = _instantiate_ending_with({})
 	if ending == null:
 		return
-	var title_label: Label = ending.get_node("TitleLabel") as Label
+	var title_label: Label = ending.get_node("TitleLabel")
 	assert_eq(title_label.text, UNFINISHED_TEXT, "Precondition: unfinished text before the provider swap.")
 	ending.set(
 		"snapshot_provider",
@@ -319,3 +322,189 @@ func test_show_ending_refreshes_after_provider_swap() -> void:
 	)
 	ending.call("show_ending")
 	assert_eq(title_label.text, TITLE_SYMBIOSIS, "show_ending must re-evaluate against the new provider.")
+
+
+# ---------------------------------------------------------------- DLX-1 结局表数据化
+
+const DLX1_FIXTURE_ROOT: String = "user://dlx1_endings_fixtures"
+
+## DLX-1 假设结局（纯数据扩展的证明载体）：order=1 插在 mining 与 seal 之间，
+## 门控 = station_mode_seal 且 harvest_charter_signed；标题/总结均为原创中文。
+const HARVEST_TITLE: String = "结局：丰收协定"
+const HARVEST_SUMMARY: String = "封存的界线内侧开出了第一片共耕田：矿脉的呼吸节拍成了播种的历法，你们收获的每一粒晶尘都带着回执。"
+
+
+func after_each() -> void:
+	# DLX-1：数据化测试会切换结局表（静态缓存跨用例存活）。每个用例后清缓存，
+	# 让同文件既有场景测试与其他测试文件重新读到生产表（惰性重载）。
+	if _endings != null:
+		_endings.call("reset_for_tests")
+
+
+func after_all() -> void:
+	_remove_dir_recursive(DLX1_FIXTURE_ROOT)
+
+
+func _remove_dir_recursive(path: String) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		var child_path: String = path + "/" + entry
+		if dir.current_is_dir():
+			_remove_dir_recursive(child_path)
+		else:
+			DirAccess.remove_absolute(child_path)
+		entry = dir.get_next()
+	dir.list_dir_end()
+	DirAccess.remove_absolute(path)
+
+
+func _write_endings_fixture(file_name: String, content: String) -> String:
+	DirAccess.make_dir_recursive_absolute(DLX1_FIXTURE_ROOT)
+	var path: String = DLX1_FIXTURE_ROOT + "/" + file_name
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	assert_not_null(file, "Fixture file %s must be writable." % file_name)
+	if file != null:
+		file.store_string(content)
+		file.close()
+	return path
+
+
+func _three_ending_entry(id: String, order_value: int, all_flags: Array) -> Dictionary:
+	return {
+		"id": id,
+		"order": order_value,
+		"all_of_flags": all_flags,
+		"any_of_prefix": null,
+		"trust": null,
+		"extra_flag": null,
+		"fallback_ending": null,
+		"title_zh": "结局：" + id,
+		"summary_zh": "测试替文：" + id + " 的结局总结，长度足以构成成稿段落。",
+	}
+
+
+func _four_ending_table_json() -> String:
+	var symbiosis: Dictionary = _three_ending_entry("ending_symbiosis", 3, ["station_mode_symbiosis"])
+	symbiosis["trust"] = {"char_id": "luoxian", "dim": "trust", "threshold": 70}
+	symbiosis["extra_flag"] = "echo_chamber_active"
+	symbiosis["fallback_ending"] = "ending_seal"
+	var harvest: Dictionary = _three_ending_entry("ending_harvest", 1, ["station_mode_seal", "harvest_charter_signed"])
+	harvest["title_zh"] = HARVEST_TITLE
+	harvest["summary_zh"] = HARVEST_SUMMARY
+	return JSON.stringify([
+		_three_ending_entry("ending_mining", 0, ["station_mode_exploit"]),
+		harvest,
+		_three_ending_entry("ending_seal", 2, ["station_mode_seal"]),
+		symbiosis,
+	], "  ")
+
+
+func test_bootstrap_loads_production_table_and_is_idempotent() -> void:
+	if not _require_endings():
+		return
+	_endings.call("reset_for_tests")
+	var first: Variant = _endings.call("bootstrap")
+	assert_true(first is AppResult, "bootstrap 必须返回 AppResult。")
+	assert_true((first as AppResult).is_ok, "生产表 data/content/endings.json 必须可加载。")
+	# 幂等：重复 bootstrap 成功且判定结果不变。
+	var again: Variant = _endings.call("bootstrap")
+	assert_true((again as AppResult).is_ok, "重复 bootstrap 必须幂等成功。")
+	assert_eq(
+		String(_endings.evaluate(_symbiosis_state(70))),
+		"ending_symbiosis",
+		"缓存表必须驱动与既有行为快照一致的判定。"
+	)
+
+
+func test_missing_endings_file_fails_bootstrap_and_evaluate_stays_undetermined() -> void:
+	if not _require_endings():
+		return
+	_endings.call("reset_for_tests")
+	var missing_path: String = DLX1_FIXTURE_ROOT + "/never_created/endings.json"
+	var result: Variant = _endings.call("bootstrap", missing_path)
+	assert_true(result is AppResult, "bootstrap 必须返回 AppResult。")
+	assert_false((result as AppResult).is_ok, "缺失 endings.json 必须判定失败。")
+	# 文件缺失必须 push_error（assert_push_error 把该错误标记为预期）。
+	assert_push_error("missing", "缺失 endings.json 必须 push_error。")
+	# 失败后判定退化为"结局未定"、文案为空——绝不抛错或返回伪结局。
+	assert_eq(String(_endings.evaluate(_symbiosis_state(70))), "")
+	assert_eq(String(_endings.ending_title("ending_mining")), "")
+	assert_eq(String(_endings.ending_summary("ending_mining")), "")
+
+
+func test_fourth_ending_is_pure_data_extension_without_code_change() -> void:
+	if not _require_endings():
+		return
+	_endings.call("reset_for_tests")
+	var fixture_path: String = _write_endings_fixture("four_endings.json", _four_ending_table_json())
+	var result: Variant = _endings.call("bootstrap", fixture_path)
+	assert_true(result is AppResult, "bootstrap 必须返回 AppResult。")
+	assert_true(
+		(result as AppResult).is_ok,
+		"四条目的替身表必须可加载：%s" % ((result as AppResult).message if result is AppResult else "")
+	)
+	var harvest_state: Dictionary = {
+		"flags": {"station_mode_seal": true, "harvest_charter_signed": true},
+		"relationships": {},
+	}
+	assert_eq(
+		String(_endings.evaluate(harvest_state)),
+		"ending_harvest",
+		"纯数据新增的第 4 个结局必须参与按序判定（加结局=加 JSON，零代码改动）。"
+	)
+	assert_eq(String(_endings.ending_title("ending_harvest")), HARVEST_TITLE, "新结局标题必须查表返回。")
+	assert_eq(String(_endings.ending_summary("ending_harvest")), HARVEST_SUMMARY, "新结局总结必须查表返回。")
+	# order=1 的 harvest 排在 seal（order=2）之前：两者 all_of 同时满足时按 order 取 harvest。
+	assert_eq(
+		String(_endings.evaluate({"flags": {"station_mode_seal": true, "harvest_charter_signed": true, "station_mode_symbiosis": true}})),
+		"ending_harvest",
+		"order 字段必须决定判定优先级。"
+	)
+	assert_eq(
+		String(_endings.evaluate({"flags": {"station_mode_seal": true}})),
+		"ending_seal",
+		"harvest 前置不满足时按序回落 seal。"
+	)
+	assert_eq(
+		String(_endings.evaluate(_symbiosis_state(70))),
+		"ending_symbiosis",
+		"替身表的 trust/extra 门控必须与生产同构。"
+	)
+	assert_eq(
+		String(_endings.evaluate(_symbiosis_state(69))),
+		"ending_seal",
+		"替身表的 fallback 回落必须与生产同构。"
+	)
+
+
+func test_duplicate_ending_id_fails_bootstrap() -> void:
+	if not _require_endings():
+		return
+	_endings.call("reset_for_tests")
+	var duplicate: Array = [
+		_three_ending_entry("ending_seal", 0, ["station_mode_seal"]),
+		_three_ending_entry("ending_seal", 1, ["station_mode_seal"]),
+	]
+	var fixture_path: String = _write_endings_fixture("duplicate_ids.json", JSON.stringify(duplicate, "  "))
+	var result: Variant = _endings.call("bootstrap", fixture_path)
+	assert_true(result is AppResult, "bootstrap 必须返回 AppResult。")
+	assert_false((result as AppResult).is_ok, "重复结局 id 必须判定失败。")
+	assert_push_error("duplicates ending id", "重复 id 必须 push_error。")
+
+
+func test_unknown_fallback_ending_fails_bootstrap() -> void:
+	if not _require_endings():
+		return
+	_endings.call("reset_for_tests")
+	var dangling: Dictionary = _three_ending_entry("ending_symbiosis", 0, ["station_mode_symbiosis"])
+	dangling["trust"] = {"char_id": "luoxian", "dim": "trust", "threshold": 70}
+	dangling["fallback_ending"] = "ending_nonexistent"
+	var fixture_path: String = _write_endings_fixture("dangling_fallback.json", JSON.stringify([dangling], "  "))
+	var result: Variant = _endings.call("bootstrap", fixture_path)
+	assert_true(result is AppResult, "bootstrap 必须返回 AppResult。")
+	assert_false((result as AppResult).is_ok, "fallback 指向未知结局 id 必须判定失败。")
+	assert_push_error("fallback_ending", "悬空 fallback 必须 push_error。")

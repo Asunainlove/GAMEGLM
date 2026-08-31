@@ -74,6 +74,14 @@ const MINE_ENTERED_FLAG: String = "mine_entered"
 const MINE_BOSS_ROOM_LOCAL_MIN_Y: int = 22
 const BOSS_ROOM_CHECKPOINT_REASON: String = "boss_room_enter"
 
+## DLX-1 信任经济均等（P0 裁决）：外交路线（approach_diplomatic）专属信任
+## 事件，使两条 approach 路线的 luoxian.trust 满额同为 70（共生结局对称可达）。
+## src/progression 的事件链对本包冻结，故按 W002-GAP2 矿井入口事件的同一
+## 先例由本节点在 tick 中自检触发；门控语义（requires_flag/once/done）复用
+## EventRunner.available_events，事件定义在 data/events/event_envoy_trust.json。
+## DLX-2 事件链外置时应把该触发并入 data/progression/event_chain.json。
+const ENVOY_TRUST_EVENT_ID: String = "event_envoy_trust"
+
 ## 契约 §0 注入模式：持久层 store，null → GameState autoload。
 var store: Object = null
 
@@ -169,6 +177,9 @@ func tick() -> void:
 		if _mine_entry_due(state):
 			_start_event(MINE_ENTRY_EVENT_ID)
 			return
+		if _envoy_trust_due(state):
+			_start_event(ENVOY_TRUST_EVENT_ID)
+			return
 		var event_id := Progression.due_event(state)
 		if event_id != "":
 			_start_event(event_id)
@@ -221,6 +232,17 @@ func _is_in_mine_region(cell: Vector2i) -> bool:
 		and cell.y >= origin.y
 		and cell.y < origin.y + ChunkData.CHUNK_SIZE
 	)
+
+
+## DLX-1 信任经济均等：外交路线信任事件是否到期。到期判定不在本节点重复
+## 实现门控语义，而是复用 EventRunner.available_events（requires_flag 由事件
+## 数据声明为 approach_diplomatic，once/done 语义同冻结事件链），事件缺失时
+## 惰性跳过（与 _mine_entry_due 的 ContentDB 检查同风格）。
+func _envoy_trust_due(state: Dictionary) -> bool:
+	var event_def := ContentDB.get_event(ENVOY_TRUST_EVENT_ID)
+	if event_def.is_empty():
+		return false
+	return EventRunner.available_events([event_def], state).has(ENVOY_TRUST_EVENT_ID)
 
 
 # ---------------------------------------------------------------- 采集链
@@ -684,17 +706,17 @@ func _commit_deferred_relationship_ops(source_suffix: String, deferred_ops: Arra
 	_commit_integration_patch(patch)
 
 
-## trust 预检（W002-GAP1）：requires_trust 高于当前洛弦 trust 的选项 id 列表，
-## 交给 DialogueBox 呈禁用态。trust 读自快照 relationships（缺省 0），判定口径
-## 与 EventRunner._check_trust_requirement 一致（trust < requires_trust 即拒绝）。
+## trust 预检（W002-GAP1 / DLX-1）：requires_trust 未达标（含对象形态
+## {char_id, dim, value}）的选项 id 列表，交给 DialogueBox 呈禁用态。
+## 判定单一来源为 EventRunner.option_meets_trust——与 choose_option 的门控
+## 同一实现，消除预检与判定的双实现漂移。
 func _trust_locked_option_ids(step: Dictionary, state: Dictionary) -> Array[String]:
 	var locked: Array[String] = []
-	var trust: int = Relations.trust(state, EventRunner.TRUST_CHAR_ID)
 	for option_variant: Variant in step.get("options", []):
 		var option := option_variant as Dictionary
 		if option == null:
 			continue
-		if int(option.get("requires_trust", 0)) > trust:
+		if not EventRunner.option_meets_trust(state, option):
 			locked.append(String(option.get("id", "")))
 	return locked
 

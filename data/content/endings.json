@@ -1,0 +1,35 @@
+[
+  {
+    "id": "ending_mining",
+    "order": 0,
+    "all_of_flags": ["station_mode_exploit"],
+    "any_of_prefix": null,
+    "trust": null,
+    "extra_flag": null,
+    "fallback_ending": null,
+    "title_zh": "结局：开采纪元",
+    "summary_zh": "你把锚居的节拍改成了开采的序曲：精炼器与织机彻夜运转，星壤尘沿着新修的输送道流进仓库，矿脉的低语被量具一格一格地翻译成产量。洛弦学会了用图纸倾听大地，弥砂把织机改成了输出定神雾的工位——她们都以自己的方式接受了这个决定。余辉没有被熄灭，只是从回应者变成了资源。"
+  },
+  {
+    "id": "ending_seal",
+    "order": 1,
+    "all_of_flags": ["station_mode_seal"],
+    "any_of_prefix": null,
+    "trust": null,
+    "extra_flag": null,
+    "fallback_ending": null,
+    "title_zh": "结局：封存之约",
+    "summary_zh": "你按下了封存的界线：开采停在图纸的第一页，锚块与稳定塔围出的不是矿区，而是一片留给矿脉的安静领地。洛弦重新听见了深处久违的回响，弥砂把织机留在星空之下——你们留在这里不是为了取走，而是为了等待下一个懂得轻声的人。余辉仍在，且只属于这片土地。"
+  },
+  {
+    "id": "ending_symbiosis",
+    "order": 2,
+    "all_of_flags": ["station_mode_symbiosis"],
+    "any_of_prefix": null,
+    "trust": {"char_id": "luoxian", "dim": "trust", "threshold": 70},
+    "extra_flag": "echo_chamber_active",
+    "fallback_ending": "ending_seal",
+    "title_zh": "结局：共生曙光",
+    "summary_zh": "回响舱的灯光在最后一夜亮起，矿脉的低语第一次有了可以被听懂的形状。你的采集、建造与校准没有征服这片土地，而是替它和洛弦、弥砂搭起了一张彼此回应的网——足够的信任把封存的界线变成了共生的门槛。余辉纪元的黎明，由你们与琉砂海一起写下。"
+  }
+]

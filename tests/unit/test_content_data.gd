@@ -34,6 +34,7 @@ const EXPECTED_EVENT_IDS: Array[String] = [
 	"event_prologue_landing", "event_first_mining", "event_first_anchor",
 	"event_workshop_guide", "event_station_mode", "event_approach",
 	"event_policy", "event_leviathan_pact", "event_ending_luoxian", "event_ending_misa",
+	"event_envoy_trust",
 ]
 const FROZEN_CHOICE_FLAGS: Array[String] = [
 	"station_mode_exploit", "station_mode_seal", "station_mode_symbiosis",
@@ -803,7 +804,16 @@ func _validate_choice_step(step_def: Dictionary, context: String) -> void:
 		if option_def.has("set_flag"):
 			_assert_stable_id(option_def.get("set_flag"), option_context + ".set_flag")
 		if option_def.has("requires_trust"):
-			_assert_int(option_def, "requires_trust", 0, 100, option_context)
+			# DLX-1：requires_trust 双形态——标量 int（兼容旧数据）或对象
+			# {char_id, dim, value}。对象形态逐字段断言。
+			var trust_gate: Variant = option_def.get("requires_trust")
+			if typeof(trust_gate) == TYPE_DICTIONARY:
+				var gate_def: Dictionary = trust_gate
+				_assert_enum(gate_def, "char_id", CHARACTER_IDS, option_context + ".requires_trust")
+				_assert_enum(gate_def, "dim", RELATION_DIMS, option_context + ".requires_trust")
+				_assert_int(gate_def, "value", 0, 100, option_context + ".requires_trust")
+			else:
+				_assert_int(option_def, "requires_trust", 0, 100, option_context)
 		if option_def.has("relation_delta"):
 			var delta: Dictionary = option_def.get("relation_delta", {})
 			assert_true(
@@ -871,7 +881,22 @@ func test_frozen_choice_steps_match_contract_section7() -> void:
 
 	var sanctuary := _find_option(policy, "policy_sanctuary")
 	assert_false(sanctuary.is_empty(), "policy_sanctuary option must exist.")
-	assert_eq(int(sanctuary.get("requires_trust", -1)), 40, "policy_sanctuary requires_trust must be 40.")
+	# DLX-1 合法断言更新：policy_sanctuary 的 requires_trust 迁移为对象形态
+	# {char_id: luoxian, dim: trust, value: 40}（语义与旧标量 40 等价，
+	# 作为对象形态的生产示例数据）。
+	var sanctuary_gate: Dictionary = sanctuary.get("requires_trust", {}) as Dictionary
+	assert_eq(
+		str(sanctuary_gate.get("char_id", "")), "luoxian",
+		"policy_sanctuary requires_trust.char_id must be luoxian (object form)."
+	)
+	assert_eq(
+		str(sanctuary_gate.get("dim", "")), "trust",
+		"policy_sanctuary requires_trust.dim must be trust (object form)."
+	)
+	assert_eq(
+		int(sanctuary_gate.get("value", -1)), 40,
+		"policy_sanctuary requires_trust.value must be 40 (object form)."
+	)
 	assert_true(
 		str(sanctuary.get("text_zh", "")).contains("40"),
 		"policy_sanctuary text must explain the trust-40 requirement."
@@ -908,6 +933,20 @@ func test_notable_event_steps_match_task_spec() -> void:
 		str(pact.get("requires_flag", "")), "encounter_leviathan_due",
 		"event_leviathan_pact must be gated by encounter_leviathan_due."
 	)
+
+	# DLX-1 信任经济均等（P0）：外交路线专属信任事件——数据侧保证
+	# approach_diplomatic 路线存在 luoxian.trust +5 来源，满额 70 与直接路线对称。
+	var envoy: Dictionary = _events_by_id.get("event_envoy_trust", {})
+	assert_false(envoy.is_empty(), "event_envoy_trust must exist (DLX-1 trust economy parity).")
+	assert_eq(
+		str(envoy.get("requires_flag", "")), "approach_diplomatic",
+		"event_envoy_trust must be gated by approach_diplomatic."
+	)
+	var envoy_effect := _first_effect(envoy)
+	var envoy_delta: Dictionary = envoy_effect.get("relation_delta", {}) as Dictionary
+	assert_eq(str(envoy_delta.get("char_id", "")), "luoxian", "event_envoy_trust must raise luoxian trust.")
+	assert_eq(str(envoy_delta.get("dim", "")), "trust", "event_envoy_trust must target the trust dim.")
+	assert_eq(int(envoy_delta.get("delta", 0)), 5, "event_envoy_trust must grant exactly +5 trust.")
 
 
 func _choice_step(event_def: Dictionary, choice_id: String) -> Dictionary:

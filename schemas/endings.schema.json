@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/endings.schema.json",
+  "title": "Starsoil endings table",
+  "description": "DLX-1 结局判定表：声明式 all-of 门控（非表达式求值）。条目按 order 升序求值，首个命中者决定结局 id；trust/extra_flag 不满足且设有 fallback_ending 时回落到该结局 id。",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["id", "order", "all_of_flags", "title_zh", "summary_zh"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+      "order": {"type": "integer", "minimum": 0},
+      "all_of_flags": {
+        "type": "array",
+        "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+      },
+      "any_of_prefix": {
+        "type": ["string", "null"],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "trust": {
+        "type": ["object", "null"],
+        "additionalProperties": false,
+        "required": ["char_id", "dim", "threshold"],
+        "properties": {
+          "char_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "dim": {"enum": ["affection", "trust", "ideology"]},
+          "threshold": {"type": "integer", "minimum": 0, "maximum": 100}
+        }
+      },
+      "extra_flag": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9_]*$"},
+      "fallback_ending": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9_]*$"},
+      "title_zh": {"type": "string", "minLength": 1},
+      "summary_zh": {"type": "string", "minLength": 1}
+    }
+  }
+}

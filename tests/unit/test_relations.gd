@@ -39,10 +39,6 @@ func _relationships_state(relationships: Dictionary) -> Dictionary:
 	return {"revision": 3, "relationships": relationships}
 
 
-func _trust_state(trust_value: int) -> Dictionary:
-	return _relationships_state({"luoxian": {"trust": trust_value}})
-
-
 # --- get_dim：读取关系维度，任何缺失返回 0 ----------------------------------
 
 
@@ -248,27 +244,11 @@ func test_change_same_source_id_replay_is_idempotent() -> void:
 	)
 
 
-# --- policy_unlocked：门控表（§7 policy_sanctuary 需 trust(luoxian) ≥ 40）-----
-
-
-func test_policy_sanctuary_unlocks_at_trust_40_boundary() -> void:
-	if not _require_relations():
-		return
-	assert_false(_relations.policy_unlocked(_trust_state(39), "policy_sanctuary"))
-	assert_true(_relations.policy_unlocked(_trust_state(40), "policy_sanctuary"))
-	assert_true(_relations.policy_unlocked(_trust_state(41), "policy_sanctuary"))
-
-
-func test_unknown_policy_is_never_unlocked() -> void:
-	if not _require_relations():
-		return
-	assert_false(_relations.policy_unlocked(_trust_state(80), "policy_extraction_quota"))
-	assert_false(_relations.policy_unlocked(_trust_state(80), "policy_unknown"))
-	assert_false(_relations.policy_unlocked(_trust_state(80), ""))
-	assert_false(_relations.policy_unlocked({}, "policy_sanctuary"), "缺信任维度视为未达标。")
-
-
 # --- trust：便捷读取 -----------------------------------------------------------
+# DLX-1 合法断言更新：policy_unlocked 两项测试随死 API 一并删除（无生产调用方，
+# policy_sanctuary 的 trust≥40 门控由 event_policy.json 的 requires_trust 对象
+# 形态 + EventRunner.option_meets_trust 单一判定源承担，覆盖见
+# test_narrative_event_runner.gd 与 test_integration.gd）。
 
 
 func test_trust_convenience_reads_trust_dimension() -> void:
