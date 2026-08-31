@@ -6,6 +6,8 @@ extends CanvasLayer
 ## 表现层约束：仅通过注入的 snapshot_provider 读取状态快照进行渲染，
 ## 绝不调用 begin_patch/commit，绝不写入任何持久状态。
 ## 唯一的"写"操作是引擎级 UI 状态（节点可见性与 get_tree().paused）。
+## W003-A3 首次操作引导提示（HintToast）：一次性提示经 hint_seen_callback
+## 由集成层落账，本层只做队列展示与只读 flags 去重。
 
 signal menu_resumed
 signal save_requested
@@ -21,6 +23,33 @@ const DEFAULT_NOTICE_SECONDS: float = 1.5
 const UNPOWERED_DOT_COLOR: Color = Color(0.85, 0.15, 0.15)
 const UNAFFORDABLE_SUFFIX: String = "（材料不足）"
 const EMPTY_RECIPES_HINT: String = "暂无可用配方：需要已建成且供电的配方建筑。"
+
+## W003-A3 首次操作引导提示文案（单一来源；game_session 触发点引用这些常量）。
+const HINT_MOVE_TEXT: String = "WASD/方向键移动 · 左键采集矿脉 · 右键/F 放置建筑"
+const HINT_PLACE_TEMPLATE: String = "右键/F 放置 %s · 数字键 1-6 切换建筑"
+const HINT_CRAFT_TEXT: String = "材料不足 · 背包面板（I）可查看配方合成"
+const HINT_OVERLAY_TEXT: String = "矿脉覆盖层 · 高亮矿脉可左键采集，便于规划路线"
+const HINT_MINE_TEXT: String = "深处有强烈共鸣 · 稳压装置随时待命"
+const HINT_BATTLE_TEXT: String = "回合制战斗 · 点击行动按钮指令队伍"
+
+## W003-A3 HintToast 展示参数：缺省停留 4s，淡入/淡出各一段。
+const DEFAULT_HINT_SECONDS: float = 4.0
+const HINT_FADE_IN_SECONDS: float = 0.25
+const HINT_FADE_OUT_SECONDS: float = 0.35
+const HINT_MIN_HOLD_SECONDS: float = 0.1
+## 一次性标记 flag 名（hint_<id>_seen）；game_session 的落账回调使用同一格式。
+const HINT_FLAG_FORMAT: String = "hint_%s_seen"
+## 模板化放置提示的归一匹配前后缀（hint id 固定为 place，与建筑名无关）。
+const HINT_PLACE_PREFIX: String = "右键/F 放置 "
+const HINT_PLACE_SUFFIX: String = " · 数字键 1-6 切换建筑"
+## 已知文案 → 稳定 hint id 查表（hint_<id>_seen 的 id 单一来源）。
+const HINT_IDS_BY_TEXT: Dictionary = {
+	HINT_MOVE_TEXT: "move",
+	HINT_CRAFT_TEXT: "craft",
+	HINT_OVERLAY_TEXT: "overlay",
+	HINT_MINE_TEXT: "mine",
+	HINT_BATTLE_TEXT: "battle",
+}
 
 const _CHOICE_FLAGS: PackedStringArray = [
 	"station_mode_exploit",
@@ -48,6 +77,10 @@ var unpowered_provider: Callable = Callable()
 ## recipe_provider() -> [{building_id, recipe, craftable}]
 var recipe_provider: Callable = Callable()
 
+## W003-A3 一次性提示落账回调（hint_id: String）-> void；缺省无操作。
+## 表现层不写状态：由集成层注入的回调经 patch 把 hint_<id>_seen 置位。
+var hint_seen_callback: Callable = Callable()
+
 @onready var _inventory_bar: HBoxContainer = $InventoryBar
 @onready var _objective_label: Label = $ObjectiveLabel
 @onready var _inventory_panel: PanelContainer = $InventoryPanel
@@ -55,6 +88,8 @@ var recipe_provider: Callable = Callable()
 @onready var _inventory_items_box: VBoxContainer = $InventoryPanel/Content/ItemsBox
 @onready var _recipes_box: VBoxContainer = $InventoryPanel/Content/RecipesBox
 @onready var _build_bar: HBoxContainer = $BuildBar
+@onready var _hint_toast: PanelContainer = $HintToast
+@onready var _hint_label: Label = $HintToast/HintLabel
 @onready var _menu_help_panel: PanelContainer = $MenuPanel/Content/HelpPanel
 @onready var _resume_button: Button = $MenuPanel/Content/ResumeButton
 @onready var _save_button: Button = $MenuPanel/Content/SaveButton
@@ -65,6 +100,13 @@ var _cached_revision: int = -1
 var _poll_timer: Timer
 var _notice_text: String = ""
 var _notice_timer: Timer = null
+
+## W003-A3 HintToast 运行态：队列逐条展示；_shown_hint_ids 做会话内一次性去重。
+var _hint_queue: Array[Dictionary] = []
+var _shown_hint_ids: Dictionary = {}
+var _hint_displaying: bool = false
+var _hint_fade_tween: Tween = null
+var _hint_timer: Timer = null
 
 
 func _ready() -> void:
@@ -97,6 +139,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("toggle_inventory"):
 		_set_inventory_open(not _inventory_panel.visible)
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("toggle_overlay"):
+		# W003-A3：首次 O 覆盖层的提示触发点在 HUD 内。刻意不 set_input_as_handled——
+		# 覆盖层显隐的归属仍是 world（本层只提示，不消费输入）。
+		_maybe_show_overlay_hint()
 
 
 ## 强制重渲染（忽略 revision 缓存）。
@@ -484,6 +530,115 @@ func clear_notice() -> void:
 func _on_notice_timeout() -> void:
 	_notice_text = ""
 	_objective_label.text = objective_for(_current_snapshot())
+
+
+# ---------------------------------------------------------------- 首次操作引导提示（W003-A3）
+
+
+## 一次性提示入队：屏幕中下方 HintToast 逐条淡入淡出展示（默认停留 4s）。
+## 一次性语义按稳定 hint id 去重（hint_id_for）：同一会话内已展示/已入队的不复播；
+## 快照 flags 中 hint_<id>_seen 已置位（读档/重开）的同样跳过。首次接受时经注入的
+## hint_seen_callback 上报 id，由集成层落账——表现层绝不直接写持久状态。
+func show_hint(text_value: String, seconds: float = DEFAULT_HINT_SECONDS) -> void:
+	var hint_id := hint_id_for(text_value)
+	if _shown_hint_ids.has(hint_id):
+		return
+	_shown_hint_ids[hint_id] = true
+	if _hint_flag_enabled(hint_id):
+		return
+	if hint_seen_callback.is_valid():
+		hint_seen_callback.call(hint_id)
+	_hint_queue.append({
+		"id": hint_id,
+		"text": text_value,
+		"seconds": seconds,
+	})
+	_pump_hint_queue()
+
+
+## 文案 → 稳定 hint id（hint_<id>_seen 的 id 单一来源）。已知文案查表；模板化
+## 放置提示按前后缀归一为 "place"（与 {建筑名} 无关）；未知文案退化为文本哈希，
+## 保证任意调用仍满足"同条不重复"（生产触达的文案全部在查表/模板范围内）。
+static func hint_id_for(text_value: String) -> String:
+	if HINT_IDS_BY_TEXT.has(text_value):
+		return str(HINT_IDS_BY_TEXT[text_value])
+	if text_value.begins_with(HINT_PLACE_PREFIX) and text_value.ends_with(HINT_PLACE_SUFFIX):
+		return "place"
+	return "text_%d" % text_value.hash()
+
+
+## 只读快照 flags 判定一次性标记；绝不修改快照。
+func _hint_flag_enabled(hint_id: String) -> bool:
+	var flags: Dictionary = _current_snapshot().get("flags", {}) as Dictionary
+	return bool(flags.get(HINT_FLAG_FORMAT % hint_id, false))
+
+
+## 首次 O 覆盖层提示（hud 内直接触发）。暂停期间 world 不响应 O 键，
+## 提示与实际行为保持一致——暂停时同样跳过。
+func _maybe_show_overlay_hint() -> void:
+	if get_tree() != null and get_tree().paused:
+		return
+	show_hint(HINT_OVERLAY_TEXT)
+
+
+## 队列泵：空闲且队列非空时展示队首；正在展示则等待完成方法回调再泵。
+func _pump_hint_queue() -> void:
+	if _hint_displaying or _hint_queue.is_empty():
+		return
+	var entry: Dictionary = _hint_queue.pop_front() as Dictionary
+	_display_hint(entry)
+
+
+func _display_hint(entry: Dictionary) -> void:
+	_hint_displaying = true
+	_hint_label.text = str(entry.get("text", ""))
+	_hint_toast.visible = true
+	_hint_toast.modulate.a = 0.0
+	_play_hint_fade(1.0, HINT_FADE_IN_SECONDS)
+	var hold_seconds := maxf(float(entry.get("seconds", DEFAULT_HINT_SECONDS)), HINT_MIN_HOLD_SECONDS)
+	_ensure_hint_timer().start(hold_seconds)
+
+
+## 停留超时 → 开始淡出。生产由 HintTimer.timeout 触发；测试可直接调（可控 timer）。
+func _on_hint_hold_timeout() -> void:
+	if not _hint_displaying:
+		return
+	_play_hint_fade(0.0, HINT_FADE_OUT_SECONDS)
+
+
+## 淡出完成 → 隐藏并立即展示队列下一条。生产由淡出 tween.finished 触发；
+## 测试可直接调（与 _on_hint_hold_timeout 配对即为一次完整完成路径）。
+func _on_hint_fade_out_finished() -> void:
+	if not _hint_displaying:
+		return
+	_hint_displaying = false
+	_hint_toast.visible = false
+	_hint_toast.modulate.a = 1.0
+	_pump_hint_queue()
+
+
+func _play_hint_fade(target_alpha: float, duration: float) -> void:
+	_kill_hint_fade()
+	_hint_fade_tween = create_tween()
+	_hint_fade_tween.tween_property(_hint_toast, "modulate:a", target_alpha, duration)
+	if target_alpha == 0.0:
+		_hint_fade_tween.finished.connect(_on_hint_fade_out_finished, CONNECT_ONE_SHOT)
+
+
+func _kill_hint_fade() -> void:
+	if _hint_fade_tween != null and _hint_fade_tween.is_valid():
+		_hint_fade_tween.kill()
+	_hint_fade_tween = null
+
+
+func _ensure_hint_timer() -> Timer:
+	if _hint_timer == null:
+		_hint_timer = Timer.new()
+		_hint_timer.name = "HintTimer"
+		_hint_timer.one_shot = true
+		_hint_timer.timeout.connect(_on_hint_hold_timeout)
+		add_child(_hint_timer)
+	return _hint_timer
 
 
 func _append_label(parent: Node, text_value: String) -> void:

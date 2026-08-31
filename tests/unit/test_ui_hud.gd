@@ -13,6 +13,9 @@ var _fake: FakeSnapshotProvider = null
 ## 信号监听器宿主：同样必须存测试实例字段保活（Callable 只持 ObjectID）。
 var _spy: MenuSignalSpy = null
 
+## W003-A3 hint_seen 回调监听器宿主：同样必须存测试实例字段保活。
+var _hint_spy: HintSeenSpy = null
+
 
 class MenuSignalSpy:
 	var save_calls: int = 0
@@ -23,6 +26,13 @@ class MenuSignalSpy:
 
 	func on_restart_requested() -> void:
 		restart_calls += 1
+
+
+class HintSeenSpy:
+	var ids: Array[String] = []
+
+	func on_hint_seen(hint_id: String) -> void:
+		ids.append(hint_id)
 
 var _fake_names: Dictionary = {
 	"starsoil_dust": "星壤尘",
@@ -50,6 +60,8 @@ func before_each() -> void:
 func after_each() -> void:
 	get_tree().paused = false
 	_fake = null
+	_spy = null
+	_hint_spy = null
 
 
 # ---------------------------------------------------------------- helpers
@@ -402,6 +414,173 @@ func test_flash_notice_overrides_and_restores_objective_label() -> void:
 
 	hud.clear_notice()
 	assert_eq(objective.text, baseline, "clear_notice must restore the objective text.")
+
+
+# ---------------------------------------------------------------- hint toast（W003-A3）
+
+func _make_hint_spy_hud(payload: Dictionary) -> Hud:
+	_hint_spy = HintSeenSpy.new()
+	var hud: Hud = _make_hud(payload)
+	hud.hint_seen_callback = _hint_spy.on_hint_seen
+	return hud
+
+
+func _complete_current_hint(hud: Hud) -> void:
+	# 直接调完成方法驱动超时路径（可控 timer 等价物，避免真实等待）。
+	hud._on_hint_hold_timeout()
+	hud._on_hint_fade_out_finished()
+
+
+func test_hud_scene_has_hint_toast_contract() -> void:
+	var hud: Hud = _make_hud(_basic_payload())
+	var toast: Control = hud.get_node_or_null("HintToast") as Control
+	assert_not_null(toast, "ui_hud.tscn 必须提供 HintToast 提示条节点。")
+	if toast == null:
+		return
+	assert_true(toast is PanelContainer, "HintToast 必须是 PanelContainer。")
+	assert_false(toast.visible, "HintToast 初始必须隐藏。")
+	assert_eq(
+		toast.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+		"HintToast 必须忽略鼠标，不得拦截游戏输入。"
+	)
+	var label: Label = hud.get_node_or_null("HintToast/HintLabel") as Label
+	assert_not_null(label, "HintToast 必须内嵌 HintLabel 文案节点。")
+
+
+func test_show_hint_displays_text_then_hides_via_completion_methods() -> void:
+	var hud: Hud = _make_hint_spy_hud(_basic_payload())
+	var toast: Control = hud.get_node("HintToast") as Control
+	var label: Label = hud.get_node("HintToast/HintLabel") as Label
+
+	hud.show_hint("引导提示甲")
+	assert_true(toast.visible, "show_hint 必须显示提示条。")
+	assert_eq(label.text, "引导提示甲", "提示条必须呈现当前队首文案。")
+
+	hud._on_hint_hold_timeout()
+	assert_true(
+		toast.visible,
+		"停留超时后先走淡出，完成方法调用前提示条保持可见。"
+	)
+	hud._on_hint_fade_out_finished()
+	assert_false(toast.visible, "淡出完成后提示条必须隐藏。")
+
+
+func test_show_hint_uses_seconds_for_hold_timer() -> void:
+	var hud: Hud = _make_hint_spy_hud(_basic_payload())
+	hud.show_hint("引导提示甲")
+	var timer: Timer = hud.get_node_or_null("HintTimer") as Timer
+	assert_not_null(timer, "show_hint 必须创建一次性的 HintTimer。")
+	if timer == null:
+		return
+	assert_true(timer.one_shot, "HintTimer 必须是单次触发。")
+	assert_eq(timer.wait_time, 4.0, "缺省停留时长必须是 4 秒。")
+
+	# 队列逐条展示语义：排队条目在展示时才应用自己的 seconds，不得打断当前条目。
+	hud.show_hint("引导提示乙", 2.5)
+	assert_eq(timer.wait_time, 4.0, "排队条目不得改动当前展示中的停留时长。")
+	_complete_current_hint(hud)
+	assert_eq(timer.wait_time, 2.5, "队首完成后展示下一条时应用其显式 seconds。")
+
+
+func test_show_hint_queues_follow_up_hints_in_order() -> void:
+	var hud: Hud = _make_hint_spy_hud(_basic_payload())
+	var toast: Control = hud.get_node("HintToast") as Control
+	var label: Label = hud.get_node("HintToast/HintLabel") as Label
+
+	hud.show_hint("引导提示甲")
+	hud.show_hint("引导提示乙")
+	hud.show_hint("引导提示丙")
+	assert_eq(label.text, "引导提示甲", "排队期间必须继续显示当前提示。")
+
+	_complete_current_hint(hud)
+	assert_true(toast.visible, "队首完成后必须立即展示下一条。")
+	assert_eq(label.text, "引导提示乙", "提示必须按入队顺序逐条展示。")
+
+	_complete_current_hint(hud)
+	assert_eq(label.text, "引导提示丙", "第三条必须紧随其后展示。")
+
+	_complete_current_hint(hud)
+	assert_false(toast.visible, "队列耗尽后提示条必须隐藏。")
+
+
+func test_show_hint_same_text_is_one_shot_within_session() -> void:
+	var hud: Hud = _make_hint_spy_hud(_basic_payload())
+	var toast: Control = hud.get_node("HintToast") as Control
+	var label: Label = hud.get_node("HintToast/HintLabel") as Label
+
+	hud.show_hint("引导提示甲")
+	hud.show_hint("引导提示甲")
+	_complete_current_hint(hud)
+	assert_false(toast.visible, "同条提示重复调用不得再次排队展示。")
+
+	hud.show_hint("引导提示甲")
+	assert_false(toast.visible, "已展示过的提示在同一会话内不得复播。")
+	assert_eq(label.text, "引导提示甲", "隐藏后文案保持为最后一条提示。")
+
+
+func test_show_hint_templated_place_text_dedups_by_hint_id() -> void:
+	var hud: Hud = _make_hint_spy_hud(_basic_payload())
+	var toast: Control = hud.get_node("HintToast") as Control
+	var label: Label = hud.get_node("HintToast/HintLabel") as Label
+
+	hud.show_hint("右键/F 放置 锚块 · 数字键 1-6 切换建筑")
+	hud.show_hint("右键/F 放置 共鸣织机 · 数字键 1-6 切换建筑")
+	assert_eq(label.text, "右键/F 放置 锚块 · 数字键 1-6 切换建筑")
+
+	_complete_current_hint(hud)
+	assert_false(
+		toast.visible,
+		"模板化放置提示必须按同一 hint id 去重，换建筑名不得重复。"
+	)
+	if _hint_spy != null:
+		assert_eq(_hint_spy.ids, ["place"] as Array[String], "放置提示必须以 hint id 'place' 落账一次。")
+
+
+func test_show_hint_skips_when_flag_already_seen_in_snapshot() -> void:
+	var payload: Dictionary = _basic_payload()
+	payload["flags"] = {"hint_move_seen": true, "hint_craft_seen": true}
+	var hud: Hud = _make_hint_spy_hud(payload)
+
+	hud.show_hint(Hud.HINT_MOVE_TEXT)
+	hud.show_hint(Hud.HINT_CRAFT_TEXT)
+	assert_false(
+		(hud.get_node("HintToast") as Control).visible,
+		"快照 flags 已置 hint_*_seen 时不得再次提示（重开游戏不重复）。"
+	)
+	if _hint_spy != null:
+		assert_true(_hint_spy.ids.is_empty(), "已看过的提示不得再次触发落账回调。")
+
+
+func test_show_hint_reports_seen_once_via_injected_callback() -> void:
+	var hud: Hud = _make_hint_spy_hud(_basic_payload())
+
+	hud.show_hint(Hud.HINT_MOVE_TEXT)
+	hud.show_hint(Hud.HINT_CRAFT_TEXT)
+	hud.show_hint(Hud.HINT_MOVE_TEXT)
+
+	if _hint_spy == null:
+		fail_test("hint spy must exist.")
+		return
+	assert_eq(
+		_hint_spy.ids, ["move", "craft"] as Array[String],
+		"每条提示首次入队必须以稳定 hint id 回调一次。"
+	)
+
+
+func test_toggle_overlay_action_triggers_overlay_hint_once() -> void:
+	var hud: Hud = _make_hint_spy_hud(_basic_payload())
+	var toast: Control = hud.get_node("HintToast") as Control
+	var label: Label = hud.get_node("HintToast/HintLabel") as Label
+
+	hud._unhandled_input(_action_event("toggle_overlay"))
+	assert_true(toast.visible, "首次 O 覆盖层必须弹出矿脉覆盖层用途提示。")
+	assert_eq(label.text, Hud.HINT_OVERLAY_TEXT, "覆盖层提示必须使用 hud 内置文案。")
+
+	_complete_current_hint(hud)
+	hud._unhandled_input(_action_event("toggle_overlay"))
+	assert_false(toast.visible, "覆盖层提示一次性：再次 O 键不得重复。")
+	if _hint_spy != null:
+		assert_eq(_hint_spy.ids, ["overlay"] as Array[String], "覆盖层提示必须以 hint id 'overlay' 落账一次。")
 
 
 # ---------------------------------------------------------------- objective_for table
