@@ -13,7 +13,9 @@ const GAME_STATE_SCRIPT: Script = preload("res://src/state/game_state.gd")
 const COMBAT_ENGINE_SCRIPT: Script = preload("res://src/combat/combat_engine.gd")
 
 const RENDERED_CHUNK_ID: String = "chunk_0_0"
-const EXPECTED_DEFINITION_COUNT: int = 45
+# W002-GAP2 合法断言更新：新增 event_mine_threshold.json（矿井入口事件），
+# 全量定义总数 45 → 46（6 item + 6 building + 6 unit + 9 action + 16 event + 3 encounter）。
+const EXPECTED_DEFINITION_COUNT: int = 46
 const MAX_BATTLE_GUARD: int = 200
 
 ## 每个 before_each 生成互不重用的存档根，杜绝自动读档串场。

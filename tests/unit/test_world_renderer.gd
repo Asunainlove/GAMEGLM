@@ -40,17 +40,20 @@ func _soil_cell(cells: Dictionary) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-func test_build_tile_set_creates_four_32px_monochrome_sources() -> void:
+func test_build_tile_set_creates_five_32px_monochrome_sources() -> void:
 	var renderer: WorldRenderer = _make_renderer()
 	var tile_set: TileSet = renderer.build_tile_set()
 	assert_not_null(tile_set, "WorldRenderer must build a TileSet at runtime.")
 	assert_eq(tile_set.tile_size, Vector2i(32, 32))
-	assert_eq(tile_set.get_source_count(), 4, "soil + three ore types need four sources.")
+	# W002-GAP2 合法断言更新：新增 rock_wall 专用 source（手工矿井岩壁），
+	# soil + 三矿种 + rock_wall = 五个单色 source。
+	assert_eq(tile_set.get_source_count(), 5, "soil + three ore types + rock_wall need five sources.")
 	for source_id: int in [
 		WorldRenderer.SOURCE_SOIL,
 		WorldRenderer.SOURCE_ORE_DUST,
 		WorldRenderer.SOURCE_ORE_SHARD,
 		WorldRenderer.SOURCE_ORE_CORE,
+		WorldRenderer.SOURCE_ROCK_WALL,
 	]:
 		var source: TileSetAtlasSource = tile_set.get_source(source_id) as TileSetAtlasSource
 		assert_not_null(source, "TileSet must contain atlas source %d." % source_id)

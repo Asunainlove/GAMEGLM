@@ -1,0 +1,12 @@
+{
+  "id": "event_mine_threshold",
+  "kind": "dialogue",
+  "requires_flag": null,
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "就是这里……土壤底下有一条河在唱歌。洛弦，你听见了吗？越靠近矿井深处，那共鸣就越亮。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "光谱仪证实了你的直觉——矿脉的源头就在这条矿井尽头。稳压器已经就位，压着共振的节拍下井，别抢拍。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "嗯，跟着我的脚印走，别被辉光晃花了眼。深处那家伙……好像一直在等我们。"},
+    {"type": "effect", "flag_id": "mine_entered", "flag_value": true, "due_encounter": "encounter_leviathan_due"}
+  ]
+}
