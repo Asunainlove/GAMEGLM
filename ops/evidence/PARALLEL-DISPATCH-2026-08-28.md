@@ -28,3 +28,9 @@
 - Final main state: 366/366 tests, 3262 asserts, Run-Gut/Verify-Toolchain/Verify-Slice all exit 0, GATE4 EXPORT_SMOKE PASS -> build/starsoil/starsoil.exe (109MB).
 - Performance smoke recorded in docs/rc-checklist.md: headless boot 2227/2199/2354 ms over three runs.
 - Remaining G7 items are human-only: 45-60min three-ending playthrough, external playtest, originality final review. Recorded in ops/state.json known_blockers.
+
+# W003 wave checkpoint (2026-08-30)
+
+- 10-agent parallel dispatch succeeded (A1..A10). Doc packets A5/A6/A7/A8 merged (126 asset contract entries total in docs/art/); code packet A3 merged (476/476 baseline).
+- Known flake identified during parallel merge gates: save-chain tests (test_save_chain_*, test_ready_restores_autosave_*) intermittently fail ONLY while multiple worktree GUT suites run concurrently - root cause: all worktrees share the same user:// app_userdata save directory, so three-generation save files race across processes. Not a logic bug; reproduction stops when machine is idle. Follow-up packet needed: per-suite save-root isolation for SaveService tests (or unique slot prefix per GUT process).
+- Second observed flake (encounter defeat test line 606, battle null after tick) appears load-correlated in the same windows; re-verify with clean battery after wave completes.
