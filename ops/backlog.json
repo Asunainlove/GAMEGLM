@@ -215,6 +215,12 @@
       "title": "Character art asset contracts (20)",
       "status": "verified",
       "depends_on": []
+    },
+    {
+      "id": "W003-A7",
+      "title": "UI art asset contracts (49)",
+      "status": "verified",
+      "depends_on": []
     }
   ]
 }
