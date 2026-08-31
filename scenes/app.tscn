@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/app/app.gd" id="1_app"]
 [ext_resource type="PackedScene" path="res://scenes/world.tscn" id="2_world"]
 [ext_resource type="PackedScene" path="res://scenes/ui_hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" path="res://scenes/dialogue_box.tscn" id="4_dialogue"]
 [ext_resource type="Script" path="res://src/integration/game_session.gd" id="5_session"]
+[ext_resource type="PackedScene" path="res://scenes/title_screen.tscn" id="6_title"]
 
 [node name="App" type="Node"]
 script = ExtResource("1_app")
@@ -96,6 +97,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="DialogueBox" parent="ModalLayer" instance=ExtResource("4_dialogue")]
+unique_name_in_owner = true
+
+[node name="TitleScreen" parent="." instance=ExtResource("6_title")]
 unique_name_in_owner = true
 
 [node name="GameSession" type="Node" parent="."]

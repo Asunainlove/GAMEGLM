@@ -1,0 +1,133 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/title_screen.gd" id="1_title"]
+[ext_resource type="Theme" path="res://themes/starsoil_theme.tres" id="2_theme"]
+
+[node name="TitleScreen" type="CanvasLayer"]
+layer = 30
+script = ExtResource("1_title")
+
+[node name="Root" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = ExtResource("2_theme")
+
+[node name="Backdrop" type="ColorRect" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.035, 0.055, 1)
+
+[node name="Layout" type="VBoxContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -360.0
+offset_top = -270.0
+offset_right = 360.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="Subtitle" type="Label" parent="Root/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.42, 0.79, 0.72, 1)
+theme_override_font_sizes/font_size = 20
+text = "琉砂海 · 垂直切片"
+horizontal_alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Root/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.88, 0.72, 1)
+theme_override_font_sizes/font_size = 72
+text = "星壤：余辉纪元"
+horizontal_alignment = 1
+
+[node name="Rule" type="ColorRect" parent="Root/Layout"]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.42, 0.79, 0.72, 0.72)
+
+[node name="NewGameButton" type="Button" parent="Root/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "新游戏"
+
+[node name="ContinueButton" type="Button" parent="Root/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "继续"
+
+[node name="HelpButton" type="Button" parent="Root/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "说明"
+
+[node name="QuitButton" type="Button" parent="Root/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "退出"
+
+[node name="HelpPanel" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -190.0
+offset_right = 300.0
+offset_bottom = 190.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="HelpText" type="Label" parent="Root/HelpPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.8, 0.82, 1)
+theme_override_font_sizes/font_size = 16
+text = "操作说明（灰盒）
+移动：WASD 或方向键
+采集：鼠标左键 或 空格键
+选择建筑：数字键 1-6 或点击底部建造栏
+放置建筑：鼠标右键 或 F 键
+合成：背包（I/Tab）内配方行点击合成
+交互：E 键
+背包：I 键 或 Tab 键
+矿脉覆盖层：O 键
+菜单：Esc 键
+
+当前为灰盒垂直切片，正式美术尚未接入。"
