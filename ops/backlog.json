@@ -263,6 +263,14 @@
       "depends_on": [
         "W002-GAP1"
       ]
+    },
+    {
+      "id": "W003-A10",
+      "title": "Title screen + audio wiring",
+      "status": "verified",
+      "depends_on": [
+        "W003-A9"
+      ]
     }
   ]
 }
