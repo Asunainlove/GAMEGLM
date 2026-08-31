@@ -11,6 +11,15 @@ extends RefCounted
 ## patch.set_relationship；WP04 的 set_relationship 已合并进 StatePatch。
 ## source_id = progression_<signal>_<revision>，同 signal+revision 重放经
 ## applied_patch_sources 幂等返回 already_applied。
+## DLX-2：due_event 的有序事件链外置到 data/progression/event_chain.json
+## （schema schemas/progression-chain.schema.json），bootstrap 一次加载并做
+## 最小校验（数组/对象形态、id 唯一稳定、守卫字段类型），缺失或坏文件
+## push_error 并回退为空链（due_event 失败安全恒返回 ""）。链是"优先级序"，
+## 新增事件 = 改 JSON，不改本文件。event_envoy_trust（DLX-1 tick 过渡钩子
+## 事件，requires_flag=approach_diplomatic）并入为链首条目，复现旧钩子
+## "先于 due_event"的优先级——删除钩子后同一 state 的全局触发序列逐事件
+## 一致（等价证明见 ops/evidence/DLX-2.md）。approach_/station_mode_ 前缀
+## 常量仍是链数据所引前缀词汇表的规范来源。
 
 const EVENT_DONE_FLAG_FORMAT: String = "event_%s_done"
 const FIRST_MINING_FLAG: String = "first_mining_done"
@@ -28,17 +37,26 @@ const APPROACH_PREFIX: String = "approach_"
 const POLICY_PREFIX: String = "policy_"
 const BOSS_BASE_MULTIPLIER: float = 1.0
 const BOSS_ESCALATED_MULTIPLIER: float = 1.2
+## DLX-2：外置事件链文件路径（bootstrap 缺省加载；测试可经 load_chain_from
+## 注入临时链文件）。
+const EVENT_CHAIN_PATH: String = "res://data/progression/event_chain.json"
+
+## DLX-2 链缓存：bootstrap 一次性加载；失败同样记为已引导（tick 每帧调用
+## due_event，不得逐帧重读坏文件），显式 load_chain_from 可重新加载修复。
+static var _chain: Array[Dictionary] = []
+static var _chain_bootstrapped: bool = false
+static var _chain_last_load: AppResult = null
 
 
 ## 按契约 §7 事件顺序返回应触发的事件 id：第一个未 done 且前置满足者；
 ## 全部完成返回 ""。done = flags[EVENT_DONE_FLAG_FORMAT % 事件 id] == true。
-## W002-GAP1：5 个羁绊事件按各自前置 flag 插入有序链，恢复信任经济曲线——
-## Sanctuary（trust≥40）在 policy 前达标、Symbiosis（trust≥70）在结局前达标。
-## W003-A1：插入 9 个内容量扩充事件（插入序与双守卫设计见
-## ops/evidence/W003-A1.md）。双守卫（如 diplomat_envoy 要求 diplomatic_stance
-## 且 echo_chamber_active）用于保持冻结集成测试的 flag 集下 due_event 仍为空：
-## 第二守卫只在事件经对话链真实达成时置位，直接 patch 单一 flag 的测试路径
-## 不会误触发新事件。链是"优先级序"：前置未满足者被跳过，不阻塞后位。
+## DLX-2：有序链外置于 data/progression/event_chain.json（bootstrap 一次
+## 缓存；文件缺失/坏文件 push_error 并回退空链 → 恒返回 ""）。链是"优先级
+## 序"：前置未满足者被跳过，不阻塞后位；新增事件 = 改 JSON，不改本文件。
+## 双守卫设计（如 diplomat_envoy 要求 diplomatic_stance 且 echo_chamber_active）
+## 沿用 W003-A1 语义：第二守卫只在事件经对话链真实达成时置位，直接 patch
+## 单一 flag 的测试路径不会误触发新事件。守卫逐条等价证明见
+## ops/evidence/DLX-2.md。
 static func due_event(state: Dictionary) -> String:
 	for entry: Dictionary in _event_chain():
 		var event_id: String = String(entry["id"])
@@ -124,69 +142,121 @@ static func deferred_to_patch(ops: Array, patch: Variant) -> void:
 # ---------------------------------------------------------------- 事件链内部
 
 
+## 外置链缓存访问器：未引导时惰性 bootstrap 兜底（生产由 GameSession._ready
+## 显式引导；直调 due_event 的既有测试路径经此触发加载）。返回归一化条目
+## {id, requires_all: Array[String], requires_any_prefix: String|null,
+## requires_ending_ready: bool}；坏文件/缺失文件时为空数组。
 static func _event_chain() -> Array[Dictionary]:
-	return [
-		{"id": "event_prologue_landing"},
-		{"id": "event_first_mining", "requires_all": [FIRST_MINING_FLAG]},
-		{"id": "event_drift_aftermath", "requires_all": [FIRST_DRIFT_WON_FLAG]},
-		{"id": "event_first_anchor", "requires_all": [FIRST_ANCHOR_FLAG]},
-		{"id": "event_workshop_guide", "requires_all": [ANCHOR_WORKSHOP_FLAG]},
-		{"id": "event_misa_campfire", "requires_all": [ANCHOR_WORKSHOP_FLAG]},
-		{"id": "event_husk_aftermath", "requires_all": [HUSK_AMBUSH_WON_FLAG]},
-		{"id": "event_station_mode", "requires_all": [ECHO_CHAMBER_EFFECT_FLAG]},
-		{"id": "event_echo_resonance", "requires_all": [ECHO_CHAMBER_EFFECT_FLAG]},
-		{"id": "event_approach", "requires_any_prefix": STATION_MODE_PREFIX},
-		{"id": "event_policy", "requires_any_prefix": APPROACH_PREFIX},
-		# W003-A1 内容量扩充事件（缺口报告 F1）：
-		# exploit 主线后果（world_response_exploited 仅在对话链真实选择 exploit 时置位）。
-		{"id": "event_lumen_wildfire", "requires_all": ["world_response_exploited"]},
-		# 外交路线：approach_diplomatic 的世界回应 + 必经的回响舱前置（双守卫）。
-		{"id": "event_diplomat_envoy", "requires_all": ["diplomatic_stance", ECHO_CHAMBER_EFFECT_FLAG]},
-		# 深矿前奏：mine_entered 与 encounter_leviathan_due 由矿井入口事件同 patch 置位；
-		# "双胜+policy"路径下 pact_pre 推迟到进矿后补播。
-		{"id": "event_leviathan_pact_pre", "requires_all": ["mine_entered", LEVIATHAN_DUE_FLAG]},
-		{"id": "event_leviathan_pact", "requires_all": [LEVIATHAN_DUE_FLAG]},
-		{"id": "event_leviathan_aftermath", "requires_all": [LEVIATHAN_WON_FLAG]},
-		# 工坊期氛围/抉择事件：链位在 boss 段之后，但前置（工坊/campfire done）远早于
-		# boss 达成，真实游玩中在 campfire 后接棒触发。
-		{"id": "event_dust_calamity", "requires_all": [ANCHOR_WORKSHOP_FLAG]},
-		{
-			"id": "event_quiet_night",
-			"requires_all": [EVENT_DONE_FLAG_FORMAT % "event_misa_campfire", ANCHOR_WORKSHOP_FLAG],
-		},
-		{"id": "event_pylon_hum", "requires_all": [PYLON_EFFECT_FLAG]},
-		# 决战后通用前奏：leviathan_due 在胜利后保留（EncounterDirector 不清触发旗），
-		# 作为"走过 Boss 链"的守卫，冻结集成测试的 flag 集不含它。
-		{"id": "event_final_ascent", "requires_all": [LEVIATHAN_WON_FLAG, LEVIATHAN_DUE_FLAG]},
-		{"id": "event_ending_luoxian", "requires_ending_ready": true},
-		{"id": "event_ending_misa", "requires_ending_ready": true},
-		# 终章感言：位于结局事件之后；除驻地基调外再守 leviathan_won（未胜 Boss
-		# 时不得提前泄漏终章）与第二守卫（区分"对话链真实选择"与"测试直接
-		# patch 单一 flag"）。
-		{
-			"id": "event_epilogue_exploited",
-			"requires_all": [
-				"station_mode_exploit", "world_response_exploited", LEVIATHAN_WON_FLAG,
-			],
-		},
-		{
-			"id": "event_epilogue_sealed",
-			"requires_all": ["station_mode_seal", ECHO_CHAMBER_EFFECT_FLAG, LEVIATHAN_WON_FLAG],
-		},
-	]
+	if not _chain_bootstrapped:
+		bootstrap()
+	return _chain
 
 
+## DLX-2：加载并校验外置事件链（一次性引导入口，幂等——重复调用返回上次
+## 加载结果，不重复读盘）。
+static func bootstrap() -> AppResult:
+	if _chain_bootstrapped:
+		return _chain_last_load
+	return load_chain_from(EVENT_CHAIN_PATH)
+
+
+## 加载指定路径的链文件：成功时缓存归一化条目；缺失/坏文件 push_error 并把
+## 链回退为空（due_event 失败安全返回 ""）。测试经本方法注入临时链。
+static func load_chain_from(path: String) -> AppResult:
+	var result: AppResult = _read_and_validate_chain(path)
+	_chain_bootstrapped = true
+	_chain_last_load = result
+	if result.is_ok:
+		_chain = result.value
+	else:
+		_chain = []
+		push_error("Progression: event chain rejected (%s): %s" % [path, result.message])
+	return result
+
+
+static func _read_and_validate_chain(path: String) -> AppResult:
+	if not FileAccess.file_exists(path):
+		return AppResult.failure("missing_chain_file", "Event chain file not found: %s" % path)
+	var text: String = FileAccess.get_file_as_string(path)
+	# 与 EventRunner 同风格：用返回的 Error 码报告解析失败，坏 fixture 不刷引擎报错。
+	var json := JSON.new()
+	var parse_error: Error = json.parse(text)
+	if parse_error != OK:
+		return AppResult.failure(
+			"invalid_chain_file",
+			"Event chain file is not valid JSON at line %d." % json.get_error_line()
+		)
+	var parsed: Variant = json.get_data()
+	if typeof(parsed) != TYPE_ARRAY:
+		return AppResult.failure("invalid_chain_file", "Event chain file must contain a JSON array.")
+	var seen_ids: Dictionary = {}
+	var entries: Array[Dictionary] = []
+	var index := 0
+	for entry_variant: Variant in parsed:
+		var problem: String = _chain_entry_error(entry_variant, index, seen_ids)
+		if not problem.is_empty():
+			return AppResult.failure("invalid_chain_file", problem)
+		entries.append(_normalize_chain_entry(entry_variant))
+		index += 1
+	return AppResult.success(entries)
+
+
+## 最小语义校验：对象形态、id 稳定（snake_case）且唯一、守卫字段类型。
+static func _chain_entry_error(entry_value: Variant, index: int, seen_ids: Dictionary) -> String:
+	if typeof(entry_value) != TYPE_DICTIONARY:
+		return "Event chain entry %d is not an object." % index
+	var entry: Dictionary = entry_value
+	var id_value: Variant = entry.get("id")
+	if typeof(id_value) != TYPE_STRING:
+		return "Event chain entry %d is missing a string id." % index
+	var event_id := String(id_value)
+	if not _is_stable_id(event_id):
+		return "Event chain entry %d id is not a stable snake_case id: %s" % [index, event_id]
+	if seen_ids.has(event_id):
+		return "Event chain entry id is duplicated: %s" % event_id
+	var requires_all: Variant = entry.get("requires_all")
+	if typeof(requires_all) != TYPE_ARRAY:
+		return "Event chain entry %s requires_all must be an array." % event_id
+	for flag_variant: Variant in requires_all:
+		if typeof(flag_variant) != TYPE_STRING or String(flag_variant).is_empty():
+			return "Event chain entry %s requires_all must contain non-empty strings." % event_id
+	var prefix: Variant = entry.get("requires_any_prefix")
+	if prefix != null and (typeof(prefix) != TYPE_STRING or String(prefix).is_empty()):
+		return "Event chain entry %s requires_any_prefix must be a non-empty string or null." % event_id
+	if typeof(entry.get("requires_ending_ready")) != TYPE_BOOL:
+		return "Event chain entry %s requires_ending_ready must be a boolean." % event_id
+	seen_ids[event_id] = true
+	return ""
+
+
+## 归一化条目：显式四字段，requires_all 转为 String 数组，与守卫判定解耦
+## JSON 原始形态。
+static func _normalize_chain_entry(entry_value: Variant) -> Dictionary:
+	var entry: Dictionary = entry_value
+	var requires_all: Array[String] = []
+	for flag_variant: Variant in entry["requires_all"]:
+		requires_all.append(String(flag_variant))
+	var prefix: Variant = entry.get("requires_any_prefix")
+	return {
+		"id": String(entry["id"]),
+		"requires_all": requires_all,
+		"requires_any_prefix": String(prefix) if prefix != null else null,
+		"requires_ending_ready": bool(entry["requires_ending_ready"]),
+	}
+
+
+## 守卫语义（DLX-2 起条目来自归一化外置链，仍按"缺失键按空值处理"的契约
+## 口径防御读取）：requires_all 全真；requires_any_prefix 任一前缀命中
+## （null 视为无此守卫）；requires_ending_ready → Progression.ending_ready(state)。
 static func _prerequisites_met(state: Dictionary, entry: Dictionary) -> bool:
-	if entry.has("requires_all"):
-		for flag_variant: Variant in entry["requires_all"]:
-			if not _flag_enabled(state, String(flag_variant)):
-				return false
-	if entry.has("requires_any_prefix"):
-		if not _has_any_enabled_flag_with_prefix(state, String(entry["requires_any_prefix"])):
+	for flag_variant: Variant in entry.get("requires_all", []):
+		if not _flag_enabled(state, String(flag_variant)):
 			return false
-	if entry.has("requires_ending_ready") and bool(entry["requires_ending_ready"]):
-		if not ending_ready(state):
-			return false
+	var prefix: Variant = entry.get("requires_any_prefix")
+	if prefix != null and not _has_any_enabled_flag_with_prefix(state, String(prefix)):
+		return false
+	if bool(entry.get("requires_ending_ready", false)) and not ending_ready(state):
+		return false
 	return true
 
 

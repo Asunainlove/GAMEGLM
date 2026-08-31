@@ -13,15 +13,11 @@ const GAME_STATE_SCRIPT: Script = preload("res://src/state/game_state.gd")
 const COMBAT_ENGINE_SCRIPT: Script = preload("res://src/combat/combat_engine.gd")
 
 const RENDERED_CHUNK_ID: String = "chunk_0_0"
-# W002-GAP2 合法断言更新：新增 event_mine_threshold.json（矿井入口事件），
-# 全量定义总数 45 → 46（6 item + 6 building + 6 unit + 9 action + 16 event + 3 encounter）。
-# W003-A1 合法断言更新（缺口报告 F1 内容量扩充，逐条说明见 ops/evidence/W003-A1.md）：
-# data/events 新增 9 个事件 JSON，全量定义总数 46 → 55
-# （6 item + 6 building + 6 unit + 9 action + 25 event + 3 encounter）。
-# DLX-1 合法断言更新：新增 event_envoy_trust.json（外交路线信任经济均等），
-# 全量定义总数 55 → 56（6 item + 6 building + 6 unit + 9 action + 26 event + 3 encounter），
-# 逐条说明见 ops/evidence/DLX-1.md。
-const EXPECTED_DEFINITION_COUNT: int = 56
+# DLX-2 合法断言更新（DL7 测试去硬编码）：定义总数从精确断言改为派生下限。
+# 内容包增长（新增事件/物品/建筑等定义）是预期行为，精确值会让每次内容扩充
+# 都付出测试改动代价；下限只防"定义集合意外丢失"。基线取 DLX-1 时点的 56
+# （6 item + 6 building + 6 unit + 9 action + 26 event + 3 encounter）。
+const MIN_EXPECTED_DEFINITION_COUNT: int = 56
 const MAX_BATTLE_GUARD: int = 200
 
 ## 每个 before_each 生成互不重用的存档根，杜绝自动读档串场。
@@ -95,10 +91,13 @@ func test_app_scene_assembles_world_hud_dialogue_and_session() -> void:
 	assert_not_null(app.get_node_or_null("GameSession"), "app 必须挂载 GameSession 编排器。")
 
 
-func test_session_ready_bootstraps_content_with_forty_definitions() -> void:
+func test_session_ready_bootstraps_content_definition_floor() -> void:
 	_make_session()
 	assert_true(ContentDB.is_bootstrapped(), "GameSession 就绪后 ContentDB 必须 bootstrapped。")
-	assert_eq(_total_definition_count(), EXPECTED_DEFINITION_COUNT)
+	assert_gte(
+		_total_definition_count(), MIN_EXPECTED_DEFINITION_COUNT,
+		"定义总数不得低于迁移时点基线（内容包增长是预期行为，不再锁精确值）。"
+	)
 
 
 # ---------------------------------------------------------------- 采集链

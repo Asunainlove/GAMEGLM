@@ -74,14 +74,6 @@ const MINE_ENTERED_FLAG: String = "mine_entered"
 const MINE_BOSS_ROOM_LOCAL_MIN_Y: int = 22
 const BOSS_ROOM_CHECKPOINT_REASON: String = "boss_room_enter"
 
-## DLX-1 信任经济均等（P0 裁决）：外交路线（approach_diplomatic）专属信任
-## 事件，使两条 approach 路线的 luoxian.trust 满额同为 70（共生结局对称可达）。
-## src/progression 的事件链对本包冻结，故按 W002-GAP2 矿井入口事件的同一
-## 先例由本节点在 tick 中自检触发；门控语义（requires_flag/once/done）复用
-## EventRunner.available_events，事件定义在 data/events/event_envoy_trust.json。
-## DLX-2 事件链外置时应把该触发并入 data/progression/event_chain.json。
-const ENVOY_TRUST_EVENT_ID: String = "event_envoy_trust"
-
 ## 契约 §0 注入模式：持久层 store，null → GameState autoload。
 var store: Object = null
 
@@ -135,6 +127,11 @@ var _move_hint_timer: Timer = null
 
 func _ready() -> void:
 	_ensure_content_bootstrapped()
+	# DLX-2：显式引导外置事件链（幂等；失败已由 Progression push_error，
+	# due_event 会失败安全返回空串）。
+	var chain_result: AppResult = Progression.bootstrap()
+	if not chain_result.is_ok:
+		push_warning("GameSession: progression chain unavailable: %s" % chain_result.message)
 	_resolve_nodes()
 	_bind_player()
 	_bind_hud()
@@ -177,9 +174,8 @@ func tick() -> void:
 		if _mine_entry_due(state):
 			_start_event(MINE_ENTRY_EVENT_ID)
 			return
-		if _envoy_trust_due(state):
-			_start_event(ENVOY_TRUST_EVENT_ID)
-			return
+		# DLX-2：event_envoy_trust（DLX-1 tick 过渡钩子）已并入外置事件链
+		# （data/progression/event_chain.json 链首条目），经 due_event 统一触发。
 		var event_id := Progression.due_event(state)
 		if event_id != "":
 			_start_event(event_id)
@@ -232,17 +228,6 @@ func _is_in_mine_region(cell: Vector2i) -> bool:
 		and cell.y >= origin.y
 		and cell.y < origin.y + ChunkData.CHUNK_SIZE
 	)
-
-
-## DLX-1 信任经济均等：外交路线信任事件是否到期。到期判定不在本节点重复
-## 实现门控语义，而是复用 EventRunner.available_events（requires_flag 由事件
-## 数据声明为 approach_diplomatic，once/done 语义同冻结事件链），事件缺失时
-## 惰性跳过（与 _mine_entry_due 的 ContentDB 检查同风格）。
-func _envoy_trust_due(state: Dictionary) -> bool:
-	var event_def := ContentDB.get_event(ENVOY_TRUST_EVENT_ID)
-	if event_def.is_empty():
-		return false
-	return EventRunner.available_events([event_def], state).has(ENVOY_TRUST_EVENT_ID)
 
 
 # ---------------------------------------------------------------- 采集链

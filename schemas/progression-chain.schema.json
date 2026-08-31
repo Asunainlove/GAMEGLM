@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/progression-chain.schema.json",
+  "title": "Starsoil progression event chain",
+  "description": "DLX-2 事件链外置：due_event 的声明式有序链。数组顺序即优先级序——第一个未 done 且前置满足的条目到期，前置未满足者被跳过不阻塞后位。守卫语义：requires_all 全部 flag 置位；requires_any_prefix 任一同前缀 flag 置位；requires_ending_ready 为真时要求 Progression.ending_ready(state)。运行时由 Progression.bootstrap 做最小校验（id 唯一、字段类型），坏文件拒绝并回退为空链。",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["id", "requires_all", "requires_any_prefix", "requires_ending_ready"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+      "requires_all": {
+        "type": "array",
+        "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+      },
+      "requires_any_prefix": {
+        "type": ["string", "null"],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "requires_ending_ready": {"type": "boolean"}
+    }
+  }
+}
