@@ -227,6 +227,12 @@
       "title": "Environment art asset contracts (29)",
       "status": "verified",
       "depends_on": []
+    },
+    {
+      "id": "W003-A8",
+      "title": "Battle art asset contracts (28)",
+      "status": "verified",
+      "depends_on": []
     }
   ]
 }
