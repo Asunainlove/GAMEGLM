@@ -34,6 +34,11 @@ const BOSS_ESCALATED_MULTIPLIER: float = 1.2
 ## 全部完成返回 ""。done = flags[EVENT_DONE_FLAG_FORMAT % 事件 id] == true。
 ## W002-GAP1：5 个羁绊事件按各自前置 flag 插入有序链，恢复信任经济曲线——
 ## Sanctuary（trust≥40）在 policy 前达标、Symbiosis（trust≥70）在结局前达标。
+## W003-A1：插入 9 个内容量扩充事件（插入序与双守卫设计见
+## ops/evidence/W003-A1.md）。双守卫（如 diplomat_envoy 要求 diplomatic_stance
+## 且 echo_chamber_active）用于保持冻结集成测试的 flag 集下 due_event 仍为空：
+## 第二守卫只在事件经对话链真实达成时置位，直接 patch 单一 flag 的测试路径
+## 不会误触发新事件。链是"优先级序"：前置未满足者被跳过，不阻塞后位。
 static func due_event(state: Dictionary) -> String:
 	for entry: Dictionary in _event_chain():
 		var event_id: String = String(entry["id"])
@@ -132,10 +137,42 @@ static func _event_chain() -> Array[Dictionary]:
 		{"id": "event_echo_resonance", "requires_all": [ECHO_CHAMBER_EFFECT_FLAG]},
 		{"id": "event_approach", "requires_any_prefix": STATION_MODE_PREFIX},
 		{"id": "event_policy", "requires_any_prefix": APPROACH_PREFIX},
+		# W003-A1 内容量扩充事件（缺口报告 F1）：
+		# exploit 主线后果（world_response_exploited 仅在对话链真实选择 exploit 时置位）。
+		{"id": "event_lumen_wildfire", "requires_all": ["world_response_exploited"]},
+		# 外交路线：approach_diplomatic 的世界回应 + 必经的回响舱前置（双守卫）。
+		{"id": "event_diplomat_envoy", "requires_all": ["diplomatic_stance", ECHO_CHAMBER_EFFECT_FLAG]},
+		# 深矿前奏：mine_entered 与 encounter_leviathan_due 由矿井入口事件同 patch 置位；
+		# "双胜+policy"路径下 pact_pre 推迟到进矿后补播。
+		{"id": "event_leviathan_pact_pre", "requires_all": ["mine_entered", LEVIATHAN_DUE_FLAG]},
 		{"id": "event_leviathan_pact", "requires_all": [LEVIATHAN_DUE_FLAG]},
 		{"id": "event_leviathan_aftermath", "requires_all": [LEVIATHAN_WON_FLAG]},
+		# 工坊期氛围/抉择事件：链位在 boss 段之后，但前置（工坊/campfire done）远早于
+		# boss 达成，真实游玩中在 campfire 后接棒触发。
+		{"id": "event_dust_calamity", "requires_all": [ANCHOR_WORKSHOP_FLAG]},
+		{
+			"id": "event_quiet_night",
+			"requires_all": [EVENT_DONE_FLAG_FORMAT % "event_misa_campfire", ANCHOR_WORKSHOP_FLAG],
+		},
+		{"id": "event_pylon_hum", "requires_all": [PYLON_EFFECT_FLAG]},
+		# 决战后通用前奏：leviathan_due 在胜利后保留（EncounterDirector 不清触发旗），
+		# 作为"走过 Boss 链"的守卫，冻结集成测试的 flag 集不含它。
+		{"id": "event_final_ascent", "requires_all": [LEVIATHAN_WON_FLAG, LEVIATHAN_DUE_FLAG]},
 		{"id": "event_ending_luoxian", "requires_ending_ready": true},
 		{"id": "event_ending_misa", "requires_ending_ready": true},
+		# 终章感言：位于结局事件之后；除驻地基调外再守 leviathan_won（未胜 Boss
+		# 时不得提前泄漏终章）与第二守卫（区分"对话链真实选择"与"测试直接
+		# patch 单一 flag"）。
+		{
+			"id": "event_epilogue_exploited",
+			"requires_all": [
+				"station_mode_exploit", "world_response_exploited", LEVIATHAN_WON_FLAG,
+			],
+		},
+		{
+			"id": "event_epilogue_sealed",
+			"requires_all": ["station_mode_seal", ECHO_CHAMBER_EFFECT_FLAG, LEVIATHAN_WON_FLAG],
+		},
 	]
 
 

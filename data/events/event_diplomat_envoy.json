@@ -1,0 +1,26 @@
+{
+  "id": "event_diplomat_envoy",
+  "kind": "mixed",
+  "requires_flag": "diplomatic_stance",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "岗哨灯外浮着一小片光——别紧张，不是漂游群！它们排得整整齐齐，像一支提灯的队伍。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "界层漂流者。它们不碰矿脉，只循着共鸣迁徙。当初选了先礼后探，现在礼数自己找上门了。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "为首那只把灯压得很低很低——这是它们问路的方式：能不能借你们的地界避一避风。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "章程里没有驱逐条款。回应它们，但分寸要拿稳：地界可以借，矿脉不能碰。"},
+    {"type": "choice", "choice_id": "envoy_reply", "prompt_zh": "如何回应漂流者的借宿之请？", "options": [
+      {
+        "id": "envoy_shelter_lamps",
+        "text_zh": "点亮外沿三盏灯：地界共享，风停即行。",
+        "set_flag": "envoy_shelter_lamps",
+        "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 5}
+      },
+      {
+        "id": "envoy_conditional",
+        "text_zh": "以物易物：借宿可以，用它们随身的共鸣晶尘来换。",
+        "set_flag": "envoy_conditional",
+        "relation_delta": {"char_id": "luoxian", "dim": "affection", "delta": 5}
+      }
+    ]}
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "event_leviathan_pact_pre",
+  "kind": "mixed",
+  "requires_flag": "mine_entered",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "矿道越往下，稳压器的哨音越紧。把方案再对一遍：三道锚索、逐段泄压，谁的脚步都不许越过光照范围。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "它在下面，这回我听得清清楚楚——不是敌意，是一段没人应答的哼声，在石头里闷了不知道多少年。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "我们当初用什么方式走近矿脉，今天就沿用那个方式走近它。呼吸放稳，别让它把紧张读成挑衅。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "嗯！你管锚索，我管回声。真到了那一步，我会先替你把话说给它听。"},
+    {"type": "choice", "choice_id": "pact_pre_reassure", "prompt_zh": "下井之前，你想先说哪一句？", "options": [
+      {
+        "id": "pact_pre_protocol",
+        "text_zh": "按预案走。听到三长一短的哨声，就立刻收索后撤。",
+        "set_flag": "pact_pre_protocol",
+        "relation_delta": {"char_id": "luoxian", "dim": "affection", "delta": 4}
+      },
+      {
+        "id": "pact_pre_listen",
+        "text_zh": "弥砂，下去以后帮我盯着它的哼声——换了调子就立刻告诉我。",
+        "set_flag": "pact_pre_listen",
+        "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 4}
+      },
+      {
+        "id": "pact_pre_together",
+        "text_zh": "无论它回应的是绳子还是歌，我们都是一起下去、一起上来。",
+        "set_flag": "pact_pre_together",
+        "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 4}
+      }
+    ]}
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "event_dust_calamity",
+  "kind": "mixed",
+  "requires_flag": "anchor_workshop_placed",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "沙暴！天整片锈成了暗红色，风里全是磨沙子的声音——工棚顶的帆布在响！"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "锚居的地基吃得住，帆布和采集架吃不住。两条路：就地加固，或者把轻的设备先挪进矿道。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "我听见矿脉在打喷嚏……这场风，是它翻身时扬起来的尘。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "记录：矿站的第一场沙暴。它在提醒我们——这里是借住的，不是买下的。"},
+    {"type": "choice", "choice_id": "dust_calamity_response", "prompt_zh": "沙暴当前，锚居怎么保？", "options": [
+      {
+        "id": "dust_reinforce",
+        "text_zh": "就地加固：卸门压缆，全员上工棚顶协防。",
+        "set_flag": "dust_reinforce",
+        "relation_delta": {"char_id": "luoxian", "dim": "affection", "delta": 4}
+      },
+      {
+        "id": "dust_relocate",
+        "text_zh": "先转移：设备进矿道避风，人留锚居值夜。",
+        "set_flag": "dust_relocate",
+        "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 4}
+      }
+    ]}
+  ]
+}

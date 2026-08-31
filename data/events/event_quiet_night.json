@@ -1,0 +1,14 @@
+{
+  "id": "event_quiet_night",
+  "kind": "dialogue",
+  "requires_flag": "event_event_misa_campfire_done",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "今晚什么都没发生。没有矿震，没有访客，连风都懒得翻一页。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "记录：无事之夜。这种夜晚在别处也许平常，在这条矿脉上值得专门记账。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "那就别记账啦。你看窗板上那层薄光——是矿脉在夜里给自己盖的被子。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "……好吧，这一页只写一行：今夜无事，都睡个好觉。"},
+    {"type": "effect", "relation_delta": {"char_id": "luoxian", "dim": "affection", "delta": 4}},
+    {"type": "effect", "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 4}}
+  ]
+}

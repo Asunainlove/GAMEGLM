@@ -1,0 +1,12 @@
+{
+  "id": "event_lumen_wildfire",
+  "kind": "dialogue",
+  "requires_flag": "world_response_exploited",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "洛弦，矿脉最近好吵。以前是哼歌，现在像在磨牙——挖空的孔洞都在往外涌急促的热流。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "读数不会撒谎：共鸣频率整体抬高了一截。全速开采的账，开始连本带利地讨了。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "我不是想怪谁。它睡着的时候，会梦见很亮很亮的东西；现在它连做梦都在翻身。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "把这段录音存进日志，标注日期。矿站下一次做决定之前，这段声音必须被再听一遍。"}
+  ]
+}

@@ -114,8 +114,12 @@ func test_due_event_done_flag_matches_event_runner_template() -> void:
 func test_due_event_walks_full_chain_to_empty() -> void:
 	if not _require_progression():
 		return
-	# W002-GAP1 后的 15 事件有序链：5 个羁绊事件按各自前置 flag 插入，
-	# 顺序保证 Sanctuary 在 policy 前达标、Symbiosis 在结局前达标。
+	# W003-A1 后的 24 事件有序链：9 个内容量扩充事件按各自前置 flag 插入
+	# （插入序与守卫 flag 见 ops/evidence/W003-A1.md）。链是"优先级序"而非
+	# 严格序列：前置未满足者被跳过，同帧多个可跑事件取链上最前者。
+	# 本走查按真实游玩时序补 flag；exploit 主线覆盖 wildfire 与 epilogue_exploited，
+	# 末尾补 seal+echo 覆盖 epilogue_sealed。合法断言更新：旧 15 步走查中
+	# "husk 胜利前等待"的空断言被 dust/quiet/pylon 的真实触发取代。
 	var flags: Dictionary = {}
 
 	# 1) prologue。
@@ -145,44 +149,146 @@ func test_due_event_walks_full_chain_to_empty() -> void:
 	assert_eq(_progression.due_event({"flags": flags}), "event_misa_campfire")
 	flags[_done_flag("event_misa_campfire")] = true
 
-	# 6) 碎壳伏击未胜 → 等待；胜利 → event_husk_aftermath（trust +12）。
+	# 6) W003-A1：工坊既立、campfire 完成标记（双前缀）在手 → 尘暴与静夜先行
+	#    （链位在 boss 段之后，但此刻 7-16 号位均不可跑，故由它们接棒）。
+	assert_eq(_progression.due_event({"flags": flags}), "event_dust_calamity")
+	flags[_done_flag("event_dust_calamity")] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_quiet_night")
+	flags[_done_flag("event_quiet_night")] = true
+	flags["pylon_stabilized"] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_pylon_hum")
+	flags[_done_flag("event_pylon_hum")] = true
+
+	# 7) 碎壳伏击未胜 → 等待；胜利 → event_husk_aftermath（trust +12）。
 	assert_eq(_progression.due_event({"flags": flags}), "", "Without the husk victory the chain waits.")
 	flags["encounter_husk_ambush_won"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_husk_aftermath")
 	flags[_done_flag("event_husk_aftermath")] = true
 
-	# 7) 回响舱激活 → event_station_mode，随后 event_echo_resonance（trust +8）。
+	# 8) 回响舱激活 → event_station_mode，随后 event_echo_resonance（trust +8）。
 	flags["echo_chamber_active"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_station_mode")
 	flags[_done_flag("event_station_mode")] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_echo_resonance")
 	flags[_done_flag("event_echo_resonance")] = true
 
-	# 8) 任一 station_mode_* → event_approach；approach 选项 flag → event_policy。
-	flags["station_mode_symbiosis"] = true
+	# 9) exploit 主线：任一 station_mode_* → event_approach；approach 选项 flag
+	#    → event_policy；随后 world_response_exploited 放行 event_lumen_wildfire。
+	flags["station_mode_exploit"] = true
+	flags["world_response_exploited"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_approach")
 	flags[_done_flag("event_approach")] = true
 	flags["approach_direct"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_policy")
 	flags[_done_flag("event_policy")] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_lumen_wildfire")
+	flags[_done_flag("event_lumen_wildfire")] = true
 
-	# 9) 遭遇 due flag → event_leviathan_pact。
+	# 10) W003-A1：diplomatic_stance + echo_chamber_active → event_diplomat_envoy。
+	flags["diplomatic_stance"] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_diplomat_envoy")
+	flags[_done_flag("event_diplomat_envoy")] = true
+
+	# 11) 进矿 + 遭遇 due flag → event_leviathan_pact_pre 先于 event_leviathan_pact。
+	flags["mine_entered"] = true
 	flags["encounter_leviathan_due"] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_leviathan_pact_pre")
+	flags[_done_flag("event_leviathan_pact_pre")] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_leviathan_pact")
 	flags[_done_flag("event_leviathan_pact")] = true
 
-	# 10) Boss 未胜 → 等待；胜利 → event_leviathan_aftermath（trust +15）。
+	# 12) Boss 未胜 → 等待；胜利 → event_leviathan_aftermath（trust +15）。
 	assert_eq(_progression.due_event({"flags": flags}), "", "Without the leviathan victory the chain waits.")
 	flags["encounter_leviathan_won"] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_leviathan_aftermath")
 	flags[_done_flag("event_leviathan_aftermath")] = true
 
-	# 11) 结局就绪 → 两个结局事件；全完 → ""。
+	# 13) W003-A1：决战后 → event_final_ascent（三分支通用前奏）。
+	assert_eq(_progression.due_event({"flags": flags}), "event_final_ascent")
+	flags[_done_flag("event_final_ascent")] = true
+
+	# 14) 结局就绪 → 两个结局事件。
 	assert_eq(_progression.due_event({"flags": flags}), "event_ending_luoxian")
 	flags[_done_flag("event_ending_luoxian")] = true
 	assert_eq(_progression.due_event({"flags": flags}), "event_ending_misa")
 	flags[_done_flag("event_ending_misa")] = true
+
+	# 15) W003-A1：终章感言按驻地基调分支——exploit + 对话路径世界回应 flag
+	#     → event_epilogue_exploited；再补 seal+echo → event_epilogue_sealed。
+	assert_eq(_progression.due_event({"flags": flags}), "event_epilogue_exploited")
+	flags[_done_flag("event_epilogue_exploited")] = true
+	flags["station_mode_seal"] = true
+	assert_eq(_progression.due_event({"flags": flags}), "event_epilogue_sealed")
+	flags[_done_flag("event_epilogue_sealed")] = true
 	assert_eq(_progression.due_event({"flags": flags}), "", "A fully consumed chain yields an empty id.")
+
+
+func test_due_event_gap5_events_yield_empty_on_frozen_integration_gate_paths() -> void:
+	if not _require_progression():
+		return
+	# 冻结集成测试的两条 flag 集必须保持"due_event 为空"语义（W003-A1 禁改
+	# tests/unit/test_integration*.gd，新事件只能靠双守卫让路）：
+	# a) 结局路径：全旧事件 done + exploit + 三胜，但不含对话路径 flag
+	#    （world_response_exploited / echo_chamber_active / mine_entered /
+	#    encounter_leviathan_due / pylon_stabilized / anchor_workshop_placed）。
+	var legacy_done: Array[String] = [
+		"event_prologue_landing", "event_first_mining", "event_drift_aftermath",
+		"event_first_anchor", "event_workshop_guide", "event_misa_campfire",
+		"event_husk_aftermath", "event_station_mode", "event_echo_resonance",
+		"event_approach", "event_policy", "event_leviathan_pact",
+		"event_leviathan_aftermath", "event_ending_luoxian", "event_ending_misa",
+	]
+	var ending_flags: Dictionary = {
+		"station_mode_exploit": true,
+		"encounter_first_drift_won": true,
+		"encounter_husk_ambush_won": true,
+		"encounter_leviathan_won": true,
+	}
+	for event_id: String in legacy_done:
+		ending_flags[_done_flag(event_id)] = true
+	assert_eq(
+		_progression.due_event({"flags": ending_flags}), "",
+		"结局门控路径不得被 W003-A1 新事件抢占。"
+	)
+
+	# b) 软锁死路径：低信任直达 policy，diplomatic_stance 与 station_mode_seal
+	#    已置但 echo_chamber_active 缺席 → envoy 与 epilogue_sealed 必须让路。
+	var softlock_flags: Dictionary = {
+		"station_mode_seal": true,
+		"approach_diplomatic": true,
+		"diplomatic_stance": true,
+		"policy_extraction_quota": true,
+	}
+	for event_id: String in [
+		"event_prologue_landing", "event_first_mining", "event_drift_aftermath",
+		"event_first_anchor", "event_workshop_guide", "event_misa_campfire",
+		"event_husk_aftermath", "event_station_mode", "event_echo_resonance",
+		"event_approach", "event_policy",
+	]:
+		softlock_flags[_done_flag(event_id)] = true
+	assert_eq(
+		_progression.due_event({"flags": softlock_flags}), "",
+		"软锁死回归路径不得被 W003-A1 新事件抢占。"
+	)
+
+
+func test_event_chain_ids_all_exist_in_event_pack() -> void:
+	if not _require_progression():
+		return
+	# 链-包一致性：due_event 链引用的每个事件 id 都必须有 data/events/*.json
+	# 定义（EventRunner 装载失败或文件缺失都会让 GameSession 推进死等）。
+	var runner: RefCounted = load(EVENT_RUNNER_SCRIPT_PATH).new()
+	var loaded: AppResult = runner.load_events_from("res://data/events")
+	if not assert_true(loaded.is_ok, loaded.message):
+		return
+	var packed_ids: Dictionary = {}
+	for event_def: Dictionary in (loaded.value as Array):
+		packed_ids[String(event_def["id"])] = true
+	for entry: Dictionary in _progression._event_chain():
+		assert_true(
+			packed_ids.has(String(entry["id"])),
+			"due_event 链上的 %s 必须有 data/events 事件定义。" % String(entry["id"])
+		)
 
 
 func test_due_event_bond_events_gate_on_their_own_victory_flags() -> void:

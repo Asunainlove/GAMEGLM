@@ -1,0 +1,12 @@
+{
+  "id": "event_final_ascent",
+  "kind": "dialogue",
+  "requires_flag": "encounter_leviathan_won",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "沿着矿脉的脊线往上走，脚下的石头还留着战斗的余温。到了——从这里能望见整座矿站。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "你听，回声从最深处一层层递上来，像它正把我们的脚步声转述给每一块石头。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "接下来的路怎么走，章程、锚索，还有我们俩，得交出同一份答案。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "嗯。这一次不听回声，也不看读数——听我们自己想让它变成什么样子。"}
+  ]
+}
