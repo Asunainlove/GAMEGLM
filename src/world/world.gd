@@ -121,7 +121,12 @@ func _generate_chunks() -> void:
 	for grid_y: int in CHUNK_GRID_SIZE.y:
 		for grid_x: int in CHUNK_GRID_SIZE.x:
 			var chunk_id := "chunk_%d_%d" % [grid_x, grid_y]
-			_chunks[chunk_id] = ChunkData.generate(chunk_id, world_seed)
+			if chunk_id == ChunkData.MINE_CHUNK_ID:
+				# W002-GAP2：手工矿井/Boss 区（authored，无 RNG）覆盖程序生成结果；
+				# 其余 7 chunk 保持种子确定性生成。
+				_chunks[chunk_id] = ChunkData.generate_mine(chunk_id)
+			else:
+				_chunks[chunk_id] = ChunkData.generate(chunk_id, world_seed)
 
 
 ## Renders the full 4x2 chunk grid onto the shared layers, each chunk at its

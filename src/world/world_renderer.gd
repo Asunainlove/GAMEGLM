@@ -12,17 +12,21 @@ const SOURCE_SOIL: int = 0
 const SOURCE_ORE_DUST: int = 1
 const SOURCE_ORE_SHARD: int = 2
 const SOURCE_ORE_CORE: int = 3
+## W002-GAP2 手工矿井岩壁专用单色 source（深褐）。
+const SOURCE_ROCK_WALL: int = 4
 
 const SOIL_COLOR := Color(0.16, 0.17, 0.19)
 const ORE_DUST_COLOR := Color(0.33, 0.44, 0.58)
 const ORE_SHARD_COLOR := Color(0.29, 0.57, 0.6)
 const ORE_CORE_COLOR := Color(0.47, 0.36, 0.58)
+const ROCK_WALL_COLOR := Color(0.24, 0.2, 0.16)
 
 const TYPE_SOURCES: Dictionary = {
 	"soil": SOURCE_SOIL,
 	"ore_dust": SOURCE_ORE_DUST,
 	"ore_shard": SOURCE_ORE_SHARD,
 	"ore_core": SOURCE_ORE_CORE,
+	"rock_wall": SOURCE_ROCK_WALL,
 }
 
 var ground_layer: TileMapLayer
@@ -39,6 +43,7 @@ func build_tile_set() -> TileSet:
 	_add_monochrome_source(tile_set, SOURCE_ORE_DUST, ORE_DUST_COLOR)
 	_add_monochrome_source(tile_set, SOURCE_ORE_SHARD, ORE_SHARD_COLOR)
 	_add_monochrome_source(tile_set, SOURCE_ORE_CORE, ORE_CORE_COLOR)
+	_add_monochrome_source(tile_set, SOURCE_ROCK_WALL, ROCK_WALL_COLOR)
 	return tile_set
 
 
@@ -64,7 +69,13 @@ func render(chunk: Dictionary, chunk_origin: Vector2i = Vector2i.ZERO) -> void:
 		if typeof(cell_value) != TYPE_VECTOR2I:
 			continue
 		var cell: Vector2i = cell_value
-		ore_layer.set_cell(cell + chunk_origin, _source_for(str(cells[cell_value])), Vector2i.ZERO)
+		var source_id := _source_for(str(cells[cell_value]))
+		if source_id == SOURCE_ROCK_WALL:
+			# W002-GAP2：岩壁是地形而非矿——绘制在 Ground 层（替换土壤底色），
+			# 覆盖层切换（toggle_overlay）只隐藏矿，不隐藏墙。
+			ground_layer.set_cell(cell + chunk_origin, SOURCE_ROCK_WALL, Vector2i.ZERO)
+		else:
+			ore_layer.set_cell(cell + chunk_origin, source_id, Vector2i.ZERO)
 
 
 ## Empties both layers; full-world repaint entry point before re-rendering all

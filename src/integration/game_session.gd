@@ -56,6 +56,16 @@ const MANUAL_SAVE_SLOT: String = "manual"
 const SAVE_NOTICE_TEXT: String = "已保存"
 const SAVE_NOTICE_SECONDS: float = 1.5
 
+## W002-GAP2 手工矿井/Boss 区触发链常量。事件经既有事件展示路径（start/pump/
+## complete）驱动；mine_entered 与 encounter_leviathan_due 由事件 effect 步骤
+## 经 EventRunner/Progression 既有语义落账，与"双胜+policy"路径写同一 flag 幂等。
+const MINE_CHUNK_ID: String = "chunk_3_1"
+const MINE_ENTRY_EVENT_ID: String = "event_mine_threshold"
+const MINE_ENTERED_FLAG: String = "mine_entered"
+## Boss 房区域 = chunk_3_1 内本地 y >= 22（世界格 y >= 32+22 = 54，腔体南端）。
+const MINE_BOSS_ROOM_LOCAL_MIN_Y: int = 22
+const BOSS_ROOM_CHECKPOINT_REASON: String = "boss_room_enter"
+
 ## 契约 §0 注入模式：持久层 store，null → GameState autoload。
 var store: Object = null
 
@@ -132,14 +142,20 @@ func _unhandled_input(event: InputEvent) -> void:
 # ---------------------------------------------------------------- 编排主循环
 
 
-## 每帧（或测试手动）推进一条链路：事件优先，其次遭遇，最后结局。
+## 每帧（或测试手动）推进一条链路：位置检查点优先，其次事件（矿井入口事件
+## 按位置触发，优先级高于 due_event 链——入口台词应在踏进矿井的第一时间呈现，
+## 拖到 due 链之后会让玩家深入矿井后才听到入口对话），再次遭遇，最后结局。
 func tick() -> void:
 	if not ContentDB.is_bootstrapped():
 		return
 	if active_event_id != "" or battle != null or ending != null:
 		return
 	var state := _snapshot()
+	_record_boss_room_checkpoint(state)
 	if dialogue_box != null:
+		if _mine_entry_due(state):
+			_start_event(MINE_ENTRY_EVENT_ID)
+			return
 		var event_id := Progression.due_event(state)
 		if event_id != "":
 			_start_event(event_id)
@@ -150,6 +166,46 @@ func tick() -> void:
 		return
 	if Progression.ending_ready(state):
 		_show_ending()
+
+
+## W002-GAP2 Boss 房检查点：玩家格进入 chunk_3_1 腔体南端（世界格 y >= 54）时
+## 调用既有 set_player_position 检查点。幂等性由 patch 通道保证：同 revision
+## 同 source 的重复提交经 GameState already_applied 短路，不产生额外持久变化。
+func _record_boss_room_checkpoint(_state: Dictionary) -> void:
+	var cell := _player_cell()
+	var origin := ChunkData.chunk_origin(MINE_CHUNK_ID)
+	if cell.x < origin.x or cell.x >= origin.x + ChunkData.CHUNK_SIZE:
+		return
+	if cell.y < origin.y + MINE_BOSS_ROOM_LOCAL_MIN_Y or cell.y >= origin.y + ChunkData.CHUNK_SIZE:
+		return
+	_checkpoint_player_position(BOSS_ROOM_CHECKPOINT_REASON)
+
+
+## W002-GAP2 矿井入口判定：首次进入 chunk_3_1（世界格 x>=96 且 y>=32）且
+## mine_entered / 事件 done 均未置位时返回 true。不走 Progression.due_event 链
+## 的原因：due_event 为 src/progression 冻结静态链（本包禁改），矿井入口是位置
+## 触发事件，由本节点自检后走与 due 事件完全相同的展示路径（_start_event →
+## 步骤泵 → complete_event + completed_events 记账），持久语义无差别。
+func _mine_entry_due(state: Dictionary) -> bool:
+	var flags: Dictionary = state.get("flags", {}) as Dictionary
+	if bool(flags.get(MINE_ENTERED_FLAG, false)):
+		return false
+	if bool(flags.get(EventRunner.EVENT_DONE_FLAG_FORMAT % MINE_ENTRY_EVENT_ID, false)):
+		return false
+	if ContentDB.get_event(MINE_ENTRY_EVENT_ID).is_empty():
+		return false
+	return _is_in_mine_region(_player_cell())
+
+
+## 玩家格是否位于手工矿井 chunk（世界格矩形）内。
+func _is_in_mine_region(cell: Vector2i) -> bool:
+	var origin := ChunkData.chunk_origin(MINE_CHUNK_ID)
+	return (
+		cell.x >= origin.x
+		and cell.x < origin.x + ChunkData.CHUNK_SIZE
+		and cell.y >= origin.y
+		and cell.y < origin.y + ChunkData.CHUNK_SIZE
+	)
 
 
 # ---------------------------------------------------------------- 采集链
@@ -199,6 +255,14 @@ func request_place(cell: Vector2i) -> AppResult:
 			"Selected building id '%s' has no definition." % selected_building_id
 		)
 	var chunk_id := _resolve_chunk_id(cell)
+	# W002-GAP2：手工矿井岩壁不可建（BuildingRules 地形缝只认 destroyed 标记，
+	# rock_wall 的不可建语义在 app 层落刀——零修改失败，不产生任何持久变化）。
+	if _is_rock_wall_cell(chunk_id, cell):
+		return AppResult.failure(
+			"rock_wall_cell",
+			"Cell (%d, %d) in %s is authored rock_wall and cannot host buildings."
+				% [cell.x, cell.y, chunk_id]
+		)
 	var result := building_rules.attempt_build(_snapshot(), building_def, chunk_id, cell, store)
 	if not result.is_ok:
 		return result
@@ -894,6 +958,11 @@ func _cell_def_for(chunk_id: String, cell: Vector2i) -> Dictionary:
 		return {}
 	var generated: Dictionary = ChunkData.generate(chunk_id, int(_snapshot().get("world_seed", 0)))
 	return ChunkData.cell_def(generated["cells"], cell)
+
+
+## W002-GAP2：格子是否为手工矿井岩壁（rock_wall）。world 缺席时按生成结果兜底。
+func _is_rock_wall_cell(chunk_id: String, cell: Vector2i) -> bool:
+	return str(_cell_def_for(chunk_id, cell).get("type", "")) == "rock_wall"
 
 
 func _on_mine_requested(cell: Vector2i) -> void:
