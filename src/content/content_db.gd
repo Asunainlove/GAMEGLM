@@ -32,7 +32,11 @@ const TARGETINGS: Array[String] = ["self", "single_ally", "single_enemy", "all_e
 const RELATION_DIMS: Array[String] = ["affection", "trust", "ideology"]
 
 const ITEM_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "stack_limit", "tier", "battle_usable"]
-const BUILDING_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "inputs", "recipe", "recipes", "requires_room", "power_draw", "power_supply", "effect_flag"]
+## DLX-3（冻结模块最小改动，先例见 ops/evidence/DLX-1.md §3）：BUILDING_FIELDS
+## 增加 place_flag / place_flag_powered——否则 buildings.json 的新增声明式字段
+## 会被下方 _reject_unknown_fields 整包拒绝（bootstrap 失败连锁）。校验为
+## _validate_building 内的可选稳定 ID / 可选布尔，语义判定在 Progression。
+const BUILDING_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "inputs", "recipe", "recipes", "requires_room", "power_draw", "power_supply", "effect_flag", "place_flag", "place_flag_powered"]
 const COMBAT_UNIT_FIELDS: Array[String] = ["id", "kind", "name_zh", "max_hp", "stability_max", "track", "speed", "action_ids", "phases", "drops"]
 const COMBAT_ACTION_FIELDS: Array[String] = ["id", "kind", "name_zh", "targeting", "power", "stability_damage", "cost", "heal", "guard_ratio"]
 const EVENT_FIELDS: Array[String] = ["id", "kind", "requires_flag", "once", "steps"]
@@ -436,6 +440,15 @@ func _validate_building(definition: Dictionary, path: String) -> AppResult:
 	if not result.is_ok:
 		return result
 	result = _require_integer(definition, "power_supply", path, 0)
+	if not result.is_ok:
+		return result
+	# DLX-3：place_flag（放置成功即置的里程碑 flag，稳定 ID）与
+	# place_flag_powered（true 时需供电才置位）为可选声明式字段；
+	# 置位语义统一在 Progression._react_built 通用规则。
+	result = _optional_stable_id(definition, "place_flag", path)
+	if not result.is_ok:
+		return result
+	result = _optional_bool(definition, "place_flag_powered", path)
 	if not result.is_ok:
 		return result
 	return _optional_stable_id(definition, "effect_flag", path)

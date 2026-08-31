@@ -8,7 +8,8 @@
       {"item_id": "starsoil_dust", "count": 2}
     ],
     "power_draw": 0,
-    "power_supply": 2
+    "power_supply": 2,
+    "place_flag": "first_anchor_placed"
   },
   {
     "id": "anchor_workshop",
@@ -19,7 +20,8 @@
       {"item_id": "starsoil_dust", "count": 4}
     ],
     "power_draw": 0,
-    "power_supply": 16
+    "power_supply": 16,
+    "place_flag": "anchor_workshop_placed"
   },
   {
     "id": "dust_refiner",

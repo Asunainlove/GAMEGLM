@@ -293,7 +293,13 @@ func request_place(cell: Vector2i) -> AppResult:
 		return result
 	var react_result := Progression.react(
 		_snapshot(), "built",
-		{"building_id": selected_building_id, "powered": _new_building_powered(selected_building_id)},
+		{
+			"building_id": selected_building_id,
+			"powered": _new_building_powered(selected_building_id),
+			# DLX-3：建造反应通用规则的权威输入——选中建筑定义携带
+			# place_flag / place_flag_powered / effect_flag。
+			"building_def": building_def,
+		},
 		store)
 	if not react_result.is_ok:
 		push_warning("GameSession: Progression.react(built) failed: %s" % react_result.message)
