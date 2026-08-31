@@ -255,6 +255,14 @@
       "title": "AudioDirector framework + audio contracts (12 tests)",
       "status": "verified",
       "depends_on": []
+    },
+    {
+      "id": "W003-A1",
+      "title": "Content expansion - 9 events (+75% dialogue)",
+      "status": "verified",
+      "depends_on": [
+        "W002-GAP1"
+      ]
     }
   ]
 }
