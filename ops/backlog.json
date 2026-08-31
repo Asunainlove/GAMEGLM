@@ -271,6 +271,14 @@
       "depends_on": [
         "W003-A9"
       ]
+    },
+    {
+      "id": "W003-A2",
+      "title": "Conditional branch response lines (10 tests)",
+      "status": "verified",
+      "depends_on": [
+        "WP08"
+      ]
     }
   ]
 }
