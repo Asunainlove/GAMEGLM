@@ -249,6 +249,12 @@
       "depends_on": [
         "WP13"
       ]
+    },
+    {
+      "id": "W003-A9",
+      "title": "AudioDirector framework + audio contracts (12 tests)",
+      "status": "verified",
+      "depends_on": []
     }
   ]
 }
