@@ -209,6 +209,12 @@
       "depends_on": [
         "W002-GAP3"
       ]
+    },
+    {
+      "id": "W003-A5",
+      "title": "Character art asset contracts (20)",
+      "status": "verified",
+      "depends_on": []
     }
   ]
 }
