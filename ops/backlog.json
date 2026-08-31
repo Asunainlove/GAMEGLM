@@ -279,6 +279,15 @@
       "depends_on": [
         "WP08"
       ]
+    },
+    {
+      "id": "DLX-1",
+      "title": "Data-driven endings + trust parity (P0)",
+      "status": "verified",
+      "depends_on": [
+        "WP15",
+        "W002-GAP1"
+      ]
     }
   ]
 }
