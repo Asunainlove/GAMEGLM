@@ -31,7 +31,9 @@
     "requires_room": {"type": "boolean"},
     "power_draw": {"type": "integer", "minimum": 0},
     "power_supply": {"type": "integer", "minimum": 0},
-    "effect_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+    "effect_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "place_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "place_flag_powered": {"type": "boolean"}
   },
   "$defs": {
     "recipe": {

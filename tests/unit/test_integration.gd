@@ -971,7 +971,8 @@ func test_move_hint_shown_after_delay_and_never_repeats() -> void:
 
 	session._show_move_hint_if_due()
 	assert_true(_hint_toast(hud).visible, "开局延迟到点必须弹出移动/采集/放置总提示。")
-	assert_eq(_hint_label(hud).text, Hud.HINT_MOVE_TEXT)
+	# DLX-3 合法断言更新：提示文案外置到 hints.json，读表断言。
+	assert_eq(_hint_label(hud).text, Hud.hint_text("move"))
 	assert_true(_hint_flag("hint_move_seen"), "开局提示必须经回调落账 hint_move_seen。")
 
 	_complete_current_hint(hud)
@@ -996,7 +997,8 @@ func test_place_failure_without_materials_shows_craft_hint_once() -> void:
 	assert_false(result.is_ok, "材料不足建造必须失败。")
 	assert_eq(result.code, "insufficient_item", "失败原因必须是材料不足。")
 	assert_true(_hint_toast(hud).visible, "首次材料不足必须弹出配方合成提示。")
-	assert_eq(_hint_label(hud).text, Hud.HINT_CRAFT_TEXT)
+	# DLX-3 合法断言更新：提示文案外置到 hints.json，读表断言。
+	assert_eq(_hint_label(hud).text, Hud.hint_text("craft"))
 	assert_true(_hint_flag("hint_craft_seen"), "合成提示必须落账 hint_craft_seen。")
 
 	_complete_current_hint(hud)
@@ -1016,7 +1018,8 @@ func test_mine_entered_flag_shows_mine_hint_on_tick() -> void:
 	_patch_flags(["mine_entered"])
 	session.tick()
 	assert_true(_hint_toast(hud).visible, "mine_entered 置位后 tick 必须弹出矿井提示。")
-	assert_eq(_hint_label(hud).text, Hud.HINT_MINE_TEXT)
+	# DLX-3 合法断言更新：提示文案外置到 hints.json，读表断言。
+	assert_eq(_hint_label(hud).text, Hud.hint_text("mine"))
 	assert_true(_hint_flag("hint_mine_seen"), "矿井提示必须落账 hint_mine_seen。")
 
 	_complete_current_hint(hud)
@@ -1032,7 +1035,8 @@ func test_encounter_trigger_shows_battle_hint_before_battle() -> void:
 	session.tick()
 	assert_not_null(session.battle, "到期遭遇必须照常开战。")
 	assert_true(_hint_toast(hud).visible, "遭遇触发前必须弹出战斗提示。")
-	assert_eq(_hint_label(hud).text, Hud.HINT_BATTLE_TEXT)
+	# DLX-3 合法断言更新：提示文案外置到 hints.json，读表断言。
+	assert_eq(_hint_label(hud).text, Hud.hint_text("battle"))
 	assert_true(_hint_flag("hint_battle_seen"), "战斗提示必须落账 hint_battle_seen。")
 
 
@@ -1042,7 +1046,8 @@ func test_overlay_hint_via_hud_trigger_lands_flag_through_session() -> void:
 
 	hud._unhandled_input(_action_event("toggle_overlay"))
 	assert_true(_hint_toast(hud).visible, "首次 O 覆盖层必须弹出覆盖层用途提示。")
-	assert_eq(_hint_label(hud).text, Hud.HINT_OVERLAY_TEXT)
+	# DLX-3 合法断言更新：提示文案外置到 hints.json，读表断言。
+	assert_eq(_hint_label(hud).text, Hud.hint_text("overlay"))
 	assert_true(_hint_flag("hint_overlay_seen"), "表现层触发的提示同样必须经回调落账。")
 
 

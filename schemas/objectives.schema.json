@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/objectives.schema.json",
+  "title": "Starsoil HUD objective chain",
+  "description": "DLX-3 目标链外置：objective_for 的声明式有序条目表。数组顺序即判定序——HUD 返回首个选中条目的 text_zh，全部未选中时兜底『探索世界』。条目选中 = all_of 全部启用 ∧ not_flags 全部未启用 ∧ any_of_prefix（非 null 时任一同前缀 flag 启用）。token 词汇表（声明式，非表达式）：精确 flag id；flag 前缀通配 <prefix>*（仅尾随一个 *）；放置谓词 placed_<building_id> / placed_*（保留前缀 placed_，映射快照 placed_buildings）。运行时由 Hud.load_objectives_from 做最小校验（结构/稳定 ID/token 形态），坏文件拒绝并兜底『探索世界』。",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["text_zh", "all_of", "any_of_prefix", "not_flags"],
+    "additionalProperties": false,
+    "properties": {
+      "text_zh": {"type": "string", "minLength": 1},
+      "all_of": {
+        "type": "array",
+        "items": {"$ref": "#/$defs/token"}
+      },
+      "any_of_prefix": {
+        "type": ["string", "null"],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "not_flags": {
+        "type": "array",
+        "items": {"$ref": "#/$defs/token"}
+      }
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "string",
+      "minLength": 1,
+      "oneOf": [
+        {"description": "精确 flag id（或 placed_<building_id> 放置谓词）", "pattern": "^[a-z][a-z0-9_]*$"},
+        {"description": "flag 前缀通配（前缀 + 尾随 *）", "pattern": "^[a-z][a-z0-9_]*\\*$"}
+      ]
+    }
+  }
+}
