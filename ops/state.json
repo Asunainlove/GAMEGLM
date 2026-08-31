@@ -1,13 +1,13 @@
 {
   "goal_status": "active",
-  "milestone": "G7",
-  "window": "W001-PARALLEL",
-  "window_status": "rc_prep",
-  "last_verified_commit": "packet/p06-reset-delete",
+  "milestone": "G6",
+  "window": "W003-GAPS",
+  "window_status": "art_production_ready",
+  "last_verified_commit": "8682a87",
   "active_packet": null,
-  "resume_from": "g7_human_gates",
+  "resume_from": "g6_art_audio_production_with_approval",
   "next_packet_ids": [],
   "known_blockers": [
-    "G7 external playtest & 45-60min human playthrough of all three endings (human-only per docs/rc-checklist.md)"
+    "G6 asset production requires provenance + human approval (AGENTS.md); G7 human playthrough gates"
   ]
 }
