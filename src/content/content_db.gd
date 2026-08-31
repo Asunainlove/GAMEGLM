@@ -31,7 +31,11 @@ const TRACKS: Array[String] = ["front", "mid", "rear"]
 const TARGETINGS: Array[String] = ["self", "single_ally", "single_enemy", "all_enemies"]
 const RELATION_DIMS: Array[String] = ["affection", "trust", "ideology"]
 
-const ITEM_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "stack_limit", "tier", "battle_usable"]
+## DLX-4（冻结模块最小改动，先例 ops/evidence/DLX-1.md §3、DLX-3 §3.1）：
+## ITEM_FIELDS 增加 story_key——否则 items.json 的死内容哨兵声明字段会被下方
+## _reject_unknown_fields 整包拒绝（bootstrap 失败连锁）。校验为 _validate_item
+## 内的可选布尔；语义判定（死内容扫描）留给后续工具，运行时无消费者。
+const ITEM_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "stack_limit", "tier", "battle_usable", "story_key"]
 ## DLX-3（冻结模块最小改动，先例见 ops/evidence/DLX-1.md §3）：BUILDING_FIELDS
 ## 增加 place_flag / place_flag_powered——否则 buildings.json 的新增声明式字段
 ## 会被下方 _reject_unknown_fields 整包拒绝（bootstrap 失败连锁）。校验为
@@ -391,7 +395,10 @@ func _validate_item(definition: Dictionary, path: String) -> AppResult:
 	result = _optional_integer(definition, "tier", path, 0, 9)
 	if not result.is_ok:
 		return result
-	return _optional_bool(definition, "battle_usable", path)
+	result = _optional_bool(definition, "battle_usable", path)
+	if not result.is_ok:
+		return result
+	return _optional_bool(definition, "story_key", path)
 
 
 func _validate_building(definition: Dictionary, path: String) -> AppResult:

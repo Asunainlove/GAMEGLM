@@ -160,6 +160,8 @@ func test_full_station_layout_powers_every_building() -> void:
 	_give_item("starsoil_dust", 12)   # 4×锚块(2) + 工坊(4)
 	_give_item("lumen_shard", 3)      # 精炼器(2) + 稳定塔(1)
 	_give_item("resonant_core", 4)    # 稳定塔(1) + 织机(1) + 回响舱(2)
+	# DLX-4 合法断言更新：回响舱 inputs 新增 echo_seed×1（意图：全站供电布局不变）。
+	_give_item("echo_seed", 1)
 	# 供给 16(工坊) + 2×4(锚块) = 24 >= 需求 4+5+6+8 = 23（evidence 布局计算）。
 	# 锚块先建（供给先累积），耗电建筑随后，PowerGrid 按输入序分配。
 	assert_true(_place_at("anchor_block", Vector2i(20, 20)).is_ok)
@@ -193,6 +195,8 @@ func test_three_anchor_layout_still_covers_full_demand() -> void:
 	_give_item("starsoil_dust", 10)
 	_give_item("lumen_shard", 3)
 	_give_item("resonant_core", 4)
+	# DLX-4 合法断言更新：补足回响舱新材料 echo_seed×1（意图：供电平衡边界不变）。
+	_give_item("echo_seed", 1)
 	assert_true(_place_at("anchor_block", Vector2i(20, 20)).is_ok)
 	assert_true(_place_at("anchor_block", Vector2i(20, 21)).is_ok)
 	assert_true(_place_at("anchor_block", Vector2i(20, 22)).is_ok)

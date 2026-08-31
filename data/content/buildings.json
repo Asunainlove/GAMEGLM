@@ -86,7 +86,8 @@
     "name_zh": "回响舱",
     "desc_zh": "必须四面合围成房间才能运行，用于放大并疏导矿脉的回声。",
     "inputs": [
-      {"item_id": "resonant_core", "count": 2}
+      {"item_id": "resonant_core", "count": 2},
+      {"item_id": "echo_seed", "count": 1}
     ],
     "requires_room": true,
     "power_draw": 8,
