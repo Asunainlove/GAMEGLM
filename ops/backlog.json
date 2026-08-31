@@ -296,6 +296,14 @@
       "depends_on": [
         "DLX-1"
       ]
+    },
+    {
+      "id": "DLX-3",
+      "title": "Generic build reactions + objectives/hints externalization",
+      "status": "verified",
+      "depends_on": [
+        "DLX-2"
+      ]
     }
   ]
 }
