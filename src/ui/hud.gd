@@ -7,7 +7,10 @@ extends CanvasLayer
 ## 绝不调用 begin_patch/commit，绝不写入任何持久状态。
 ## 唯一的"写"操作是引擎级 UI 状态（节点可见性与 get_tree().paused）。
 ## W003-A3 首次操作引导提示（HintToast）：一次性提示经 hint_seen_callback
-## 由集成层落账，本层只做队列展示与只读 flags 去重。
+## 由集成层落账，本层只做队列展示与只读 flags 去重。DLX-3 起提示文案与触发
+## 条件外置到 data/progression/hints.json（触发点保留在集成层/HUD 输入层，
+## 触发订阅与文案读表）；目标链外置到 data/progression/objectives.json——
+## 新增目标/提示 = 改 JSON，不改本文件。
 
 signal menu_resumed
 signal save_requested
@@ -24,13 +27,13 @@ const UNPOWERED_DOT_COLOR: Color = Color(0.85, 0.15, 0.15)
 const UNAFFORDABLE_SUFFIX: String = "（材料不足）"
 const EMPTY_RECIPES_HINT: String = "暂无可用配方：需要已建成且供电的配方建筑。"
 
-## W003-A3 首次操作引导提示文案（单一来源；game_session 触发点引用这些常量）。
-const HINT_MOVE_TEXT: String = "WASD/方向键移动 · 左键采集矿脉 · 右键/F 放置建筑"
-const HINT_PLACE_TEMPLATE: String = "右键/F 放置 %s · 数字键 1-6 切换建筑"
-const HINT_CRAFT_TEXT: String = "材料不足 · 背包面板（I）可查看配方合成"
-const HINT_OVERLAY_TEXT: String = "矿脉覆盖层 · 高亮矿脉可左键采集，便于规划路线"
-const HINT_MINE_TEXT: String = "深处有强烈共鸣 · 稳压装置随时待命"
-const HINT_BATTLE_TEXT: String = "回合制战斗 · 点击行动按钮指令队伍"
+## DLX-3 目标链外置（schema schemas/objectives.schema.json）：有序条目
+## {text_zh, all_of, any_of_prefix, not_flags}，objective_for 返回首个选中条目
+## 文案，全部未选中兜底 FALLBACK_OBJECTIVE；文件缺失/坏文件 push_error 并兜底。
+const OBJECTIVES_PATH: String = "res://data/progression/objectives.json"
+const FALLBACK_OBJECTIVE: String = "探索世界"
+## DLX-3 提示表路径（W003-A3 六条提示的文案与触发条件单一来源）。
+const HINTS_PATH: String = "res://data/progression/hints.json"
 
 ## W003-A3 HintToast 展示参数：缺省停留 4s，淡入/淡出各一段。
 const DEFAULT_HINT_SECONDS: float = 4.0
@@ -39,27 +42,6 @@ const HINT_FADE_OUT_SECONDS: float = 0.35
 const HINT_MIN_HOLD_SECONDS: float = 0.1
 ## 一次性标记 flag 名（hint_<id>_seen）；game_session 的落账回调使用同一格式。
 const HINT_FLAG_FORMAT: String = "hint_%s_seen"
-## 模板化放置提示的归一匹配前后缀（hint id 固定为 place，与建筑名无关）。
-const HINT_PLACE_PREFIX: String = "右键/F 放置 "
-const HINT_PLACE_SUFFIX: String = " · 数字键 1-6 切换建筑"
-## 已知文案 → 稳定 hint id 查表（hint_<id>_seen 的 id 单一来源）。
-const HINT_IDS_BY_TEXT: Dictionary = {
-	HINT_MOVE_TEXT: "move",
-	HINT_CRAFT_TEXT: "craft",
-	HINT_OVERLAY_TEXT: "overlay",
-	HINT_MINE_TEXT: "mine",
-	HINT_BATTLE_TEXT: "battle",
-}
-
-const _CHOICE_FLAGS: PackedStringArray = [
-	"station_mode_exploit",
-	"station_mode_seal",
-	"station_mode_symbiosis",
-	"approach_direct",
-	"approach_diplomatic",
-	"policy_extraction_quota",
-	"policy_sanctuary",
-]
 
 ## 快照来源；缺省为 GameState.snapshot，测试与集成层可注入替身。
 var snapshot_provider: Callable = Callable()
@@ -152,62 +134,182 @@ func refresh() -> void:
 	_render(snapshot)
 
 
-## 当前目标短语：按里程碑链条返回首个未完成目标；无进度或全部完成时回退为探索。
-## 检查类别（对应冻结契约 §7）：event_<id>_done 事件链、placed_buildings 锚块/工坊、
-## encounter_<id>_won 遭遇胜利、三次选择 flags、任一 encounter_<id>_due 未决遭遇。
+## 当前目标短语（DLX-3 表驱动）：返回外置目标链中首个选中条目的文案；全部
+## 未选中时兜底"探索世界"。条目选中语义与 token 词汇表见
+## schemas/objectives.schema.json：all_of 全部启用 ∧ not_flags 全部未启用 ∧
+## any_of_prefix（非 null 时任一同前缀 flag 启用）；token 支持精确 flag id、
+## 尾随 * 的 flag 前缀通配、placed_<building_id>/placed_* 放置谓词。文件缺失
+## 或坏文件（加载期已 push_error）时失败安全恒返回兜底文案。
 static func objective_for(snapshot: Dictionary) -> String:
-	var flags: Dictionary = snapshot.get("flags", {})
+	var entries: Array[Dictionary] = _objective_entries()
+	if entries.is_empty():
+		return FALLBACK_OBJECTIVE
+	var flags: Dictionary = snapshot.get("flags", {}) as Dictionary
 	var placed_ids: Array[String] = _placed_building_ids(snapshot)
-
-	# 未决遭遇优先提示为即时威胁（胜利后不再提示）。
-	if _flag_enabled(flags, "encounter_leviathan_due") and not _flag_enabled(flags, "encounter_leviathan_won"):
-		return "面对辉砂巨兽"
-	if (
-		(_flag_enabled(flags, "encounter_first_drift_due") and not _flag_enabled(flags, "encounter_first_drift_won"))
-		or (_flag_enabled(flags, "encounter_husk_ambush_due") and not _flag_enabled(flags, "encounter_husk_ambush_won"))
-	):
-		return "应对漂移群威胁"
-
-	if not _has_progress(flags, placed_ids):
-		return "探索世界"
-	if not (_flag_enabled(flags, _event_done_flag("event_first_mining")) or placed_ids.has("anchor_block")):
-		return "勘探琉砂海，采集星壤尘"
-	if not (placed_ids.has("anchor_block") or _flag_enabled(flags, _event_done_flag("event_first_anchor"))):
-		return "放置第一座锚块"
-	if not (placed_ids.has("anchor_workshop") or _flag_enabled(flags, _event_done_flag("event_workshop_guide"))):
-		return "建立锚居工坊"
-	if not (_flag_enabled(flags, "encounter_first_drift_won") or _flag_enabled(flags, "encounter_husk_ambush_won")):
-		return "应对漂移群威胁"
-	if not (
-		_flag_enabled(flags, "station_mode_exploit")
-		or _flag_enabled(flags, "station_mode_seal")
-		or _flag_enabled(flags, "station_mode_symbiosis")
-		or _flag_enabled(flags, _event_done_flag("event_station_mode"))
-	):
-		return "做出驻地抉择"
-	var approach_done: bool = (
-		_flag_enabled(flags, "approach_direct")
-		or _flag_enabled(flags, "approach_diplomatic")
-		or _flag_enabled(flags, _event_done_flag("event_approach"))
-	)
-	var policy_done: bool = (
-		_flag_enabled(flags, "policy_extraction_quota")
-		or _flag_enabled(flags, "policy_sanctuary")
-		or _flag_enabled(flags, _event_done_flag("event_policy"))
-	)
-	if not (approach_done and policy_done):
-		return "推进方法与政策抉择"
-	if not (_flag_enabled(flags, "encounter_leviathan_won") or _flag_enabled(flags, _event_done_flag("event_leviathan_pact"))):
-		return "面对辉砂巨兽"
-	if not (_flag_enabled(flags, _event_done_flag("event_ending_luoxian")) or _flag_enabled(flags, _event_done_flag("event_ending_misa"))):
-		return "见证余辉结局"
-	return "探索世界"
+	for entry: Dictionary in entries:
+		if _objective_entry_selected(entry, flags, placed_ids):
+			return String(entry["text_zh"])
+	return FALLBACK_OBJECTIVE
 
 
-## 事件完成标记名：与 EventRunner 的实际模板（event_%s_done % 事件全 id，
-## 事件 id 自带 event_ 前缀，因此 flag 为双前缀形态）保持单一来源对齐。
-static func _event_done_flag(event_id: String) -> String:
-	return EventRunner.EVENT_DONE_FLAG_FORMAT % event_id
+# ---------------------------------------------------------------- 目标链表（DLX-3）
+
+
+## 目标表缓存：bootstrap 一次性加载；失败记为已引导（轮询渲染逐帧调用
+## objective_for，不得逐帧重读坏文件），显式 load_objectives_from 可重载修复。
+static var _objectives: Array[Dictionary] = []
+static var _objectives_bootstrapped: bool = false
+static var _objectives_last_load: AppResult = null
+
+
+## 目标表只读访问器（测试断言用）：未引导时惰性加载生产目标表。
+static func _objective_entries() -> Array[Dictionary]:
+	if not _objectives_bootstrapped:
+		load_objectives_from(OBJECTIVES_PATH)
+	return _objectives
+
+
+## 加载指定路径的目标表：成功时缓存归一化条目；缺失/坏文件 push_error 并把
+## 表回退为空（objective_for 失败安全恒返回兜底文案）。测试经本方法注入临时表。
+static func load_objectives_from(path: String) -> AppResult:
+	var result: AppResult = _read_and_validate_objectives(path)
+	_objectives_bootstrapped = true
+	_objectives_last_load = result
+	if result.is_ok:
+		_objectives = result.value
+	else:
+		_objectives = []
+		push_error("Hud: objectives table rejected (%s): %s" % [path, result.message])
+	return result
+
+
+static func _read_and_validate_objectives(path: String) -> AppResult:
+	if not FileAccess.file_exists(path):
+		return AppResult.failure(
+			"missing_objectives_file", "Objectives table file not found: %s" % path
+		)
+	var text: String = FileAccess.get_file_as_string(path)
+	var json := JSON.new()
+	var parse_error: Error = json.parse(text)
+	if parse_error != OK:
+		return AppResult.failure(
+			"invalid_objectives_file",
+			"Objectives table file is not valid JSON at line %d." % json.get_error_line()
+		)
+	var parsed: Variant = json.get_data()
+	if typeof(parsed) != TYPE_ARRAY:
+		return AppResult.failure("invalid_objectives_file", "Objectives table file must contain a JSON array.")
+	var entries: Array[Dictionary] = []
+	var index := 0
+	for entry_value: Variant in parsed:
+		var problem: String = _objective_entry_error(entry_value, index)
+		if not problem.is_empty():
+			return AppResult.failure("invalid_objectives_file", problem)
+		var entry: Dictionary = entry_value
+		var not_flags: Array[String] = []
+		for token: Variant in entry["not_flags"]:
+			not_flags.append(String(token))
+		entries.append({
+			"text_zh": String(entry["text_zh"]),
+			"all_of": _string_array_of(entry["all_of"]),
+			"any_of_prefix": String(entry["any_of_prefix"]) if entry["any_of_prefix"] != null else null,
+			"not_flags": not_flags,
+		})
+		index += 1
+	return AppResult.success(entries)
+
+
+static func _string_array_of(values: Variant) -> Array[String]:
+	var result: Array[String] = []
+	for value: Variant in values:
+		result.append(String(value))
+	return result
+
+
+## 最小语义校验：对象形态、text_zh 非空、守卫字段类型、token 形态
+##（精确稳定 ID / 尾随 * 前缀通配 / placed_ 放置谓词）。文案允许重复
+##（威胁条目共享"应对漂移群威胁"）。
+static func _objective_entry_error(entry_value: Variant, index: int) -> String:
+	if typeof(entry_value) != TYPE_DICTIONARY:
+		return "Objectives entry %d is not an object." % index
+	var entry: Dictionary = entry_value
+	if typeof(entry.get("text_zh")) != TYPE_STRING or String(entry["text_zh"]).is_empty():
+		return "Objectives entry %d text_zh must be a non-empty string." % index
+	for list_field: String in ["all_of", "not_flags"]:
+		var list_value: Variant = entry.get(list_field)
+		if typeof(list_value) != TYPE_ARRAY:
+			return "Objectives entry %d %s must be an array." % [index, list_field]
+		for token_value: Variant in list_value:
+			var problem := _objective_token_error(token_value)
+			if not problem.is_empty():
+				return "Objectives entry %d %s: %s" % [index, list_field, problem]
+	var prefix: Variant = entry.get("any_of_prefix")
+	if prefix != null and (typeof(prefix) != TYPE_STRING or not _is_stable_id_shape(String(prefix))):
+		return "Objectives entry %d any_of_prefix must be a snake_case prefix or null." % index
+	return ""
+
+
+## token 形态校验：精确 flag id / 前缀通配（尾随单个 *）/ placed_ 放置谓词。
+static func _objective_token_error(token_value: Variant) -> String:
+	if typeof(token_value) != TYPE_STRING:
+		return "tokens must be strings."
+	var token := String(token_value)
+	if token.is_empty():
+		return "tokens must be non-empty strings."
+	if token.begins_with("placed_"):
+		var suffix := token.substr(7)
+		if suffix != "*" and not _is_stable_id_shape(suffix):
+			return "placed token suffix must be '*' or a stable snake_case id: %s" % token
+		return ""
+	if token.ends_with("*"):
+		var prefix := token.substr(0, token.length() - 1)
+		if not _is_stable_id_shape(prefix):
+			return "wildcard token must be a snake_case prefix followed by '*': %s" % token
+		return ""
+	if not _is_stable_id_shape(token):
+		return "token must be a stable snake_case id, a '<prefix>*' wildcard, or a 'placed_' predicate: %s" % token
+	return ""
+
+
+static func _is_stable_id_shape(value: String) -> bool:
+	return not value.is_empty() and value == value.to_lower() and value.is_valid_identifier()
+
+
+## 条目选中判定（语义见 schemas/objectives.schema.json）。
+static func _objective_entry_selected(
+		entry: Dictionary, flags: Dictionary, placed_ids: Array[String]) -> bool:
+	for token: String in entry["all_of"]:
+		if not _objective_token_enabled(token, flags, placed_ids):
+			return false
+	for token: String in entry["not_flags"]:
+		if _objective_token_enabled(token, flags, placed_ids):
+			return false
+	var prefix: Variant = entry.get("any_of_prefix")
+	if prefix != null and not _has_any_enabled_flag_with_prefix(flags, String(prefix)):
+		return false
+	return true
+
+
+## token 求值：placed_ 放置谓词优先（placed_ 不是 flag 前缀），其次尾随 *
+## 的 flag 前缀通配，否则精确 flag。placed_* 命中任意已放置建筑。
+static func _objective_token_enabled(
+		token: String, flags: Dictionary, placed_ids: Array[String]) -> bool:
+	if token.begins_with("placed_"):
+		var suffix := token.substr(7)
+		if suffix == "*":
+			return not placed_ids.is_empty()
+		return placed_ids.has(suffix)
+	if token.ends_with("*"):
+		var prefix := token.substr(0, token.length() - 1)
+		return _has_any_enabled_flag_with_prefix(flags, prefix)
+	return bool(flags.get(token, false))
+
+
+static func _has_any_enabled_flag_with_prefix(flags: Dictionary, prefix: String) -> bool:
+	for flag_variant: Variant in flags.keys():
+		if String(flag_variant).begins_with(prefix) and bool(flags[flag_variant]):
+			return true
+	return false
 
 
 static func _flag_enabled(flags: Dictionary, flag_id: String) -> bool:
@@ -224,19 +326,6 @@ static func _placed_building_ids(snapshot: Dictionary) -> Array[String]:
 				if building_id != "" and not ids.has(building_id):
 					ids.append(building_id)
 	return ids
-
-
-static func _has_progress(flags: Dictionary, placed_ids: Array[String]) -> bool:
-	if not placed_ids.is_empty():
-		return true
-	for flag_id: String in flags.keys():
-		if flag_id.begins_with("event_") and flag_id.ends_with("_done"):
-			return true
-		if flag_id.begins_with("encounter_") and flag_id.ends_with("_won"):
-			return true
-		if _CHOICE_FLAGS.has(flag_id):
-			return true
-	return false
 
 
 func _on_poll_timer_timeout() -> void:
@@ -532,15 +621,134 @@ func _on_notice_timeout() -> void:
 	_objective_label.text = objective_for(_current_snapshot())
 
 
-# ---------------------------------------------------------------- 首次操作引导提示（W003-A3）
+# ---------------------------------------------------------------- 首次操作引导提示（W003-A3 / DLX-3）
 
 
-## 一次性提示入队：屏幕中下方 HintToast 逐条淡入淡出展示（默认停留 4s）。
-## 一次性语义按稳定 hint id 去重（hint_id_for）：同一会话内已展示/已入队的不复播；
-## 快照 flags 中 hint_<id>_seen 已置位（读档/重开）的同样跳过。首次接受时经注入的
-## hint_seen_callback 上报 id，由集成层落账——表现层绝不直接写持久状态。
-func show_hint(text_value: String, seconds: float = DEFAULT_HINT_SECONDS) -> void:
-	var hint_id := hint_id_for(text_value)
+## 提示表缓存：bootstrap 一次性加载；失败记为已引导，显式 load_hints_from
+## 可重载修复（测试注入临时表）。
+static var _hints: Array[Dictionary] = []
+static var _hints_bootstrapped: bool = false
+static var _hints_last_load: AppResult = null
+
+
+## 提示表只读访问器（测试断言用）：未引导时惰性加载生产提示表。
+static func _hint_entries() -> Array[Dictionary]:
+	if not _hints_bootstrapped:
+		load_hints_from(HINTS_PATH)
+	return _hints
+
+
+## 加载指定路径的提示表：成功时缓存归一化条目；缺失/坏文件 push_error 并把
+## 表回退为空（hint_text/hints_for_trigger 失败安全返回空）。测试经本方法注入
+## 临时表。
+static func load_hints_from(path: String) -> AppResult:
+	var result: AppResult = _read_and_validate_hints(path)
+	_hints_bootstrapped = true
+	_hints_last_load = result
+	if result.is_ok:
+		_hints = result.value
+	else:
+		_hints = []
+		push_error("Hud: hints table rejected (%s): %s" % [path, result.message])
+	return result
+
+
+static func _read_and_validate_hints(path: String) -> AppResult:
+	if not FileAccess.file_exists(path):
+		return AppResult.failure(
+			"missing_hints_file", "Hints table file not found: %s" % path
+		)
+	var text: String = FileAccess.get_file_as_string(path)
+	var json := JSON.new()
+	var parse_error: Error = json.parse(text)
+	if parse_error != OK:
+		return AppResult.failure(
+			"invalid_hints_file",
+			"Hints table file is not valid JSON at line %d." % json.get_error_line()
+		)
+	var parsed: Variant = json.get_data()
+	if typeof(parsed) != TYPE_ARRAY:
+		return AppResult.failure("invalid_hints_file", "Hints table file must contain a JSON array.")
+	var entries: Array[Dictionary] = []
+	var seen_ids: Dictionary = {}
+	for entry_value: Variant in parsed:
+		var problem: String = _hint_entry_error(entry_value, seen_ids)
+		if not problem.is_empty():
+			return AppResult.failure("invalid_hints_file", problem)
+		var entry: Dictionary = entry_value
+		entries.append({
+			"id": String(entry["id"]),
+			"text_zh": String(entry["text_zh"]),
+			"trigger": String(entry["trigger"]),
+		})
+	return AppResult.success(entries)
+
+
+## 最小语义校验：对象形态、id 稳定且唯一、text_zh 非空、trigger 形态
+##（固定触发点 / built:<building_id> / built:* 通配）。
+static func _hint_entry_error(entry_value: Variant, seen_ids: Dictionary) -> String:
+	if typeof(entry_value) != TYPE_DICTIONARY:
+		return "Hints entry is not an object."
+	var entry: Dictionary = entry_value
+	var id_value: Variant = entry.get("id")
+	if typeof(id_value) != TYPE_STRING or not _is_stable_id_shape(String(id_value)):
+		return "Hints entry is missing a stable snake_case id."
+	var hint_id := String(id_value)
+	if seen_ids.has(hint_id):
+		return "Hints entry id is duplicated: %s" % hint_id
+	if typeof(entry.get("text_zh")) != TYPE_STRING or String(entry["text_zh"]).is_empty():
+		return "Hints entry %s text_zh must be a non-empty string." % hint_id
+	var trigger: Variant = entry.get("trigger")
+	if typeof(trigger) != TYPE_STRING:
+		return "Hints entry %s trigger must be a string." % hint_id
+	var trigger_text := String(trigger)
+	const FIXED_TRIGGERS: PackedStringArray = ["boot", "craft_failed", "overlay", "mine_entered", "encounter_start"]
+	if FIXED_TRIGGERS.has(trigger_text):
+		seen_ids[hint_id] = true
+		return ""
+	if trigger_text.begins_with("built:"):
+		var target := trigger_text.substr(6)
+		if target == "*" or _is_stable_id_shape(target):
+			seen_ids[hint_id] = true
+			return ""
+	return "Hints entry %s trigger must be boot/craft_failed/overlay/mine_entered/encounter_start or built:<id>|built:*." % hint_id
+
+
+## 按触发点查询提示条目（触发订阅单一来源）：trigger 与触发点同名即命中；
+## built:<id> 仅当触发点为 built 且 building_id 一致时命中，built:* 通配任意
+## 建筑。坏表/无匹配返回空数组。
+static func hints_for_trigger(trigger_point: String, building_id: String = "") -> Array[Dictionary]:
+	var matches: Array[Dictionary] = []
+	for hint: Dictionary in _hint_entries():
+		var trigger := String(hint["trigger"])
+		if trigger.begins_with("built:"):
+			if trigger_point != "built":
+				continue
+			var target := trigger.substr(6)
+			if target != "*" and target != building_id:
+				continue
+		elif trigger != trigger_point:
+			continue
+		matches.append(hint)
+	return matches
+
+
+## 按稳定 hint id 读文案（DLX-3 文案单一来源为提示表）；未知 id 返回空串。
+static func hint_text(hint_id: String) -> String:
+	for hint: Dictionary in _hint_entries():
+		if String(hint["id"]) == hint_id:
+			return String(hint["text_zh"])
+	return ""
+
+
+## 一次性提示入队（按稳定 hint id）：屏幕中下方 HintToast 逐条淡入淡出展示
+##（默认停留 4s）。一次性语义按 hint id 去重：同一会话内已展示/已入队的不复播；
+## 快照 flags 中 hint_<id>_seen 已置位（读档/重开）的同样跳过。首次接受时经
+## 注入的 hint_seen_callback 上报 id，由集成层落账——表现层绝不直接写持久状态。
+## 空 id（坏表兜底产物）直接忽略。
+func show_hint_with_id(hint_id: String, text_value: String, seconds: float = DEFAULT_HINT_SECONDS) -> void:
+	if hint_id.is_empty():
+		return
 	if _shown_hint_ids.has(hint_id):
 		return
 	_shown_hint_ids[hint_id] = true
@@ -556,14 +764,16 @@ func show_hint(text_value: String, seconds: float = DEFAULT_HINT_SECONDS) -> voi
 	_pump_hint_queue()
 
 
-## 文案 → 稳定 hint id（hint_<id>_seen 的 id 单一来源）。已知文案查表；模板化
-## 放置提示按前后缀归一为 "place"（与 {建筑名} 无关）；未知文案退化为文本哈希，
-## 保证任意调用仍满足"同条不重复"（生产触达的文案全部在查表/模板范围内）。
+## 旧调用形态兼容入口：以文案文本哈希为一次性 id（hint_<id>_seen 的 id 与
+## 表内稳定 id 无关联）。生产路径一律走 show_hint_with_id（集成层/表触发）。
+func show_hint(text_value: String, seconds: float = DEFAULT_HINT_SECONDS) -> void:
+	show_hint_with_id(hint_id_for(text_value), text_value, seconds)
+
+
+## 文案 → 一次性 id 的退化派生（仅 show_hint 旧入口使用）：文本哈希保证任意
+## 调用满足"同条不重复"；表驱动触发的稳定 id 由提示表与 show_hint_with_id
+## 提供，不再经文案反查。
 static func hint_id_for(text_value: String) -> String:
-	if HINT_IDS_BY_TEXT.has(text_value):
-		return str(HINT_IDS_BY_TEXT[text_value])
-	if text_value.begins_with(HINT_PLACE_PREFIX) and text_value.ends_with(HINT_PLACE_SUFFIX):
-		return "place"
 	return "text_%d" % text_value.hash()
 
 
@@ -573,12 +783,13 @@ func _hint_flag_enabled(hint_id: String) -> bool:
 	return bool(flags.get(HINT_FLAG_FORMAT % hint_id, false))
 
 
-## 首次 O 覆盖层提示（hud 内直接触发）。暂停期间 world 不响应 O 键，
-## 提示与实际行为保持一致——暂停时同样跳过。
+## 首次 O 覆盖层提示（HUD 内触发点；文案与触发条件读提示表）。暂停期间
+## world 不响应 O 键，提示与实际行为保持一致——暂停时同样跳过。
 func _maybe_show_overlay_hint() -> void:
 	if get_tree() != null and get_tree().paused:
 		return
-	show_hint(HINT_OVERLAY_TEXT)
+	for hint: Dictionary in hints_for_trigger("overlay"):
+		show_hint_with_id(String(hint["id"]), String(hint["text_zh"]))
 
 
 ## 队列泵：空闲且队列非空时展示队首；正在展示则等待完成方法回调再泵。

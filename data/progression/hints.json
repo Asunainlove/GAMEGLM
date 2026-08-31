@@ -1,0 +1,8 @@
+[
+  {"id": "move", "text_zh": "WASD/方向键移动 · 左键采集矿脉 · 右键/F 放置建筑", "trigger": "boot"},
+  {"id": "place", "text_zh": "右键/F 放置 {building} · 数字键 1-{hotkey_max} 切换建筑", "trigger": "built:*"},
+  {"id": "craft", "text_zh": "材料不足 · 背包面板（I）可查看配方合成", "trigger": "craft_failed"},
+  {"id": "overlay", "text_zh": "矿脉覆盖层 · 高亮矿脉可左键采集，便于规划路线", "trigger": "overlay"},
+  {"id": "mine", "text_zh": "深处有强烈共鸣 · 稳压装置随时待命", "trigger": "mine_entered"},
+  {"id": "battle", "text_zh": "回合制战斗 · 点击行动按钮指令队伍", "trigger": "encounter_start"}
+]

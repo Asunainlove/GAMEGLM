@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/hints.schema.json",
+  "title": "Starsoil HUD one-shot hint table",
+  "description": "DLX-3 引导提示外置：W003-A3 六条一次性提示的声明式触发表。trigger 词汇表：boot（开局延迟点）、craft_failed（建造材料不足）、overlay（首次矿脉覆盖层）、mine_entered（首次进入矿井）、encounter_start（遭遇触发前）、built:* 或 built:<building_id>（建筑进入放置流，* 为任意建筑通配）。text_zh 可携带 {token} 占位符，由集成层触发点以上下文替换（如 {building} 建筑中文名、{hotkey_max} 热键上限）。落账机制不变：首次展示经回调置位 hint_<id>_seen。运行时由 Hud.load_hints_from 做最小校验（结构/稳定 ID/trigger 形态），坏文件拒绝并失败安全（不提示）。",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["id", "text_zh", "trigger"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+      "text_zh": {"type": "string", "minLength": 1},
+      "trigger": {
+        "type": "string",
+        "anyOf": [
+          {"const": "boot"},
+          {"const": "craft_failed"},
+          {"const": "overlay"},
+          {"const": "mine_entered"},
+          {"const": "encounter_start"},
+          {"pattern": "^built:(\\*|[a-z][a-z0-9_]*)$"}
+        ]
+      }
+    }
+  }
+}

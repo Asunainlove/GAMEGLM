@@ -1,0 +1,15 @@
+[
+  {"text_zh": "面对辉砂巨兽", "all_of": ["encounter_leviathan_due"], "any_of_prefix": null, "not_flags": ["encounter_leviathan_won"]},
+  {"text_zh": "应对漂移群威胁", "all_of": ["encounter_first_drift_due"], "any_of_prefix": null, "not_flags": ["encounter_first_drift_won"]},
+  {"text_zh": "应对漂移群威胁", "all_of": ["encounter_husk_ambush_due"], "any_of_prefix": null, "not_flags": ["encounter_husk_ambush_won"]},
+  {"text_zh": "探索世界", "all_of": [], "any_of_prefix": null, "not_flags": ["event_*", "encounter_*", "placed_*", "station_mode_*", "approach_*", "policy_*"]},
+  {"text_zh": "勘探琉砂海，采集星壤尘", "all_of": [], "any_of_prefix": null, "not_flags": ["event_event_first_mining_done", "placed_anchor_block"]},
+  {"text_zh": "放置第一座锚块", "all_of": [], "any_of_prefix": null, "not_flags": ["placed_anchor_block", "event_event_first_anchor_done"]},
+  {"text_zh": "建立锚居工坊", "all_of": [], "any_of_prefix": null, "not_flags": ["placed_anchor_workshop", "event_event_workshop_guide_done"]},
+  {"text_zh": "应对漂移群威胁", "all_of": [], "any_of_prefix": null, "not_flags": ["encounter_first_drift_won", "encounter_husk_ambush_won"]},
+  {"text_zh": "做出驻地抉择", "all_of": [], "any_of_prefix": null, "not_flags": ["station_mode_exploit", "station_mode_seal", "station_mode_symbiosis", "event_event_station_mode_done"]},
+  {"text_zh": "推进方法与政策抉择", "all_of": [], "any_of_prefix": null, "not_flags": ["approach_*", "event_event_approach_done"]},
+  {"text_zh": "推进方法与政策抉择", "all_of": [], "any_of_prefix": "approach_", "not_flags": ["policy_extraction_quota", "policy_sanctuary", "event_event_policy_done"]},
+  {"text_zh": "面对辉砂巨兽", "all_of": [], "any_of_prefix": null, "not_flags": ["encounter_leviathan_won", "event_event_leviathan_pact_done"]},
+  {"text_zh": "见证余辉结局", "all_of": [], "any_of_prefix": null, "not_flags": ["event_event_ending_luoxian_done", "event_event_ending_misa_done"]}
+]

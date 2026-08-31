@@ -8,7 +8,8 @@ extends Node
 ##   （tool_tier=2；中间敲击进度为暂态，由本节点按格暂存）→ 耗尽时
 ##   Progression.react(mined)。
 ## - 建造链：player.place_requested → BuildingRules.attempt_build（缺省
-##   anchor_block，数字键 1-6 或 HUD 建造热键栏可选建筑）→ PowerGrid.evaluate
+##   anchor_block，数字键 1-N（N=min(max(6,建筑定义数),9)，DLX-3 泛化）或
+##   HUD 建造热键栏可选建筑）→ PowerGrid.evaluate
 ##   供电门控（新建筑位于 placed_buildings 末尾，供给不足时最先断电；同 id 多
 ##   实例按计数差判定本次新建实例）→ Progression.react(built, powered)：只有
 ##   供电的 effect_flag 建筑（stabilizer_pylon/echo_chamber）才置 effect_flag。
@@ -29,11 +30,12 @@ extends Node
 ##   hp_multiplier=Progression.boss_hp_multiplier）→ encounter_finished →
 ##   胜利时 Progression.react(encounter_won)；卸载战斗场景，战败保留 due flag。
 ## - 结局链：Progression.ending_ready 且 due_event 为空且无战斗 → ending.tscn。
-## - 引导链（W003-A3）：首次操作提示经 HUD HintToast 队列展示——开局 2s 总提示、
-##   首次选中建筑、首次材料不足建造失败、首次进入矿井（mine_entered 置位后）、
-##   遭遇触发前由本节点触发；首次 O 覆盖层由 HUD 内部触发。一次性标记
-##   hint_<id>_seen 由本节点注入 hud.hint_seen_callback 的回调经 patch 落账
-##   （表现层不直接写状态）。
+## - 引导链（W003-A3 / DLX-3）：首次操作提示经 HUD HintToast 队列展示——开局
+##   2s 总提示、首次选中建筑、首次材料不足建造失败、首次进入矿井（mine_entered
+##   置位后）、遭遇触发前由本节点按触发点调用；触发条件与文案读
+##   data/progression/hints.json（_show_hints_for_trigger 按表订阅），首次 O
+##   覆盖层由 HUD 内部触发点读表。一次性标记 hint_<id>_seen 由本节点注入
+##   hud.hint_seen_callback 的回调经 patch 落账（表现层不直接写状态）。
 ## - 存档链：每次 patch 提交后节流 SaveService.save_slot("auto")；启动时尝试
 ##   load → restore_snapshot。主菜单手动保存写 "manual" 槽并在 HUD 闪现提示；
 ##   重新开始先经 GameState.reset_to_initial 归零持久状态（Autoload 或注入
@@ -51,7 +53,11 @@ const TOOL_TIER: int = 2
 const CHUNK_GRID_WIDTH: int = 4
 const CHUNK_GRID_HEIGHT: int = 2
 const DEFAULT_BUILDING_ID: String = "anchor_block"
-const BUILDING_HOTBAR_SIZE: int = 6
+## DLX-3 热键泛化：常量 BUILDING_HOTBAR_SIZE 退役。热键上限 = 
+## min(max(6, 建筑定义数), 9)——下限 6 保持既有布局承诺，上限 9 为备用数字键
+## 1-9；新增建筑 = 改数据，第 7 个起自动获得热键（>9 走 HUD 建造热键栏点击）。
+const BUILDING_HOTBAR_MIN_SIZE: int = 6
+const BUILDING_HOTBAR_MAX_SIZE: int = 9
 const BATTLE_SCENE_PATH: String = "res://scenes/battle.tscn"
 const ENDING_SCENE_PATH: String = "res://scenes/ending.tscn"
 const DEFAULT_SAVE_SLOT: String = "auto"
@@ -99,6 +105,10 @@ var scene_reloader: Callable = Callable()
 ## 注入点（W002-GAP3）：位置检查点取玩家所在格（世界格坐标）。缺省从绑定的
 ## player 节点读 position / CELL_SIZE（玩家节点 position 即世界像素坐标）。
 var player_cell_provider: Callable = Callable()
+
+## 注入点（DLX-3）：建筑 id 目录来源，缺省 ContentDB.ids_of("building")。
+## 热键范围与放置提示的"数字键 1-N"据此派生；测试可注入扩充目录替身。
+var building_ids_provider: Callable = Callable()
 
 ## 当前选中建筑（建造链缺省 anchor_block）。
 var selected_building_id: String = DEFAULT_BUILDING_ID
@@ -149,11 +159,34 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key == null or not key.pressed or key.echo:
 		return
 	var index := key.keycode - KEY_1
-	if index < 0 or index >= BUILDING_HOTBAR_SIZE:
+	if index < 0 or index >= _building_hotbar_size():
 		return
-	var ids: Array[String] = ContentDB.ids_of("building")
+	var ids := _building_ids()
 	if index < ids.size():
 		select_building(ids[index])
+
+
+## DLX-3 建筑目录来源：注入 provider 优先，缺省 ContentDB 全集（防御归一为
+## String 数组，坏结果安全回退）。
+func _building_ids() -> Array[String]:
+	if building_ids_provider.is_valid():
+		var provided: Variant = building_ids_provider.call()
+		if provided is Array:
+			var ids: Array[String] = []
+			for value: Variant in provided:
+				ids.append(str(value))
+			return ids
+		push_warning("GameSession.building_ids_provider returned %s, expected Array." % type_string(typeof(provided)))
+	return ContentDB.ids_of("building")
+
+
+## 热键上限：min(max(6, 建筑定义数), 9)（DLX-3 泛化，纯函数便于边界断言）。
+static func hotbar_size_for(building_count: int) -> int:
+	return mini(maxi(BUILDING_HOTBAR_MIN_SIZE, building_count), BUILDING_HOTBAR_MAX_SIZE)
+
+
+func _building_hotbar_size() -> int:
+	return hotbar_size_for(_building_ids().size())
 
 
 # ---------------------------------------------------------------- 编排主循环
@@ -182,8 +215,9 @@ func tick() -> void:
 			return
 	var encounter_id := EncounterDirector.check_triggers(state, _encounter_defs())
 	if encounter_id != "":
-		# W003-A3：首次遭遇触发前先弹战斗提示（一次性，去重与落账见 _show_hint_if_due）。
-		_show_hint_if_due(state, "battle", Hud.HINT_BATTLE_TEXT)
+		# W003-A3：首次遭遇触发前先弹战斗提示（一次性）。
+		# DLX-3：触发条件与文案读提示表（encounter_start 触发点）。
+		_show_hints_for_trigger(state, "encounter_start")
 		_start_encounter(encounter_id)
 		return
 	if Progression.ending_ready(state):
@@ -288,8 +322,9 @@ func request_place(cell: Vector2i) -> AppResult:
 	var result := building_rules.attempt_build(_snapshot(), building_def, chunk_id, cell, store)
 	if not result.is_ok:
 		# W003-A3：首次材料不足建造失败时引导去背包配方区合成；其他失败原因不提示。
+		# DLX-3：触发条件与文案读提示表（craft_failed 触发点）。
 		if result.code == "insufficient_item":
-			_show_hint_if_due(_snapshot(), "craft", Hud.HINT_CRAFT_TEXT)
+			_show_hints_for_trigger(_snapshot(), "craft_failed")
 		return result
 	var react_result := Progression.react(
 		_snapshot(), "built",
@@ -395,12 +430,14 @@ func select_building(building_id: String) -> bool:
 	if ContentDB.get_building(building_id).is_empty():
 		return false
 	selected_building_id = building_id
-	# W003-A3：首次选中建筑提示放置方式与数字键切换（模板按建筑中文名展开，
-	# HUD 侧按稳定 hint id "place" 一次性去重，与具体建筑名无关）。
-	_show_hint_if_due(
-		_snapshot(), "place",
-		Hud.HINT_PLACE_TEMPLATE % str(ContentDB.get_building(building_id).get("name_zh", building_id))
-	)
+	# W003-A3：首次选中建筑提示放置方式与数字键切换。DLX-3：触发条件与文案读
+	# 提示表（built 触发点，built:* 通配任意建筑）；模板 {building} 按建筑中文名、
+	# {hotkey_max} 按实际热键数展开（6 建筑场景输出与迁移前逐字节一致）。
+	_show_hints_for_trigger(_snapshot(), "built", {
+		"building_id": building_id,
+		"building": str(ContentDB.get_building(building_id).get("name_zh", building_id)),
+		"hotkey_max": str(_building_hotbar_size()),
+	})
 	return true
 
 
@@ -1035,15 +1072,32 @@ func _start_move_hint_timer() -> void:
 
 
 ## 开局 2s 总提示（WASD/左键/右键/F）。测试直接调本方法驱动（可控 timer 等价物）。
+## DLX-3：触发条件与文案读提示表（boot 触发点）。
 func _show_move_hint_if_due() -> void:
-	_show_hint_if_due(_snapshot(), "move", Hud.HINT_MOVE_TEXT)
+	_show_hints_for_trigger(_snapshot(), "boot")
 
 
 ## mine_entered 置位后（首次进入矿井）的深处提示；tick 每帧检查，开销为一次字典读。
+## DLX-3：触发条件与文案读提示表（mine_entered 触发点）。
 func _show_mine_hint_if_due(state: Dictionary) -> void:
 	if not bool((state.get("flags", {}) as Dictionary).get(MINE_ENTERED_FLAG, false)):
 		return
-	_show_hint_if_due(state, "mine", Hud.HINT_MINE_TEXT)
+	_show_hints_for_trigger(state, "mine_entered")
+
+
+## DLX-3 通用触发点：按提示表订阅 trigger_point 命中的全部提示，逐条经
+## _show_hint_if_due 展示（每条提示由自身 hint_<id>_seen 独立去重落账）。
+## text_zh 中的 {token} 占位符按 context 键值做字面替换（如 {building} /
+## {hotkey_max}），表内未出现的 token 保持原样。
+func _show_hints_for_trigger(
+		snapshot: Dictionary, trigger_point: String, context: Dictionary = {}) -> void:
+	if hud == null:
+		return
+	for hint: Dictionary in Hud.hints_for_trigger(trigger_point, String(context.get("building_id", ""))):
+		var text_value := String(hint["text_zh"])
+		for key: String in context.keys():
+			text_value = text_value.replace("{%s}" % key, str(context[key]))
+		_show_hint_if_due(snapshot, String(hint["id"]), text_value)
 
 
 ## 通用触发点：HUD 在场且快照 flags 中 hint_<id>_seen 未置位时展示 text。
@@ -1055,7 +1109,9 @@ func _show_hint_if_due(snapshot: Dictionary, hint_id: String, text_value: String
 	var flags: Dictionary = snapshot.get("flags", {}) as Dictionary
 	if bool(flags.get(Hud.HINT_FLAG_FORMAT % hint_id, false)):
 		return
-	hud.show_hint(text_value)
+	# DLX-3：按表内稳定 hint id 展示与上报（旧入口 show_hint 以文案哈希派生
+	# id，无法与 hint_<id>_seen 对齐）。
+	hud.show_hint_with_id(hint_id, text_value)
 
 
 ## hud.hint_seen_callback 的实现（落账通道）：经独立 integration patch 把

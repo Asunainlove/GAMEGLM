@@ -523,8 +523,11 @@ func test_show_hint_templated_place_text_dedups_by_hint_id() -> void:
 	var toast: Control = hud.get_node("HintToast") as Control
 	var label: Label = hud.get_node("HintToast/HintLabel") as Label
 
-	hud.show_hint("右键/F 放置 锚块 · 数字键 1-6 切换建筑")
-	hud.show_hint("右键/F 放置 共鸣织机 · 数字键 1-6 切换建筑")
+	# DLX-3 合法断言更新：提示文案外置到 hints.json 后，生产路径按表内稳定
+	# hint id 展示（show_hint_with_id），不再经文案反查 id；去重语义不变——
+	# 同一 hint id 换建筑名（模板展开结果）不得重复展示，且以 id "place" 落账。
+	hud.show_hint_with_id("place", "右键/F 放置 锚块 · 数字键 1-6 切换建筑")
+	hud.show_hint_with_id("place", "右键/F 放置 共鸣织机 · 数字键 1-6 切换建筑")
 	assert_eq(label.text, "右键/F 放置 锚块 · 数字键 1-6 切换建筑")
 
 	_complete_current_hint(hud)
@@ -541,8 +544,11 @@ func test_show_hint_skips_when_flag_already_seen_in_snapshot() -> void:
 	payload["flags"] = {"hint_move_seen": true, "hint_craft_seen": true}
 	var hud: Hud = _make_hint_spy_hud(payload)
 
-	hud.show_hint(Hud.HINT_MOVE_TEXT)
-	hud.show_hint(Hud.HINT_CRAFT_TEXT)
+	# DLX-3 合法断言更新：Hud.HINT_*_TEXT 常量退役，文案读提示表；
+	# show_hint(text) 的文案哈希 id 无法对齐 hint_<id>_seen，改走
+	# show_hint_with_id（生产同路径）。
+	hud.show_hint_with_id("move", Hud.hint_text("move"))
+	hud.show_hint_with_id("craft", Hud.hint_text("craft"))
 	assert_false(
 		(hud.get_node("HintToast") as Control).visible,
 		"快照 flags 已置 hint_*_seen 时不得再次提示（重开游戏不重复）。"
@@ -554,9 +560,10 @@ func test_show_hint_skips_when_flag_already_seen_in_snapshot() -> void:
 func test_show_hint_reports_seen_once_via_injected_callback() -> void:
 	var hud: Hud = _make_hint_spy_hud(_basic_payload())
 
-	hud.show_hint(Hud.HINT_MOVE_TEXT)
-	hud.show_hint(Hud.HINT_CRAFT_TEXT)
-	hud.show_hint(Hud.HINT_MOVE_TEXT)
+	# DLX-3 合法断言更新：同上，文案读提示表 + show_hint_with_id 稳定 id。
+	hud.show_hint_with_id("move", Hud.hint_text("move"))
+	hud.show_hint_with_id("craft", Hud.hint_text("craft"))
+	hud.show_hint_with_id("move", Hud.hint_text("move"))
 
 	if _hint_spy == null:
 		fail_test("hint spy must exist.")
@@ -574,7 +581,8 @@ func test_toggle_overlay_action_triggers_overlay_hint_once() -> void:
 
 	hud._unhandled_input(_action_event("toggle_overlay"))
 	assert_true(toast.visible, "首次 O 覆盖层必须弹出矿脉覆盖层用途提示。")
-	assert_eq(label.text, Hud.HINT_OVERLAY_TEXT, "覆盖层提示必须使用 hud 内置文案。")
+	# DLX-3 合法断言更新：覆盖层提示文案外置到 hints.json，读表断言。
+	assert_eq(label.text, Hud.hint_text("overlay"), "覆盖层提示必须使用提示表文案。")
 
 	_complete_current_hint(hud)
 	hud._unhandled_input(_action_event("toggle_overlay"))
