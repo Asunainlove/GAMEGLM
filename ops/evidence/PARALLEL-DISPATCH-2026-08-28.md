@@ -34,3 +34,12 @@
 - 10-agent parallel dispatch succeeded (A1..A10). Doc packets A5/A6/A7/A8 merged (126 asset contract entries total in docs/art/); code packet A3 merged (476/476 baseline).
 - Known flake identified during parallel merge gates: save-chain tests (test_save_chain_*, test_ready_restores_autosave_*) intermittently fail ONLY while multiple worktree GUT suites run concurrently - root cause: all worktrees share the same user:// app_userdata save directory, so three-generation save files race across processes. Not a logic bug; reproduction stops when machine is idle. Follow-up packet needed: per-suite save-root isolation for SaveService tests (or unique slot prefix per GUT process).
 - Second observed flake (encounter defeat test line 606, battle null after tick) appears load-correlated in the same windows; re-verify with clean battery after wave completes.
+
+# W003 wave complete (2026-08-30)
+
+- All 10 parallel packets SUBMITTED and merged: A1 content expansion (9 events, dialogue +75%), A2 conditional branch lines (B3 closed), A3 first-time hints, A4 battle presentation, A5/A6/A7/A8 art asset contracts (126 entries in docs/art/), A9 AudioDirector + audio contracts, A10 title screen + audio wiring.
+- Final main: 529/529 tests, Verify-Toolchain exit 0, Verify-Slice exit 0 (GATE4 export PASS); idle-machine 3x battery zero failures.
+- Incident resolved: A2/A10 crossed worktrees mid-wave (stash mixing); A2 recovered via git fsck dangling commit 4a67956, A10 rebuilt byte-for-byte in an isolation window; both packages verified independently on final gates; foreign leftovers cleaned from both worktrees (all already merged).
+- Flake resolved: W003-A2 cleaned 4,957 stale user:// test save roots (shared across worktree suites); root-cause documented, per-suite isolation logged as hardening recommendation.
+- Governance: state.json -> G6 art_production_ready; gap report disposition table appended.
+- Next: G6 asset production per docs/art/ contracts (provenance + human approval per AGENTS.md), then G7 human gates.
