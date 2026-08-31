@@ -11,6 +11,10 @@ const CHUNK_SIZE: int = 32
 const CELL_SIZE: int = 32
 
 const VEIN_COUNT: int = 10
+## DLX-4 世界回应富集：exploit 路线（world_response_exploited）下每 chunk 矿脉
+## 种子数 10 → 14。实现为"同 rng 流追加矿脉"——同 (seed, chunk_id) 仍确定性，
+## 且富集结果是普通结果的严格超集（矿格只增不减，普通格全部保留）。
+const ENRICHED_VEIN_COUNT: int = 14
 const VEIN_WALK_MIN: int = 3
 const VEIN_WALK_MAX: int = 8
 ## Each vein claims at least this many unique cells so the per-chunk ore total
@@ -111,11 +115,15 @@ static func chunk_origin(chunk_id: String) -> Vector2i:
 ## Generates one chunk deterministically. Returns
 ## `{"chunk_id": String, "cells": Dictionary}` where `cells` maps Vector2i grid
 ## coordinates to ore type ids and only contains non-soil cells.
-static func generate(chunk_id: String, world_seed: int) -> Dictionary:
+## DLX-4：可选 enriched=true 时以 ENRICHED_VEIN_COUNT 追加矿脉种子——前
+## VEIN_COUNT 条矿脉与普通生成逐格一致（同 rng 流前缀），保证富集是普通
+## 结果的超集；同 (world_seed, chunk_id, enriched) 三元组恒确定性复现。
+static func generate(chunk_id: String, world_seed: int, enriched: bool = false) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%d|%s" % [world_seed, chunk_id])
 	var cells: Dictionary = {}
-	for _vein: int in VEIN_COUNT:
+	var vein_count := ENRICHED_VEIN_COUNT if enriched else VEIN_COUNT
+	for _vein: int in vein_count:
 		_grow_vein(cells, rng)
 	return {"chunk_id": chunk_id, "cells": cells}
 
@@ -170,7 +178,9 @@ static func _grow_vein(cells: Dictionary, rng: RandomNumberGenerator) -> void:
 		cursor = _clamped_neighbor(cursor, rng)
 		_claim_cell(cells, cluster, cursor, vein_type)
 	var attempts := 0
-	while cluster.size() < VEIN_MIN_CELLS and attempts < VEIN_GROWTH_ATTEMPT_CAP:
+	# 防御：矿脉完全被既有矿格围死时 cluster 可能为空（更高矿脉数下概率升高），
+	# 空集群无法取 anchor，直接放弃补足（不影响非退化路径的 rng 消耗序列）。
+	while cluster.size() > 0 and cluster.size() < VEIN_MIN_CELLS and attempts < VEIN_GROWTH_ATTEMPT_CAP:
 		attempts += 1
 		var anchor: Vector2i = cluster[rng.randi_range(0, cluster.size() - 1)]
 		_claim_cell(cells, cluster, _clamped_neighbor(anchor, rng), vein_type)

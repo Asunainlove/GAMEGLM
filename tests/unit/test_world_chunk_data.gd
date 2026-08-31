@@ -126,3 +126,43 @@ func test_cell_def_returns_an_independent_copy() -> void:
 		4,
 		"cell_def must never hand out its mutable template."
 	)
+
+
+# ---------------------------------------------------------------- DLX-4：世界回应富集（enriched 参数）
+
+
+func test_generate_enriched_is_deterministic_for_same_seed_and_chunk_id() -> void:
+	var first: Dictionary = _chunk_data().generate("chunk_0_0", 42, true)
+	var second: Dictionary = _chunk_data().generate("chunk_0_0", 42, true)
+	assert_eq(first["cells"], second["cells"], "Same seed + chunk_id + enriched must reproduce identical cells.")
+
+
+func test_generate_default_call_matches_enriched_false() -> void:
+	var implicit: Dictionary = _chunk_data().generate("chunk_0_0", 42)
+	var explicit: Dictionary = _chunk_data().generate("chunk_0_0", 42, false)
+	assert_eq(implicit["cells"], explicit["cells"], "Default generate must stay equivalent to enriched=false.")
+
+
+func test_generate_enriched_yields_strictly_more_ore_than_normal() -> void:
+	# 富集实现为"同 rng 流追加矿脉"：enriched 结果必须是普通结果的超集且严格
+	# 更多矿格——破坏性变更不可能，世界只增不减。
+	for world_seed: int in [0, 1, 42, 20260829, -7]:
+		var normal: Dictionary = _chunk_data().generate("chunk_0_0", world_seed)["cells"]
+		var enriched: Dictionary = _chunk_data().generate("chunk_0_0", world_seed, true)["cells"]
+		assert_gt(
+			enriched.size(), normal.size(),
+			"seed %d enriched chunk must contain more ore cells than normal." % world_seed
+		)
+		for cell: Vector2i in normal:
+			assert_eq(
+				enriched.get(cell, ""), normal[cell],
+				"enriched must keep every normal ore cell (superset, seed %d)." % world_seed
+			)
+
+
+func test_generate_enriched_cells_stay_inside_chunk_bounds_and_ore_types() -> void:
+	var cells: Dictionary = _chunk_data().generate("chunk_2_1", 7, true)["cells"]
+	for cell: Vector2i in cells:
+		assert_true(cell.x >= 0 and cell.x < 32, "Enriched cell x out of chunk bounds: %s" % cell)
+		assert_true(cell.y >= 0 and cell.y < 32, "Enriched cell y out of chunk bounds: %s" % cell)
+		assert_has(ORE_TYPES, cells[cell], "Unexpected enriched cell type: %s" % cells[cell])
