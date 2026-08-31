@@ -1,0 +1,12 @@
+{
+  "id": "event_pylon_hum",
+  "kind": "dialogue",
+  "requires_flag": "pylon_stabilized",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "听！大地跟上塔架的频率了——原本乱撞的杂音，现在排成了一列。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "稳定塔把矿脉的怒气卸成均匀的低鸣。这是工程学能写出的最温和的句子。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "我把耳朵贴在地上试了试，像趴在一头大兽的背上，听它匀匀的呼吸。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "别贴太久，地上凉。今天这一格读数，我打算在日志里给它画颗星。"}
+  ]
+}

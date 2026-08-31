@@ -1,0 +1,12 @@
+{
+  "id": "event_epilogue_sealed",
+  "kind": "dialogue",
+  "requires_flag": "station_mode_seal",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "洛弦", "text_zh": "封存令生效：闸门落锁，回声舱断电，矿站进入静默。账本最后一页写着——暂借，非买断。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "静下来之后，矿脉的声音反而清楚了。它在小心地试探，我们是不是真的要走了。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "走不走，留给它判断。我们守住约定，其余的交给时间。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "那我留一盏最小的灯。不为照亮谁，只为它哪天想说话时，知道去哪儿找我们。"}
+  ]
+}
