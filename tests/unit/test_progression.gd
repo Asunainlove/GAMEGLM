@@ -97,7 +97,10 @@ func test_due_event_done_flag_matches_event_runner_template() -> void:
 	if not _require_progression():
 		return
 	var runner_script: Script = load(EVENT_RUNNER_SCRIPT_PATH)
-	if not assert_not_null(runner_script):
+	# DLX-2 空转守卫修复：GUT 断言返回 void，`if not assert_xxx(...)` 恒真，
+	# 此前的早退让后续断言从未执行；改为显式断言 + 空值早退。
+	assert_not_null(runner_script)
+	if runner_script == null:
 		return
 	var runner_constants: Dictionary = runner_script.get_script_constant_map()
 	assert_eq(
@@ -223,11 +226,12 @@ func test_due_event_walks_full_chain_to_empty() -> void:
 	assert_eq(_progression.due_event({"flags": flags}), "", "A fully consumed chain yields an empty id.")
 
 
-func test_due_event_gap5_events_yield_empty_on_frozen_integration_gate_paths() -> void:
+func test_due_event_gap5_events_stay_clear_of_frozen_integration_gate_paths() -> void:
 	if not _require_progression():
 		return
-	# 冻结集成测试的两条 flag 集必须保持"due_event 为空"语义（W003-A1 禁改
-	# tests/unit/test_integration*.gd，新事件只能靠双守卫让路）：
+	# 冻结集成测试的两条 flag 集的回归语义（W003-A1 禁改
+	# tests/unit/test_integration*.gd，新事件只能靠双守卫让路；DLX-2 起
+	# event_envoy_trust 经外置链生效，见路径 b 的合法断言更新）：
 	# a) 结局路径：全旧事件 done + exploit + 三胜，但不含对话路径 flag
 	#    （world_response_exploited / echo_chamber_active / mine_entered /
 	#    encounter_leviathan_due / pylon_stabilized / anchor_workshop_placed）。
@@ -252,7 +256,10 @@ func test_due_event_gap5_events_yield_empty_on_frozen_integration_gate_paths() -
 	)
 
 	# b) 软锁死路径：低信任直达 policy，diplomatic_stance 与 station_mode_seal
-	#    已置但 echo_chamber_active 缺席 → envoy 与 epilogue_sealed 必须让路。
+	#    已置但 echo_chamber_active 缺席 → epilogue_sealed 等其余新事件必须让路。
+	#    DLX-2 合法断言更新：event_envoy_trust（DLX-1 tick 过渡钩子事件）并入
+	#    外置链后，due_event 在本 state 下返回它——旧系统全局行为一致（钩子
+	#    先于 due_event 触发同一事件），仅断言从"链内不可见"改为"链首可见"。
 	var softlock_flags: Dictionary = {
 		"station_mode_seal": true,
 		"approach_diplomatic": true,
@@ -267,8 +274,8 @@ func test_due_event_gap5_events_yield_empty_on_frozen_integration_gate_paths() -
 	]:
 		softlock_flags[_done_flag(event_id)] = true
 	assert_eq(
-		_progression.due_event({"flags": softlock_flags}), "",
-		"软锁死回归路径不得被 W003-A1 新事件抢占。"
+		_progression.due_event({"flags": softlock_flags}), "event_envoy_trust",
+		"并入外置链的 envoy_trust 在本 state 到期（旧钩子同帧会先触发它）；其余新事件必须让路。"
 	)
 
 
@@ -279,7 +286,10 @@ func test_event_chain_ids_all_exist_in_event_pack() -> void:
 	# 定义（EventRunner 装载失败或文件缺失都会让 GameSession 推进死等）。
 	var runner: RefCounted = load(EVENT_RUNNER_SCRIPT_PATH).new()
 	var loaded: AppResult = runner.load_events_from("res://data/events")
-	if not assert_true(loaded.is_ok, loaded.message):
+	# DLX-2 空转守卫修复：同上，`if not assert_true(...)` 恒真导致本测试此前
+	# 只执行了一条断言；链-包一致性检查现在真正运行。
+	assert_true(loaded.is_ok, loaded.message)
+	if not loaded.is_ok:
 		return
 	var packed_ids: Dictionary = {}
 	for event_def: Dictionary in (loaded.value as Array):
@@ -783,7 +793,10 @@ func test_deferred_to_patch_consumes_event_runner_deferred_ops_shape() -> void:
 	if not _require_progression():
 		return
 	var runner_script: Script = load(EVENT_RUNNER_SCRIPT_PATH)
-	if not assert_not_null(runner_script):
+	# DLX-2 空转守卫修复：同上，`if not assert_not_null(...)` 恒真导致桥接断言
+	# 从未执行；改为显式断言 + 空值早退。
+	assert_not_null(runner_script)
+	if runner_script == null:
 		return
 	var runner: RefCounted = runner_script.new()
 	var step: Dictionary = {
