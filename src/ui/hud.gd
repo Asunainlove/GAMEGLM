@@ -35,6 +35,23 @@ const FALLBACK_OBJECTIVE: String = "探索世界"
 ## DLX-3 提示表路径（W003-A3 六条提示的文案与触发条件单一来源）。
 const HINTS_PATH: String = "res://data/progression/hints.json"
 
+## DLX-4 关系面板（PM-P0a 信任可见）：trust/affection 只读展示 + 信任门提示行。
+## 门阈值数值单一来源为数据文件——政策门读事件选项 requires_trust（40 在
+## data/events/event_policy.json 的 policy_sanctuary），共生门读结局 trust 门控
+##（70 在 data/content/endings.json 的 ending_symbiosis）；本层绝不写死数值。
+const POLICY_EVENT_PATH: String = "res://data/events/event_policy.json"
+const ENDINGS_PATH: String = "res://data/content/endings.json"
+## 关系面板固定展示的两名同伴（切片范围主角；缺记录按 0 渲染）。
+const RELATION_ROW_IDS: Array[String] = ["luoxian", "misa"]
+const RELATION_CHAR_NAMES: Dictionary = {"luoxian": "洛弦", "misa": "弥砂"}
+## 关系维度展示刻度（GameState 的 set_relationship 已把值钳制在 0..100）。
+const RELATION_DIM_SCALE: int = 100
+## 门提示行模板：{char}=角色显示名，{threshold}=数据阈值，{remaining}=差值。
+## 选项锁门（flag 未置位时提示）用 LOCKED_TEMPLATE，标签取选项文案冒号前段；
+## 结局门（flag 置位后提示）用 REMAINING_TEMPLATE。
+const GATE_LOCKED_TEMPLATE: String = "尚未赢得{char}的信任（{label}需要 {threshold}）"
+const GATE_REMAINING_TEMPLATE: String = "距离共生还需 {remaining} 点信任"
+
 ## W003-A3 HintToast 展示参数：缺省停留 4s，淡入/淡出各一段。
 const DEFAULT_HINT_SECONDS: float = 4.0
 const HINT_FADE_IN_SECONDS: float = 0.25
@@ -65,6 +82,7 @@ var hint_seen_callback: Callable = Callable()
 
 @onready var _inventory_bar: HBoxContainer = $InventoryBar
 @onready var _objective_label: Label = $ObjectiveLabel
+@onready var _relations_panel: HBoxContainer = $RelationsPanel
 @onready var _inventory_panel: PanelContainer = $InventoryPanel
 @onready var _menu_panel: PanelContainer = $MenuPanel
 @onready var _inventory_items_box: VBoxContainer = $InventoryPanel/Content/ItemsBox
@@ -328,6 +346,216 @@ static func _placed_building_ids(snapshot: Dictionary) -> Array[String]:
 	return ids
 
 
+# ---------------------------------------------------------------- 关系面板（DLX-4 PM-P0a）
+
+
+## 快照 relationships 的只读维度取值；缺失记录/维度按 0 处理，绝不修改快照。
+static func _relationship_dim(snapshot: Dictionary, char_id: String, dim: String) -> int:
+	var relationships: Dictionary = snapshot.get("relationships", {}) as Dictionary
+	var record: Dictionary = relationships.get(char_id, {}) as Dictionary
+	return int(record.get(dim, 0))
+
+
+## 关系面板数值行（纯函数，测试断言用）：固定两名同伴，每行携带
+## {char_id, name_zh, trust, affection}；缺失记录按 0 渲染。
+static func relation_rows(snapshot: Dictionary) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	for char_id: String in RELATION_ROW_IDS:
+		var name_value: Variant = RELATION_CHAR_NAMES.get(char_id, char_id)
+		rows.append({
+			"char_id": char_id,
+			"name_zh": String(name_value),
+			"trust": _relationship_dim(snapshot, char_id, "trust"),
+			"affection": _relationship_dim(snapshot, char_id, "affection"),
+		})
+	return rows
+
+
+## 门提示表缓存：bootstrap 一次性加载（数值来自数据文件）；失败记为已引导
+##（轮询渲染逐帧调用 relations_gate_lines，不得逐帧重读坏文件），显式
+## load_relation_gates_from 可重载修复（测试注入临时数据文件）。
+static var _gates: Array[Dictionary] = []
+static var _gates_bootstrapped: bool = false
+static var _gates_last_load: AppResult = null
+
+
+## 门表只读访问器（测试断言用）：未引导时惰性加载生产数据文件。
+static func _gate_entries() -> Array[Dictionary]:
+	if not _gates_bootstrapped:
+		load_relation_gates_from(POLICY_EVENT_PATH, ENDINGS_PATH)
+	return _gates
+
+
+## 加载信任门数据：政策门读 policy 事件里带 requires_trust（对象形态）的选项
+##（flag = 选项 set_flag，标签取选项文案冒号前段），选项锁语义——flag 未置位
+## 且维度低于阈值时提示；共生门读 endings 表 trust 门控条目（flag = 该结局
+## all_of_flags 首位），结局门语义——flag 置位后维度仍低于阈值时提示。
+## 缺失/坏文件 push_error 并把表回退为空（失败安全：只少提示行，不渲染错值）。
+static func load_relation_gates_from(policy_event_path: String, endings_path: String) -> AppResult:
+	var result: AppResult = _read_and_validate_gates(policy_event_path, endings_path)
+	_gates_bootstrapped = true
+	_gates_last_load = result
+	if result.is_ok:
+		_gates = result.value
+	else:
+		_gates = []
+		push_error("Hud: relation gate data rejected (%s, %s): %s" % [
+			policy_event_path, endings_path, result.message,
+		])
+	return result
+
+
+static func _read_and_validate_gates(policy_event_path: String, endings_path: String) -> AppResult:
+	var gates: Array[Dictionary] = []
+	var option_result: AppResult = _gates_from_policy_event(policy_event_path)
+	if not option_result.is_ok:
+		return option_result
+	for gate: Dictionary in option_result.value:
+		gates.append(gate)
+	var endings_result: AppResult = _gates_from_endings(endings_path)
+	if not endings_result.is_ok:
+		return endings_result
+	for gate: Dictionary in endings_result.value:
+		gates.append(gate)
+	return AppResult.success(gates)
+
+
+## 从事件数据派生选项锁门：任何带 requires_trust（对象形态 {char_id, dim,
+## value}）+ set_flag 的选项都成为一条门提示（当前生产数据即 policy_sanctuary）。
+static func _gates_from_policy_event(path: String) -> AppResult:
+	if not FileAccess.file_exists(path):
+		return AppResult.failure("missing_gate_data_file", "Policy event file not found: %s" % path)
+	var json := JSON.new()
+	var parse_error: Error = json.parse(FileAccess.get_file_as_string(path))
+	if parse_error != OK:
+		return AppResult.failure(
+			"invalid_gate_data_file",
+			"Policy event file is not valid JSON at line %d." % json.get_error_line()
+		)
+	var parsed: Variant = json.get_data()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return AppResult.failure("invalid_gate_data_file", "Policy event file must contain a JSON object.")
+	var gates: Array[Dictionary] = []
+	var steps: Array = (parsed as Dictionary).get("steps", [])
+	for step_value: Variant in steps:
+		if typeof(step_value) != TYPE_DICTIONARY:
+			continue
+		var step: Dictionary = step_value
+		if String(step.get("type", "")) != "choice":
+			continue
+		for option_value: Variant in step.get("options", []):
+			if typeof(option_value) != TYPE_DICTIONARY:
+				continue
+			var option: Dictionary = option_value
+			var requirement: Variant = option.get("requires_trust")
+			var flag_id := String(option.get("set_flag", ""))
+			if typeof(requirement) != TYPE_DICTIONARY or flag_id.is_empty():
+				continue
+			var requirement_dict: Dictionary = requirement
+			var threshold := int(requirement_dict.get("value", 0))
+			var char_id := String(requirement_dict.get("char_id", ""))
+			var dim := String(requirement_dict.get("dim", ""))
+			if char_id.is_empty() or dim.is_empty():
+				continue
+			var option_text := String(option.get("text_zh", flag_id))
+			var label := option_text.split("：")[0] if option_text.contains("：") else option_text
+			gates.append({
+				"flag_id": flag_id,
+				"show_when_set": false,
+				"char_id": char_id,
+				"dim": dim,
+				"threshold": threshold,
+				"template": GATE_LOCKED_TEMPLATE,
+				"label": label,
+			})
+	return AppResult.success(gates)
+
+
+## 从结局数据派生结局门：trust 门控非空的结局条目成为一条"flag 置位后仍低于
+## 阈值则提示"的门（当前生产数据即共生结局 70）。flag 取 all_of_flags 首位。
+static func _gates_from_endings(path: String) -> AppResult:
+	if not FileAccess.file_exists(path):
+		return AppResult.failure("missing_gate_data_file", "Endings file not found: %s" % path)
+	var json := JSON.new()
+	var parse_error: Error = json.parse(FileAccess.get_file_as_string(path))
+	if parse_error != OK:
+		return AppResult.failure(
+			"invalid_gate_data_file",
+			"Endings file is not valid JSON at line %d." % json.get_error_line()
+		)
+	var parsed: Variant = json.get_data()
+	if typeof(parsed) != TYPE_ARRAY:
+		return AppResult.failure("invalid_gate_data_file", "Endings file must contain a JSON array.")
+	var gates: Array[Dictionary] = []
+	for entry_value: Variant in parsed:
+		if typeof(entry_value) != TYPE_DICTIONARY:
+			continue
+		var entry: Dictionary = entry_value
+		var trust: Variant = entry.get("trust")
+		if typeof(trust) != TYPE_DICTIONARY:
+			continue
+		var trust_dict: Dictionary = trust
+		var all_flags: Array = entry.get("all_of_flags", [])
+		if all_flags.is_empty():
+			continue
+		gates.append({
+			"flag_id": String(all_flags[0]),
+			"show_when_set": true,
+			"char_id": String(trust_dict.get("char_id", "")),
+			"dim": String(trust_dict.get("dim", "")),
+			"threshold": int(trust_dict.get("threshold", 0)),
+			"template": GATE_REMAINING_TEMPLATE,
+		})
+	return AppResult.success(gates)
+
+
+## 门提示行（纯函数，测试断言用）：选项锁门在 flag 未置位且维度低于阈值时
+## 出现；结局门在 flag 置位后维度仍低于阈值时出现。模板占位符 {char}/
+## {threshold}/{remaining}/{label} 按门条目替换；绝不修改快照。
+static func relations_gate_lines(snapshot: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	var flags: Dictionary = snapshot.get("flags", {}) as Dictionary
+	for gate: Dictionary in _gate_entries():
+		var flag_set := bool(flags.get(String(gate["flag_id"]), false))
+		if flag_set != bool(gate["show_when_set"]):
+			continue
+		var threshold := int(gate["threshold"])
+		var value := _relationship_dim(snapshot, String(gate["char_id"]), String(gate["dim"]))
+		if value >= threshold:
+			continue
+		var name_value: Variant = RELATION_CHAR_NAMES.get(String(gate["char_id"]), String(gate["char_id"]))
+		lines.append(String(gate["template"])
+			.replace("{char}", String(name_value))
+			.replace("{label}", String(gate.get("label", "")))
+			.replace("{threshold}", str(threshold))
+			.replace("{remaining}", str(threshold - value)))
+	return lines
+
+
+## RelationsPanel 渲染：每名同伴一行（数值 Label + 微型进度条），其后按需
+## 追加门提示行。全部只读快照。
+func _render_relations(snapshot: Dictionary) -> void:
+	_clear_children(_relations_panel)
+	for row: Dictionary in relation_rows(snapshot):
+		var row_box := HBoxContainer.new()
+		row_box.name = "RelationRow_%s" % str(row["char_id"])
+		_append_label(row_box, "%s 信任 %d/%d ♥%d" % [
+			str(row["name_zh"]), int(row["trust"]), RELATION_DIM_SCALE, int(row["affection"]),
+		])
+		var bar := ProgressBar.new()
+		bar.name = "TrustBar_%s" % str(row["char_id"])
+		bar.min_value = 0
+		bar.max_value = RELATION_DIM_SCALE
+		bar.value = int(row["trust"])
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(72.0, 10.0)
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row_box.add_child(bar)
+		_relations_panel.add_child(row_box)
+	for line: String in relations_gate_lines(snapshot):
+		_append_label(_relations_panel, line)
+
+
 func _on_poll_timer_timeout() -> void:
 	var snapshot: Dictionary = _current_snapshot()
 	var revision: int = _revision_of(snapshot)
@@ -355,6 +583,7 @@ func _revision_of(snapshot: Dictionary) -> int:
 
 func _render(snapshot: Dictionary) -> void:
 	_render_inventory_bar(snapshot)
+	_render_relations(snapshot)
 	_render_inventory_panel(snapshot)
 	_render_build_bar()
 	# 配方区跟随背包面板显隐渲染；合成落账会推进 revision，轮询路径同样会刷新。
