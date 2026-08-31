@@ -241,6 +241,14 @@
       "depends_on": [
         "WP11"
       ]
+    },
+    {
+      "id": "W003-A4",
+      "title": "Battle presentation layer (11 tests)",
+      "status": "verified",
+      "depends_on": [
+        "WP13"
+      ]
     }
   ]
 }
