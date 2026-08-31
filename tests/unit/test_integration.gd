@@ -790,6 +790,130 @@ func test_ending_chain_shows_ending_when_ready_and_quiet() -> void:
 		assert_eq(title.text, "结局：开采纪元", "exploit 路线必须呈现开采纪元结局。")
 
 
+# ---------------------------------------------------------------- 首次引导提示链（W003-A3）
+
+
+func _action_event(action_name: String) -> InputEventAction:
+	var event := InputEventAction.new()
+	event.action = action_name
+	event.pressed = true
+	return event
+
+
+func _hint_toast(hud: Hud) -> Control:
+	return hud.get_node("HintToast") as Control
+
+
+func _hint_label(hud: Hud) -> Label:
+	return hud.get_node("HintToast/HintLabel") as Label
+
+
+func _complete_current_hint(hud: Hud) -> void:
+	# 直接调 HUD 完成方法驱动超时路径（可控 timer 等价物）。
+	hud._on_hint_hold_timeout()
+	hud._on_hint_fade_out_finished()
+
+
+func _hint_flag(flag_id: String) -> bool:
+	return bool((store.snapshot()["flags"] as Dictionary).get(flag_id, false))
+
+
+func test_select_building_shows_place_hint_once_and_persists_flag() -> void:
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+	assert_true(hud.hint_seen_callback.is_valid(), "绑定的 HUD 必须注入 hint_seen_callback。")
+
+	assert_true(session.select_building("anchor_block"), "select_building 必须成功。")
+	assert_true(_hint_toast(hud).visible, "首次选中建筑必须弹出放置提示。")
+	assert_eq(_hint_label(hud).text, "右键/F 放置 锚块 · 数字键 1-6 切换建筑")
+	assert_true(_hint_flag("hint_place_seen"), "hint_seen 回调必须经 patch 落账 hint_place_seen。")
+
+	assert_true(session.select_building("anchor_workshop"), "第二次选中必须成功。")
+	_complete_current_hint(hud)
+	assert_false(_hint_toast(hud).visible, "放置提示一次性：换选建筑不得重复提示。")
+
+
+func test_move_hint_shown_after_delay_and_never_repeats() -> void:
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+
+	session._show_move_hint_if_due()
+	assert_true(_hint_toast(hud).visible, "开局延迟到点必须弹出移动/采集/放置总提示。")
+	assert_eq(_hint_label(hud).text, Hud.HINT_MOVE_TEXT)
+	assert_true(_hint_flag("hint_move_seen"), "开局提示必须经回调落账 hint_move_seen。")
+
+	_complete_current_hint(hud)
+	session._show_move_hint_if_due()
+	assert_false(_hint_toast(hud).visible, "开局提示一次性：flag 已置后不得重复。")
+
+
+func test_move_hint_skipped_when_flag_already_seen() -> void:
+	_patch_flags(["hint_move_seen"])
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+
+	session._show_move_hint_if_due()
+	assert_false(_hint_toast(hud).visible, "读档后 hint_move_seen 已置位时不得再提示。")
+
+
+func test_place_failure_without_materials_shows_craft_hint_once() -> void:
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+
+	var result: AppResult = session.request_place(_soil_cell())
+	assert_false(result.is_ok, "材料不足建造必须失败。")
+	assert_eq(result.code, "insufficient_item", "失败原因必须是材料不足。")
+	assert_true(_hint_toast(hud).visible, "首次材料不足必须弹出配方合成提示。")
+	assert_eq(_hint_label(hud).text, Hud.HINT_CRAFT_TEXT)
+	assert_true(_hint_flag("hint_craft_seen"), "合成提示必须落账 hint_craft_seen。")
+
+	_complete_current_hint(hud)
+	var again: AppResult = session.request_place(_soil_cell())
+	assert_false(again.is_ok)
+	assert_false(_hint_toast(hud).visible, "合成提示一次性：再次失败不得重复。")
+
+
+func test_mine_entered_flag_shows_mine_hint_on_tick() -> void:
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+	_patch_flags(["event_event_prologue_landing_done"])
+
+	session.tick()
+	assert_false(_hint_toast(hud).visible, "mine_entered 未置位时不得弹出矿井提示。")
+
+	_patch_flags(["mine_entered"])
+	session.tick()
+	assert_true(_hint_toast(hud).visible, "mine_entered 置位后 tick 必须弹出矿井提示。")
+	assert_eq(_hint_label(hud).text, Hud.HINT_MINE_TEXT)
+	assert_true(_hint_flag("hint_mine_seen"), "矿井提示必须落账 hint_mine_seen。")
+
+	_complete_current_hint(hud)
+	session.tick()
+	assert_false(_hint_toast(hud).visible, "矿井提示一次性。")
+
+
+func test_encounter_trigger_shows_battle_hint_before_battle() -> void:
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+	_patch_flags(["event_event_prologue_landing_done", "encounter_first_drift_due"])
+
+	session.tick()
+	assert_not_null(session.battle, "到期遭遇必须照常开战。")
+	assert_true(_hint_toast(hud).visible, "遭遇触发前必须弹出战斗提示。")
+	assert_eq(_hint_label(hud).text, Hud.HINT_BATTLE_TEXT)
+	assert_true(_hint_flag("hint_battle_seen"), "战斗提示必须落账 hint_battle_seen。")
+
+
+func test_overlay_hint_via_hud_trigger_lands_flag_through_session() -> void:
+	var hud := _make_hud()
+	_make_session_with_hud(hud)
+
+	hud._unhandled_input(_action_event("toggle_overlay"))
+	assert_true(_hint_toast(hud).visible, "首次 O 覆盖层必须弹出覆盖层用途提示。")
+	assert_eq(_hint_label(hud).text, Hud.HINT_OVERLAY_TEXT)
+	assert_true(_hint_flag("hint_overlay_seen"), "表现层触发的提示同样必须经回调落账。")
+
+
 # ---------------------------------------------------------------- 工具
 
 

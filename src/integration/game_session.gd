@@ -29,6 +29,11 @@ extends Node
 ##   hp_multiplier=Progression.boss_hp_multiplier）→ encounter_finished →
 ##   胜利时 Progression.react(encounter_won)；卸载战斗场景，战败保留 due flag。
 ## - 结局链：Progression.ending_ready 且 due_event 为空且无战斗 → ending.tscn。
+## - 引导链（W003-A3）：首次操作提示经 HUD HintToast 队列展示——开局 2s 总提示、
+##   首次选中建筑、首次材料不足建造失败、首次进入矿井（mine_entered 置位后）、
+##   遭遇触发前由本节点触发；首次 O 覆盖层由 HUD 内部触发。一次性标记
+##   hint_<id>_seen 由本节点注入 hud.hint_seen_callback 的回调经 patch 落账
+##   （表现层不直接写状态）。
 ## - 存档链：每次 patch 提交后节流 SaveService.save_slot("auto")；启动时尝试
 ##   load → restore_snapshot。主菜单手动保存写 "manual" 槽并在 HUD 闪现提示；
 ##   重新开始先经 GameState.reset_to_initial 归零持久状态（Autoload 或注入
@@ -55,6 +60,9 @@ const MAX_LINES_PER_BATCH: int = 32
 const MANUAL_SAVE_SLOT: String = "manual"
 const SAVE_NOTICE_TEXT: String = "已保存"
 const SAVE_NOTICE_SECONDS: float = 1.5
+
+## W003-A3 开局总提示（hint_move）的延迟秒数。
+const MOVE_HINT_DELAY_SECONDS: float = 2.0
 
 ## W002-GAP2 手工矿井/Boss 区触发链常量。事件经既有事件展示路径（start/pump/
 ## complete）驱动；mine_entered 与 encounter_leviathan_due 由事件 effect 步骤
@@ -113,6 +121,9 @@ var _mining_progress: Dictionary = {}
 var _cached_encounters: Array = []
 var _last_save_msec: int = -1_000_000_000
 
+## W003-A3 开局总提示延迟计时器（one_shot，仅注入 HUD 时创建）。
+var _move_hint_timer: Timer = null
+
 
 func _ready() -> void:
 	_ensure_content_bootstrapped()
@@ -121,6 +132,7 @@ func _ready() -> void:
 	_bind_hud()
 	_try_load_autosave()
 	_reconcile_effect_flags()
+	_start_move_hint_timer()
 
 
 func _process(_delta: float) -> void:
@@ -152,6 +164,7 @@ func tick() -> void:
 		return
 	var state := _snapshot()
 	_record_boss_room_checkpoint(state)
+	_show_mine_hint_if_due(state)
 	if dialogue_box != null:
 		if _mine_entry_due(state):
 			_start_event(MINE_ENTRY_EVENT_ID)
@@ -162,6 +175,8 @@ func tick() -> void:
 			return
 	var encounter_id := EncounterDirector.check_triggers(state, _encounter_defs())
 	if encounter_id != "":
+		# W003-A3：首次遭遇触发前先弹战斗提示（一次性，去重与落账见 _show_hint_if_due）。
+		_show_hint_if_due(state, "battle", Hud.HINT_BATTLE_TEXT)
 		_start_encounter(encounter_id)
 		return
 	if Progression.ending_ready(state):
@@ -265,6 +280,9 @@ func request_place(cell: Vector2i) -> AppResult:
 		)
 	var result := building_rules.attempt_build(_snapshot(), building_def, chunk_id, cell, store)
 	if not result.is_ok:
+		# W003-A3：首次材料不足建造失败时引导去背包配方区合成；其他失败原因不提示。
+		if result.code == "insufficient_item":
+			_show_hint_if_due(_snapshot(), "craft", Hud.HINT_CRAFT_TEXT)
 		return result
 	var react_result := Progression.react(
 		_snapshot(), "built",
@@ -364,6 +382,12 @@ func select_building(building_id: String) -> bool:
 	if ContentDB.get_building(building_id).is_empty():
 		return false
 	selected_building_id = building_id
+	# W003-A3：首次选中建筑提示放置方式与数字键切换（模板按建筑中文名展开，
+	# HUD 侧按稳定 hint id "place" 一次性去重，与具体建筑名无关）。
+	_show_hint_if_due(
+		_snapshot(), "place",
+		Hud.HINT_PLACE_TEMPLATE % str(ContentDB.get_building(building_id).get("name_zh", building_id))
+	)
 	return true
 
 
@@ -908,6 +932,9 @@ func _bind_hud() -> void:
 	hud.selected_provider = _current_building_selection
 	hud.unpowered_provider = unpowered_building_ids
 	hud.recipe_provider = recipe_entries
+	# W003-A3：一次性提示落账回调——表现层 show_hint 只上报 hint id，
+	# patch 写入由本回调执行。
+	hud.hint_seen_callback = _on_hint_seen
 	if not hud.build_selected.is_connected(_on_build_bar_selected):
 		hud.build_selected.connect(_on_build_bar_selected)
 	if not hud.craft_requested.is_connected(_on_craft_requested):
@@ -975,6 +1002,59 @@ func _on_place_requested(cell: Vector2i) -> void:
 	var result := request_place(cell)
 	if not result.is_ok:
 		push_warning("GameSession: place request rejected: %s" % result.message)
+
+
+# ---------------------------------------------------------------- 首次操作引导提示链（W003-A3）
+
+
+## 开局总提示延迟计时器：_ready 时启动，MOVE_HINT_DELAY_SECONDS 后触发一次。
+## 仅在注入了 HUD 时创建；读档带回来的 hint_move_seen 在触发时由 flag 检查拦截。
+func _start_move_hint_timer() -> void:
+	if hud == null:
+		return
+	_move_hint_timer = Timer.new()
+	_move_hint_timer.name = "MoveHintTimer"
+	_move_hint_timer.one_shot = true
+	_move_hint_timer.wait_time = MOVE_HINT_DELAY_SECONDS
+	_move_hint_timer.timeout.connect(_show_move_hint_if_due)
+	add_child(_move_hint_timer)
+	_move_hint_timer.start()
+
+
+## 开局 2s 总提示（WASD/左键/右键/F）。测试直接调本方法驱动（可控 timer 等价物）。
+func _show_move_hint_if_due() -> void:
+	_show_hint_if_due(_snapshot(), "move", Hud.HINT_MOVE_TEXT)
+
+
+## mine_entered 置位后（首次进入矿井）的深处提示；tick 每帧检查，开销为一次字典读。
+func _show_mine_hint_if_due(state: Dictionary) -> void:
+	if not bool((state.get("flags", {}) as Dictionary).get(MINE_ENTERED_FLAG, false)):
+		return
+	_show_hint_if_due(state, "mine", Hud.HINT_MINE_TEXT)
+
+
+## 通用触发点：HUD 在场且快照 flags 中 hint_<id>_seen 未置位时展示 text。
+## 幂等由两层保证：本检查挡住跨会话重复（读档/重开后 flag 已置），HUD 内
+## 一次性队列挡住同一会话内的重复触发。
+func _show_hint_if_due(snapshot: Dictionary, hint_id: String, text_value: String) -> void:
+	if hud == null:
+		return
+	var flags: Dictionary = snapshot.get("flags", {}) as Dictionary
+	if bool(flags.get(Hud.HINT_FLAG_FORMAT % hint_id, false)):
+		return
+	hud.show_hint(text_value)
+
+
+## hud.hint_seen_callback 的实现（落账通道）：经独立 integration patch 把
+## hint_<id>_seen 置位——表现层只回调，绝不直接写持久状态（契约 §0）。
+## 回调在提示首次被接受时同步执行，此后 HUD 会话内去重保证同 id 只上报一次。
+func _on_hint_seen(hint_id: String) -> void:
+	var patch: Variant = _begin_integration_patch("hint_%s_seen" % hint_id)
+	if patch == null:
+		return
+	patch.set_flag(Hud.HINT_FLAG_FORMAT % hint_id, true)
+	_commit_integration_patch(patch)
+	_schedule_autosave()
 
 
 func _snapshot() -> Dictionary:
