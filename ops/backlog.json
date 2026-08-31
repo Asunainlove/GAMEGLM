@@ -233,6 +233,14 @@
       "title": "Battle art asset contracts (28)",
       "status": "verified",
       "depends_on": []
+    },
+    {
+      "id": "W003-A3",
+      "title": "First-time hint system (16 tests)",
+      "status": "verified",
+      "depends_on": [
+        "WP11"
+      ]
     }
   ]
 }
