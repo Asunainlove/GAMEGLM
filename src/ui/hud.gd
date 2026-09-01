@@ -41,7 +41,10 @@ const HINTS_PATH: String = "res://data/progression/hints.json"
 ##（70 在 data/content/endings.json 的 ending_symbiosis）；本层绝不写死数值。
 ## G7P-2 S5：面板行与角色显示名改读角色登记表（Relations.characters()，源
 ## data/content/characters.json）——新增同伴 = 角色表加条目，不改本文件。
-const POLICY_EVENT_PATH: String = "res://data/events/event_policy.json"
+## G7P-2 S3：政策门提示多文件化——扫描 data/events/*.json 全部事件的 choice
+## 选项，任何带 requires_trust（对象形态）+ set_flag 的选项都成为一条门提示
+##（自动派生，新增信任门事件 = 加 JSON 文件，零代码）。
+const EVENTS_DIR_PATH: String = "res://data/events"
 const ENDINGS_PATH: String = "res://data/content/endings.json"
 ## 关系维度展示刻度（GameState 的 set_relationship 已把值钳制在 0..100）。
 const RELATION_DIM_SCALE: int = 100
@@ -389,17 +392,18 @@ static var _gates_last_load: AppResult = null
 ## 门表只读访问器（测试断言用）：未引导时惰性加载生产数据文件。
 static func _gate_entries() -> Array[Dictionary]:
 	if not _gates_bootstrapped:
-		load_relation_gates_from(POLICY_EVENT_PATH, ENDINGS_PATH)
+		load_relation_gates_from(EVENTS_DIR_PATH, ENDINGS_PATH)
 	return _gates
 
 
-## 加载信任门数据：政策门读 policy 事件里带 requires_trust（对象形态）的选项
-##（flag = 选项 set_flag，标签取选项文案冒号前段），选项锁语义——flag 未置位
-## 且维度低于阈值时提示；共生门读 endings 表 trust 门控条目（flag = 该结局
-## all_of_flags 首位），结局门语义——flag 置位后维度仍低于阈值时提示。
-## 缺失/坏文件 push_error 并把表回退为空（失败安全：只少提示行，不渲染错值）。
-static func load_relation_gates_from(policy_event_path: String, endings_path: String) -> AppResult:
-	var result: AppResult = _read_and_validate_gates(policy_event_path, endings_path)
+## 加载信任门数据：政策门扫描 events 目录全部 *.json 事件文件，读所有带
+## requires_trust（对象形态）的选项（flag = 选项 set_flag，标签取选项文案冒号
+## 前段），选项锁语义——flag 未置位且维度低于阈值时提示；共生门读 endings 表
+## trust 门控条目（flag = 该结局 all_of_flags 首位），结局门语义——flag 置位后
+## 维度仍低于阈值时提示。缺失/坏文件 push_error 并把表回退为空（失败安全：
+## 只少提示行，不渲染错值）。
+static func load_relation_gates_from(events_dir_path: String, endings_path: String) -> AppResult:
+	var result: AppResult = _read_and_validate_gates(events_dir_path, endings_path)
 	_gates_bootstrapped = true
 	_gates_last_load = result
 	if result.is_ok:
@@ -407,14 +411,14 @@ static func load_relation_gates_from(policy_event_path: String, endings_path: St
 	else:
 		_gates = []
 		push_error("Hud: relation gate data rejected (%s, %s): %s" % [
-			policy_event_path, endings_path, result.message,
+			events_dir_path, endings_path, result.message,
 		])
 	return result
 
 
-static func _read_and_validate_gates(policy_event_path: String, endings_path: String) -> AppResult:
+static func _read_and_validate_gates(events_dir_path: String, endings_path: String) -> AppResult:
 	var gates: Array[Dictionary] = []
-	var option_result: AppResult = _gates_from_policy_event(policy_event_path)
+	var option_result: AppResult = _gates_from_events_dir(events_dir_path)
 	if not option_result.is_ok:
 		return option_result
 	for gate: Dictionary in option_result.value:
@@ -427,21 +431,61 @@ static func _read_and_validate_gates(policy_event_path: String, endings_path: St
 	return AppResult.success(gates)
 
 
-## 从事件数据派生选项锁门：任何带 requires_trust（对象形态 {char_id, dim,
-## value}）+ set_flag 的选项都成为一条门提示（当前生产数据即 policy_sanctuary）。
-static func _gates_from_policy_event(path: String) -> AppResult:
+## 从事件目录派生选项锁门（G7P-2 S3 多文件化）：扫描目录下全部 *.json（排序
+## 保证确定性），任何带 requires_trust（对象形态 {char_id, dim, value}）+
+## set_flag 的选项都成为一条门提示。目录缺失/任一文件坏 → 整包失败（调用方
+## push_error 回退空表）。
+static func _gates_from_events_dir(dir_path: String) -> AppResult:
+	if not DirAccess.dir_exists_absolute(dir_path):
+		return AppResult.failure(
+			"missing_gate_data_dir", "Gate events directory not found: %s" % dir_path
+		)
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return AppResult.failure(
+			"missing_gate_data_dir", "Gate events directory not found: %s" % dir_path
+		)
+	var files: Array[String] = []
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		if not dir.current_is_dir() and entry.ends_with(".json"):
+			files.append(dir_path.path_join(entry))
+		entry = dir.get_next()
+	dir.list_dir_end()
+	files.sort()
+	var gates: Array[Dictionary] = []
+	for file_path: String in files:
+		var parse_result: AppResult = _read_gate_json_file(file_path)
+		if not parse_result.is_ok:
+			return parse_result
+		var event_result: AppResult = _gates_from_event_def(parse_result.value)
+		if not event_result.is_ok:
+			return event_result
+		for gate: Dictionary in event_result.value:
+			gates.append(gate)
+	return AppResult.success(gates)
+
+
+## 读取单个门数据 JSON 文件（事件文件与结局文件共用）：缺失/坏文件干净失败。
+static func _read_gate_json_file(path: String) -> AppResult:
 	if not FileAccess.file_exists(path):
-		return AppResult.failure("missing_gate_data_file", "Policy event file not found: %s" % path)
+		return AppResult.failure("missing_gate_data_file", "Gate data file not found: %s" % path)
 	var json := JSON.new()
 	var parse_error: Error = json.parse(FileAccess.get_file_as_string(path))
 	if parse_error != OK:
 		return AppResult.failure(
 			"invalid_gate_data_file",
-			"Policy event file is not valid JSON at line %d." % json.get_error_line()
+			"Gate data file is not valid JSON at line %d." % json.get_error_line()
 		)
-	var parsed: Variant = json.get_data()
+	return AppResult.success(json.get_data())
+
+
+## 从单个事件定义派生选项锁门：choice 步骤中带 requires_trust（对象形态）+
+## set_flag 的选项各成一条门。
+static func _gates_from_event_def(parsed: Variant) -> AppResult:
 	if typeof(parsed) != TYPE_DICTIONARY:
-		return AppResult.failure("invalid_gate_data_file", "Policy event file must contain a JSON object.")
+		return AppResult.failure("invalid_gate_data_file", "Gate event file must contain a JSON object.")
 	var gates: Array[Dictionary] = []
 	var steps: Array = (parsed as Dictionary).get("steps", [])
 	for step_value: Variant in steps:
@@ -481,16 +525,10 @@ static func _gates_from_policy_event(path: String) -> AppResult:
 ## 从结局数据派生结局门：trust 门控非空的结局条目成为一条"flag 置位后仍低于
 ## 阈值则提示"的门（当前生产数据即共生结局 70）。flag 取 all_of_flags 首位。
 static func _gates_from_endings(path: String) -> AppResult:
-	if not FileAccess.file_exists(path):
-		return AppResult.failure("missing_gate_data_file", "Endings file not found: %s" % path)
-	var json := JSON.new()
-	var parse_error: Error = json.parse(FileAccess.get_file_as_string(path))
-	if parse_error != OK:
-		return AppResult.failure(
-			"invalid_gate_data_file",
-			"Endings file is not valid JSON at line %d." % json.get_error_line()
-		)
-	var parsed: Variant = json.get_data()
+	var read_result: AppResult = _read_gate_json_file(path)
+	if not read_result.is_ok:
+		return read_result
+	var parsed: Variant = read_result.value
 	if typeof(parsed) != TYPE_ARRAY:
 		return AppResult.failure("invalid_gate_data_file", "Endings file must contain a JSON array.")
 	var gates: Array[Dictionary] = []
