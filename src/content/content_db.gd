@@ -44,7 +44,7 @@ const BUILDING_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "inp
 const COMBAT_UNIT_FIELDS: Array[String] = ["id", "kind", "name_zh", "max_hp", "stability_max", "track", "speed", "action_ids", "phases", "drops"]
 const COMBAT_ACTION_FIELDS: Array[String] = ["id", "kind", "name_zh", "targeting", "power", "stability_damage", "cost", "heal", "guard_ratio"]
 const EVENT_FIELDS: Array[String] = ["id", "kind", "requires_flag", "once", "steps"]
-const ENCOUNTER_FIELDS: Array[String] = ["id", "name_zh", "trigger_flag", "on_victory_flag", "allies", "enemies", "seed", "intro_event_id"]
+const ENCOUNTER_FIELDS: Array[String] = ["id", "name_zh", "trigger_flag", "on_victory_flag", "allies", "enemies", "seed", "intro_event_id", "max_items_per_type"]
 const ITEM_STACK_FIELDS: Array[String] = ["item_id", "count"]
 const RECIPE_FIELDS: Array[String] = ["input_item_id", "input_count", "extra_input_item_id", "extra_input_count", "output_item_id", "output_count"]
 const PHASE_FIELDS: Array[String] = ["id", "at_hp_ratio", "action_ids"]
@@ -784,6 +784,11 @@ func _validate_encounter(definition: Dictionary, path: String) -> AppResult:
 		if not result.is_ok:
 			return result
 	result = _require_integer(definition, "seed", path, 0)
+	if not result.is_ok:
+		return result
+	# G7P-2 S4：遭遇可选道具种类上限（缺省 2，由 EncounterDirector 消费；
+	# 0 表示该遭遇不装配道具）。
+	result = _optional_integer(definition, "max_items_per_type", path, 0, 99)
 	if not result.is_ok:
 		return result
 	return _optional_stable_id(definition, "intro_event_id", path)
