@@ -297,6 +297,9 @@ func test_place_chain_gates_effect_flag_on_powered_build() -> void:
 	_make_session()
 	_give_item("starsoil_dust", 10)
 	_give_item("resonant_core", 2)
+	# DLX-4 合法断言更新：回响舱 inputs 新增 echo_seed×1（余辉之种为激活钥匙），
+	# 本测试意图（供电充足 + 成房间 → 置位 effect_flag）不变，补足新材料。
+	_give_item("echo_seed", 1)
 	assert_true(_place_at("anchor_block", Vector2i(20, 20)).is_ok)
 	assert_true(_place_at("anchor_workshop", Vector2i(20, 21)).is_ok)
 	assert_true(_place_at("echo_chamber", Vector2i(20, 22)).is_ok)
@@ -311,6 +314,8 @@ func test_place_chain_gates_effect_flag_on_powered_build() -> void:
 func test_place_chain_withholds_effect_flag_without_supply() -> void:
 	_make_session()
 	_give_item("resonant_core", 2)
+	# DLX-4 合法断言更新：补足回响舱新材料 echo_seed×1（意图：断电不置 flag）。
+	_give_item("echo_seed", 1)
 	_preplace_building("anchor_block", Vector2i(20, 20))
 	assert_true(_place_at("echo_chamber", Vector2i(20, 21)).is_ok)
 	var snapshot: Dictionary = store.snapshot()
@@ -327,6 +332,8 @@ func test_place_chain_withholds_effect_flag_without_supply() -> void:
 func test_place_chain_withholds_effect_flag_without_room() -> void:
 	_make_session()
 	_give_item("resonant_core", 2)
+	# DLX-4 合法断言更新：补足回响舱新材料 echo_seed×1（意图：未成房间不置 flag）。
+	_give_item("echo_seed", 1)
 	_preplace_building("anchor_workshop", Vector2i(20, 20))
 	# Chebyshev 距离 2 满足放置邻接，但 4 连通距离 4 未成房间。
 	assert_true(_place_at("echo_chamber", Vector2i(22, 22)).is_ok)
@@ -341,6 +348,8 @@ func test_place_chain_does_not_recommit_flag_for_unpowered_duplicate_effect_buil
 	_make_session()
 	_give_item("starsoil_dust", 14)
 	_give_item("resonant_core", 8)
+	# DLX-4 合法断言更新：三座回响舱各需 echo_seed×1（意图：断电重提交语义不变）。
+	_give_item("echo_seed", 3)
 	assert_true(_place_at("anchor_block", Vector2i(20, 20)).is_ok)
 	assert_true(_place_at("anchor_workshop", Vector2i(20, 21)).is_ok)
 	# W002-GAP4（D2）合法断言更新：工坊供给 10 -> 16、锚块供能 2（合计 18）。

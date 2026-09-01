@@ -430,10 +430,13 @@ func test_buildings_match_contract_section7() -> void:
 	assert_false(loom.has("recipe"), "loom uses the recipes array; the single recipe field is retired for it.")
 
 	var chamber := _assert_entry_present(_buildings, "echo_chamber", "buildings.json")
+	# DLX-4 合法断言更新（任务书 2.2 强制数据改动）：回响舱 inputs 增加
+	# echo_seed×1——回响舱是共鸣结局的枢纽，余辉之种是枢纽钥匙；既有
+	# resonant_core x2 保持不变。
 	assert_eq(
 		str(chamber.get("inputs", [])),
-		str([{"item_id": "resonant_core", "count": 2}]),
-		"echo_chamber inputs must be resonant_core x2."
+		str([{"item_id": "resonant_core", "count": 2}, {"item_id": "echo_seed", "count": 1}]),
+		"echo_chamber inputs must be resonant_core x2 + echo_seed x1 (DLX-4)."
 	)
 	assert_eq(int(chamber.get("power_draw", -1)), 8, "echo_chamber power_draw must be 8.")
 	assert_true(bool(chamber.get("requires_room", false)), "echo_chamber requires_room must be true.")

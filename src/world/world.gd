@@ -24,6 +24,9 @@ const SNAPSHOT_POLL_TIMER_NAME: String = "SnapshotPollTimer"
 const DEFAULT_PLAYER_START_CELL: Vector2i = Vector2i(-1, -1)
 ## Player scene root sits in the "player" group (scenes/player.tscn).
 const PLAYER_GROUP: String = "player"
+## DLX-4 世界回应 flag：exploit 路线置位后，程序生成的 chunk 矿脉富集
+##（ChunkData.generate enriched=true）。
+const WORLD_RESPONSE_EXPLOITED_FLAG: String = "world_response_exploited"
 
 @export var player_scene_path: String = "res://scenes/player.tscn"
 
@@ -39,6 +42,11 @@ var player_start_cell: Vector2i = DEFAULT_PLAYER_START_CELL
 var _chunks: Dictionary = {}
 var _renderer: WorldRenderer
 var _last_revision: int = -1
+
+## DLX-4 世界回应运行态：最近一次生成/重生成所用 exploited 值与其初始化标记
+##（_ready 前的首次 _generate_chunks 记为已初始化，此后轮询只对跳变反应）。
+var _world_response_exploited: bool = false
+var _world_response_initialized: bool = false
 
 @onready var _ground_layer: TileMapLayer = $Ground
 @onready var _ore_overlay: TileMapLayer = $OreOverlay
@@ -117,7 +125,11 @@ func place_player_at_cell(cell: Vector2i) -> bool:
 
 
 func _generate_chunks() -> void:
-	var world_seed := int(_read_snapshot().get("world_seed", 0))
+	var snapshot := _read_snapshot()
+	var world_seed := int(snapshot.get("world_seed", 0))
+	# DLX-4：启动生成（含读档）按快照 flags 决定富集；并记为跳变检测基线。
+	_world_response_exploited = _exploited_flag_of(snapshot)
+	_world_response_initialized = true
 	for grid_y: int in CHUNK_GRID_SIZE.y:
 		for grid_x: int in CHUNK_GRID_SIZE.x:
 			var chunk_id := "chunk_%d_%d" % [grid_x, grid_y]
@@ -126,7 +138,52 @@ func _generate_chunks() -> void:
 				# 其余 7 chunk 保持种子确定性生成。
 				_chunks[chunk_id] = ChunkData.generate_mine(chunk_id)
 			else:
-				_chunks[chunk_id] = ChunkData.generate(chunk_id, world_seed)
+				_chunks[chunk_id] = ChunkData.generate(chunk_id, world_seed, _world_response_exploited)
+
+
+## 只读提取 exploited flag；快照缺 flags 时按 false。
+func _exploited_flag_of(snapshot: Dictionary) -> bool:
+	return bool((snapshot.get("flags", {}) as Dictionary).get(WORLD_RESPONSE_EXPLOITED_FLAG, false))
+
+
+## DLX-4 世界回应重生成（轮询 revision 变化后调用）：exploited flag 相对上次
+## 生成发生跳变时，对无破坏记录（scar-free）的程序 chunk 以新参数重新
+## generate 并全层重渲染，随后重放 chunk_deltas——已破坏格保持擦除；有破坏
+## 记录的 chunk 保留原始生成数据（破坏格不得在富集数据中"复活"成为可采格；
+## Gathering 亦有 destroyed delta 硬门）。矿井 chunk 恒为 authored，不参与。
+## 实现选择：scar-free 判定按"该 chunk 存在 destroyed delta"二值划分，重生成
+## 后走 _render_all_chunks + refresh_from_snapshot 全层重绘 + delta 重放，
+## 不做逐格局部补丁——跳变是一次性事件，全量重绘成本可忽略且正确性显然。
+func _reconcile_world_response(snapshot: Dictionary) -> void:
+	var exploited := _exploited_flag_of(snapshot)
+	if not _world_response_initialized:
+		_world_response_exploited = exploited
+		_world_response_initialized = true
+		return
+	if exploited == _world_response_exploited:
+		return
+	_world_response_exploited = exploited
+	_regenerate_scar_free_chunks(snapshot)
+
+
+func _regenerate_scar_free_chunks(snapshot: Dictionary) -> void:
+	var world_seed := int(snapshot.get("world_seed", 0))
+	var deltas: Dictionary = snapshot.get("chunk_deltas", {}) as Dictionary
+	var scarred: Dictionary = {}
+	for chunk_id_value: Variant in deltas:
+		for delta_value: Variant in deltas[chunk_id_value]:
+			var delta := delta_value as Dictionary
+			if delta != null and bool(delta.get("destroyed", false)):
+				scarred[str(chunk_id_value)] = true
+				break
+	for grid_y: int in CHUNK_GRID_SIZE.y:
+		for grid_x: int in CHUNK_GRID_SIZE.x:
+			var chunk_id := "chunk_%d_%d" % [grid_x, grid_y]
+			if chunk_id == ChunkData.MINE_CHUNK_ID or scarred.has(chunk_id):
+				continue
+			_chunks[chunk_id] = ChunkData.generate(chunk_id, world_seed, _world_response_exploited)
+	_render_all_chunks()
+	refresh_from_snapshot()
 
 
 ## Renders the full 4x2 chunk grid onto the shared layers, each chunk at its
@@ -226,5 +283,10 @@ func _start_snapshot_polling() -> void:
 
 
 func _on_snapshot_poll_timeout() -> void:
-	if int(_read_snapshot().get("revision", 0)) != _last_revision:
-		refresh_from_snapshot()
+	var snapshot := _read_snapshot()
+	if int(snapshot.get("revision", 0)) == _last_revision:
+		return
+	# DLX-4：revision 推进后先检查世界回应 flag 跳变（可能重生成 + 重渲染 +
+	# 重放 delta），再走常规 delta 同步。
+	_reconcile_world_response(snapshot)
+	refresh_from_snapshot()

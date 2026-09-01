@@ -29,7 +29,8 @@
     "name_zh": "余辉之种",
     "desc_zh": "自利维坦体内剥落的种子状结晶，仍在缓慢搏动。它记得这片矿脉所有的过往。",
     "stack_limit": 1,
-    "tier": 3
+    "tier": 3,
+    "story_key": true
   },
   {
     "id": "sedative_mist",
