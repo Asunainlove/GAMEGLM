@@ -39,11 +39,10 @@ const HINTS_PATH: String = "res://data/progression/hints.json"
 ## 门阈值数值单一来源为数据文件——政策门读事件选项 requires_trust（40 在
 ## data/events/event_policy.json 的 policy_sanctuary），共生门读结局 trust 门控
 ##（70 在 data/content/endings.json 的 ending_symbiosis）；本层绝不写死数值。
+## G7P-2 S5：面板行与角色显示名改读角色登记表（Relations.characters()，源
+## data/content/characters.json）——新增同伴 = 角色表加条目，不改本文件。
 const POLICY_EVENT_PATH: String = "res://data/events/event_policy.json"
 const ENDINGS_PATH: String = "res://data/content/endings.json"
-## 关系面板固定展示的两名同伴（切片范围主角；缺记录按 0 渲染）。
-const RELATION_ROW_IDS: Array[String] = ["luoxian", "misa"]
-const RELATION_CHAR_NAMES: Dictionary = {"luoxian": "洛弦", "misa": "弥砂"}
 ## 关系维度展示刻度（GameState 的 set_relationship 已把值钳制在 0..100）。
 const RELATION_DIM_SCALE: int = 100
 ## 门提示行模板：{char}=角色显示名，{threshold}=数据阈值，{remaining}=差值。
@@ -356,15 +355,23 @@ static func _relationship_dim(snapshot: Dictionary, char_id: String, dim: String
 	return int(record.get(dim, 0))
 
 
-## 关系面板数值行（纯函数，测试断言用）：固定两名同伴，每行携带
-## {char_id, name_zh, trust, affection}；缺失记录按 0 渲染。
+## 角色显示名查找（G7P-2 S5：单一来源为角色登记表）；未登记 id 原样返回。
+static func _character_display_name(char_id: String) -> String:
+	for character: Dictionary in Relations.characters():
+		if String(character["id"]) == char_id:
+			return String(character.get("name_zh", char_id))
+	return char_id
+
+
+## 关系面板数值行（纯函数，测试断言用）：行集合由角色登记表驱动（G7P-2 S5），
+## 每行携带 {char_id, name_zh, trust, affection}；缺失记录按 0 渲染。
 static func relation_rows(snapshot: Dictionary) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
-	for char_id: String in RELATION_ROW_IDS:
-		var name_value: Variant = RELATION_CHAR_NAMES.get(char_id, char_id)
+	for character: Dictionary in Relations.characters():
+		var char_id := String(character["id"])
 		rows.append({
 			"char_id": char_id,
-			"name_zh": String(name_value),
+			"name_zh": String(character.get("name_zh", char_id)),
 			"trust": _relationship_dim(snapshot, char_id, "trust"),
 			"affection": _relationship_dim(snapshot, char_id, "affection"),
 		})
@@ -523,7 +530,7 @@ static func relations_gate_lines(snapshot: Dictionary) -> Array[String]:
 		var value := _relationship_dim(snapshot, String(gate["char_id"]), String(gate["dim"]))
 		if value >= threshold:
 			continue
-		var name_value: Variant = RELATION_CHAR_NAMES.get(String(gate["char_id"]), String(gate["char_id"]))
+		var name_value := _character_display_name(String(gate["char_id"]))
 		lines.append(String(gate["template"])
 			.replace("{char}", String(name_value))
 			.replace("{label}", String(gate.get("label", "")))

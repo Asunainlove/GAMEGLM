@@ -61,7 +61,9 @@ const ENEMY_FIELDS: Array[String] = ["unit_id", "track"]
 ## DLX-1：数据保留文件名——由对应模块自身经 FileAccess 读取并按其 schema 校验，
 ## 不参与 ContentDB 的 kind 分派与定义校验（endings.json 由 Endings 模块装载，
 ## 其条目无 kind 字段，否则 ContentDB bootstrap 会整包失败）。
-const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json"]
+## G7P-2 S5：characters.json 由 Relations 模块装载（角色登记表，无 kind 字段，
+## 同先例），并经 HASH_CONFIG_FILES 贡献 content_hash。
+const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json", "characters.json"]
 
 ## DLX-6：content_hash 语义扩展——"六类定义 + 进度配置文件"的 canonical JSON
 ## 总哈希（政策文本 docs/save-content-policy.md）。各文件由对应模块自身装载与
@@ -72,6 +74,7 @@ const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json"]
 ## 影响存档兼容性语义，与 event_chain 同类。
 const HASH_CONFIG_FILES: Dictionary = {
 	"endings": "content/endings.json",
+	"characters": "content/characters.json",
 	"event_chain": "progression/event_chain.json",
 	"ending_gate": "progression/ending_gate.json",
 	"world_config": "world/world_config.json",

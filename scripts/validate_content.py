@@ -39,6 +39,7 @@ SCHEMA_TARGETS = {
     "content/combat_units.json": "combat-unit",
     "content/combat_actions.json": "combat-action",
     "content/endings.json": "endings",
+    "content/characters.json": "character",
     "encounters/encounters.json": "encounter",
     "world/world_config.json": "world-config",
     "progression/event_chain.json": "progression-chain",
