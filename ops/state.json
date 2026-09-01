@@ -5,10 +5,10 @@
   "window_status": "human_gates_only",
   "last_verified_commit": "149ee28",
   "active_packet": null,
-  "resume_from": "human_gates_per_docs_g6-g7-human-gates-guide",
+  "resume_from": "await_g6_decision_then_g7_human_gates",
   "next_packet_ids": [],
   "known_blockers": [
-    "G6 gate: choose plan A (produce 126 art + 22 audio assets per docs/art contracts, provenance + human approval, drop-in per ops/evidence/G6P-1.md §3) OR plan B (authorize grey-box delivery as G6 form) - see docs/g6-g7-human-gates-guide.md §0",
-    "G7 human gates: 45-60min three-route playthrough, external playtest, originality final review - see docs/g6-g7-human-gates-guide.md §2"
+    "G6 gate decision pending from owner: Plan A (produce assets per docs/art/prompts/plan-a-p0-batch-prompts.md + ops/art-approval.md) OR Plan B (reply with authorization statement to fill ops/art-approval.md greybox record)",
+    "G7 human gates: fill docs/rc-playthrough-record.md during real playthrough (45-60min x3 routes, external playtest, originality C.2 section)"
   ]
 }
