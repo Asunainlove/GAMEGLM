@@ -66,6 +66,20 @@ const ERROR_CODE_TEXT: Dictionary = {
 ## 契约 §0 注入模式：落账 store，null → GameState autoload。
 var store: Object = null
 
+## G6P-1 任务 3：单位资产适配缝——渲染前经 AssetAdapter.sprite_frames 探测单位
+## contract 形态（A8 §2，asset id = battle_<unit_id>，帧 8：idle2/attack3/hit1/
+## death2）；命中 → AnimatedSprite2D 替换灰盒 Box（血量/状态 Label 保留叠加，
+## 精灵底边中心对齐灰盒底边 +20 px，A8 §2 挂点契约）；缺失 → 现状灰盒逐字节
+## 不变。asset_base_dir 可注入（测试 user://；生产 res://assets/art）。
+## Boss phase2 精灵替换属后续接线包（本包只落 phase1 形态探测）。
+const UNIT_SPRITE_STATES: Array[String] = ["idle", "attack", "hit", "death"]
+const UNIT_SPRITE_FRAME_COUNTS: Dictionary = {"idle": 2, "attack": 3, "hit": 1, "death": 2}
+const UNIT_SPRITE_BOTTOM_Y: float = 20.0
+## 与 AssetAdapter.DEFAULT_BASE_DIR 同值（跨类常量默认参受限，就地镜像）。
+const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
+
+var asset_base_dir: String = DEFAULT_ASSET_BASE_DIR
+
 ## W003-A4 测试注入缝：战斗引擎脚本（须提供与 CombatEngine 同签名的 static
 ## create_battle/submit_action/is_finished/active_unit/outcome）；默认真实引擎。
 var engine_script: Script = COMBAT_ENGINE_SCRIPT
@@ -86,6 +100,11 @@ var _input_locked: bool = false
 var _phase_tween: Tween = null
 var _round_tween: Tween = null
 var _flash_clock: float = 0.0
+
+# G6P-1 单位资产装配记账（每次 _rebuild_tracks 重置；混合态一次性汇总告警）。
+var _asset_loaded_units: int = 0
+var _asset_missing_unit_ids: PackedStringArray = PackedStringArray()
+var _asset_warning_emitted: bool = false
 
 
 # --- 对外流程 --------------------------------------------------------------------
@@ -249,6 +268,8 @@ func _rebuild_tracks() -> void:
 		var existing_row: Node2D = _track_row(track)
 		if existing_row != null:
 			_clear_children(existing_row)
+	_asset_loaded_units = 0
+	_asset_missing_unit_ids = PackedStringArray()
 	var ally_columns: Dictionary = {}
 	var enemy_columns: Dictionary = {}
 	for unit: Dictionary in _as_array(_battle.get("units", [])):
@@ -262,6 +283,7 @@ func _rebuild_tracks() -> void:
 		var unit_node: Node2D = _build_unit_node(unit, column)
 		row.add_child(unit_node)
 		unit_node.add_to_group("battle_unit")
+	_maybe_warn_partial_unit_assets()
 
 
 func _build_unit_node(unit: Dictionary, column: int) -> Node2D:
@@ -280,16 +302,23 @@ func _build_unit_node(unit: Dictionary, column: int) -> Node2D:
 		color = BOSS_COLOR
 	elif side == "ally":
 		color = ALLY_COLOR
-	# W003-A4：失稳单位色块立即置紫（此后 _process 按帧在基色与紫色间闪动）。
 	var destabilized := bool(unit.get("destabilized", false))
-	var box := ColorRect.new()
-	box.name = "Box"
-	box.position = Vector2(-28.0, -20.0)
-	box.size = Vector2(56.0, 40.0)
-	box.color = DESTABILIZED_COLOR if destabilized else color
-	unit_node.add_child(box)
 	unit_node.set_meta("base_color", color)
 	unit_node.set_meta("destabilized", destabilized)
+
+	# G6P-1：资产命中 → 精灵形态；缺失 → 现状灰盒 Box（逐字节不变）。
+	var sprite := _build_unit_sprite(str(unit.get("unit_id", "")))
+	if sprite != null:
+		_asset_loaded_units += 1
+		unit_node.add_child(sprite)
+	else:
+		_asset_missing_unit_ids.append(_asset_probe_name(unit))
+		var box := ColorRect.new()
+		box.name = "Box"
+		box.position = Vector2(-28.0, -20.0)
+		box.size = Vector2(56.0, 40.0)
+		box.color = DESTABILIZED_COLOR if destabilized else color
+		unit_node.add_child(box)
 
 	var label := Label.new()
 	label.name = "Label"
@@ -310,6 +339,59 @@ func _build_unit_node(unit: Dictionary, column: int) -> Node2D:
 	]
 	unit_node.add_child(label)
 	return unit_node
+
+
+## 单位资产探测：contract 形态 id = battle_<unit_id>（A8 §2 命名基准）。
+## 命中 → AnimatedSprite2D（idle 循环，底边中心对齐灰盒底边 +20 px）；缺失 → null。
+func _build_unit_sprite(unit_id: String) -> AnimatedSprite2D:
+	if unit_id.is_empty():
+		return null
+	var frames := AssetAdapter.sprite_frames(
+		"battle_" + unit_id, UNIT_SPRITE_STATES, UNIT_SPRITE_FRAME_COUNTS, asset_base_dir)
+	if frames == null:
+		return null
+	var sprite := AnimatedSprite2D.new()
+	sprite.name = "Sprite"
+	sprite.sprite_frames = frames
+	var anchor_height := unit_sprite_anchor_height(frames)
+	sprite.position = Vector2(0.0, UNIT_SPRITE_BOTTOM_Y - anchor_height / 2.0)
+	var animation := "idle" if frames.has_animation("idle") else str(frames.get_animation_names()[0])
+	sprite.play(animation)
+	return sprite
+
+
+## 精灵锚定高度：首帧纹理高（纯函数，测试断言用；A8 §2 底边中心锚定）。
+static func unit_sprite_anchor_height(frames: SpriteFrames) -> float:
+	for animation: StringName in frames.get_animation_names():
+		if frames.get_frame_count(animation) > 0:
+			var texture := frames.get_frame_texture(animation, 0)
+			if texture != null:
+				return float(texture.get_height())
+	return 0.0
+
+
+## 缺资产记账名（unit_id 优先，缺则回退单位 key）。
+func _asset_probe_name(unit: Dictionary) -> String:
+	var unit_id := str(unit.get("unit_id", ""))
+	return unit_id if unit_id != "" else str(unit.get("key", ""))
+
+
+## 混合态（部分单位命中、部分缺失）一次性 push_warning 汇总；全缺失（生产基态）
+## 静默；已发过一次的本场景实例不再重复。
+func _maybe_warn_partial_unit_assets() -> void:
+	if _asset_warning_emitted or _asset_loaded_units <= 0 or _asset_missing_unit_ids.is_empty():
+		return
+	push_warning(unit_asset_warning(_asset_missing_unit_ids))
+	_asset_warning_emitted = true
+
+
+## 混合态汇总文案（纯函数，测试断言用）。
+static func unit_asset_warning(missing_unit_ids: PackedStringArray) -> String:
+	if missing_unit_ids.is_empty():
+		return ""
+	return "BattleScene: 战斗单位资产部分缺失，%d 个单位回退灰盒：%s（合同 docs/art/battle-assets.md §2）" % [
+		missing_unit_ids.size(), ", ".join(missing_unit_ids),
+	]
 
 
 func _unit_node_name(unit_key: String) -> String:
@@ -575,7 +657,8 @@ func _error_text(entry: Dictionary) -> String:
 
 # --- W003-A4 表现层：失稳闪紫 -------------------------------------------------------
 
-## 每帧刷新失稳单位的色块：在基色与紫色间按正弦全幅摆动（纯函数便于测试）。
+## 每帧刷新失稳单位的反馈：灰盒形态闪 Box 色；资产精灵形态（G6P-1）闪
+## self_modulate（白↔紫，同一纯函数——基色取白色即"无色调"常态）。
 func _process(delta: float) -> void:
 	_flash_clock += delta
 	var tree := get_tree()
@@ -586,10 +669,13 @@ func _process(delta: float) -> void:
 		if unit_node == null or not bool(unit_node.get_meta("destabilized", false)):
 			continue
 		var box := unit_node.get_node_or_null("Box") as ColorRect
-		if box == null:
-			continue
 		var base: Color = unit_node.get_meta("base_color", ENEMY_COLOR)
-		box.color = destabilized_box_color(base, _flash_clock)
+		if box != null:
+			box.color = destabilized_box_color(base, _flash_clock)
+			continue
+		var sprite := unit_node.get_node_or_null("Sprite") as Node2D
+		if sprite != null:
+			sprite.self_modulate = destabilized_box_color(Color.WHITE, _flash_clock)
 
 
 ## 失稳色块颜色：clock=0 → 基色与紫色的中点；clock=PI/(2*FLASH_SPEED) → 全紫；

@@ -62,6 +62,22 @@ const HINT_MIN_HOLD_SECONDS: float = 0.1
 ## 一次性标记 flag 名（hint_<id>_seen）；game_session 的落账回调使用同一格式。
 const HINT_FLAG_FORMAT: String = "hint_%s_seen"
 
+## G6P-1 任务 4：物品槽图标资产缝（docs/art/ui-assets.md §9 契约）。槽文本左侧
+## 可选 24×24 TextureRect：`ui_item_<item_id>.png` 命中（合同落位
+## ui/icons/uia_ico_<item_id>.png 优先，任务书平铺 ui/ui_item_<item_id>.png 兜底）
+## 即显示，缺失隐藏（布局不塌，槽文本逐字节不变）；混合态（部分物品命中部分
+## 缺失）一次性 push_warning 汇总，全缺失（生产基态）静默。
+const ITEM_ICON_ID_FORMAT: String = "ui_item_%s"
+const ITEM_ICON_SIZE: Vector2 = Vector2(24.0, 24.0)
+## 与 AssetAdapter.DEFAULT_BASE_DIR 同值（跨类常量默认参受限，就地镜像）。
+const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
+
+## 物品图标探测根（测试注入 user://；生产 res://assets/art）。
+var asset_base_dir: String = DEFAULT_ASSET_BASE_DIR
+
+## 混合态一次性告警标记（实例级，刷新多次不重复发）。
+var _icon_asset_warning_emitted: bool = false
+
 ## 快照来源；缺省为 GameState.snapshot，测试与集成层可注入替身。
 var snapshot_provider: Callable = Callable()
 
@@ -643,14 +659,55 @@ func _render_inventory_bar(snapshot: Dictionary) -> void:
 	_clear_children(_inventory_bar)
 	var entries: Array[Dictionary] = _inventory_entries(snapshot)
 	var overflow_kinds: int = 0
+	# G6P-1：图标资产装配记账（只对前 MAX_BAR_SLOTS 个槽；混合态一次性汇总）。
+	var loaded_icons: int = 0
+	var missing_item_ids: PackedStringArray = PackedStringArray()
 	for index: int in entries.size():
 		if index >= MAX_BAR_SLOTS:
 			overflow_kinds += 1
 			continue
 		var entry: Dictionary = entries[index]
+		var icon := _item_icon(str(entry["id"]))
+		if icon != null:
+			loaded_icons += 1
+			_inventory_bar.add_child(icon)
+		else:
+			missing_item_ids.append(str(entry["id"]))
 		_append_label(_inventory_bar, "%s ×%d" % [entry["name"], entry["amount"]])
 	if overflow_kinds > 0:
 		_append_label(_inventory_bar, "+%d" % overflow_kinds)
+	var warning := partial_icon_warning(loaded_icons, missing_item_ids)
+	if warning != "" and not _icon_asset_warning_emitted:
+		push_warning(warning)
+		_icon_asset_warning_emitted = true
+
+
+## 物品图标探测：命中 → 24×24 TextureRect（不拦截鼠标、不反向撑布局）；
+## 缺失 → null（槽位保持纯 Label，布局与基线一致）。
+func _item_icon(item_id: String) -> TextureRect:
+	if item_id.is_empty():
+		return null
+	var texture := AssetAdapter.texture(ITEM_ICON_ID_FORMAT % item_id, asset_base_dir)
+	if texture == null:
+		return null
+	var icon := TextureRect.new()
+	icon.name = "Icon_%s" % item_id
+	icon.texture = texture
+	icon.custom_minimum_size = ITEM_ICON_SIZE
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return icon
+
+
+## 混合态一次性汇总文案（纯函数，测试断言用）：loaded==0（全缺失基态）或
+## missing 为空（全量命中）时返回 ""；只有"部分命中部分缺失"才汇总。
+static func partial_icon_warning(loaded_icons: int, missing_item_ids: PackedStringArray) -> String:
+	if loaded_icons <= 0 or missing_item_ids.is_empty():
+		return ""
+	return "Hud: 部分物品图标资产缺失，%d 个物品槽回退纯文本：%s（合同 docs/art/ui-assets.md §9）" % [
+		missing_item_ids.size(), ", ".join(missing_item_ids),
+	]
 
 
 func _render_inventory_panel(snapshot: Dictionary) -> void:
