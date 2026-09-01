@@ -7,6 +7,9 @@
     {"type": "line", "speaker": "弥砂", "text_zh": "工坊落成第一夜！在没有矿震噪音的地方睡觉，原来这么奢侈。"},
     {"type": "line", "speaker": "洛弦", "text_zh": "记录：锚居工坊，第一晚，无矿震。这一条账，我记了很久了。"},
     {"type": "line", "speaker": "弥砂", "text_zh": "账本以外的事也要记哦。比如——谢谢你把靠窗的铺位留给了我。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "对了，白天在矿腔边缘我捡到一颗会发温的种子。洛弦说它叫余辉之种——回响舱就等这一颗了。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "收进保管格。等舱体落成，它就是我们和这片矿脉说话的钥匙。"},
+    {"type": "effect", "grant_items": [{"item_id": "echo_seed", "amount": 1}]},
     {"type": "effect", "relation_delta": {"char_id": "luoxian", "dim": "trust", "delta": 8}},
     {"type": "effect", "relation_delta": {"char_id": "misa", "dim": "affection", "delta": 8}}
   ]

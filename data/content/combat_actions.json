@@ -45,7 +45,7 @@
     "kind": "attack",
     "name_zh": "矿脉震颤",
     "targeting": "all_enemies",
-    "power": 7,
+    "power": 5,
     "stability_damage": 4
   },
   {
@@ -53,7 +53,7 @@
     "kind": "attack",
     "name_zh": "辉光奔涌",
     "targeting": "all_enemies",
-    "power": 9,
+    "power": 6,
     "stability_damage": 5
   },
   {
@@ -64,7 +64,10 @@
     "power": 0,
     "stability_damage": 0,
     "heal": 12,
-    "cost": {"item_id": "sedative_mist", "count": 1}
+    "cost": {
+      "item_id": "sedative_mist",
+      "count": 1
+    }
   },
   {
     "id": "trap_snap",
@@ -73,6 +76,9 @@
     "targeting": "single_enemy",
     "power": 10,
     "stability_damage": 6,
-    "cost": {"item_id": "shock_trap", "count": 1}
+    "cost": {
+      "item_id": "shock_trap",
+      "count": 1
+    }
   }
 ]

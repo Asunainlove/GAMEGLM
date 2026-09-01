@@ -646,9 +646,9 @@ func _luoxian_trust_delta_from_data(event_id: String, chosen_option_id: String) 
 
 
 func _luoxian_trust_delta_of(delta_value: Variant) -> int:
-	var delta := delta_value as Dictionary
-	if delta == null:
+	if typeof(delta_value) != TYPE_DICTIONARY:
 		return 0
+	var delta: Dictionary = delta_value
 	if String(delta.get("char_id", "")) != "luoxian" or String(delta.get("dim", "")) != "trust":
 		return 0
 	return int(delta.get("delta", 0))
@@ -745,11 +745,13 @@ func test_encounter_chain_defeat_unloads_battle_and_keeps_due_flag() -> void:
 	_patch_flags(["event_event_prologue_landing_done", "event_event_leviathan_pact_done", "encounter_leviathan_due"])
 	session.tick()
 	assert_not_null(session.battle)
-	_drive_battle()
+	# 2026-08-31 平衡裁定后功率优先驱动可胜 Boss（G7P-1 全循环需要胜利路径）；
+	# 战败路径覆盖改用守势停摆驱动（双方只防护，盟友被消耗殆尽）保持确定性战败。
+	_drive_battle_stall()
 	assert_null(session.battle, "战败后同样必须卸载战斗场景。")
 	var snapshot: Dictionary = store.snapshot()
 	var outcome: Dictionary = (snapshot["battle_outcomes"] as Dictionary).get("encounter_leviathan", {})
-	assert_eq(str(outcome.get("result", "")), "defeat", "自动对局对 Boss 应以战败记录。")
+	assert_eq(str(outcome.get("result", "")), "defeat", "守势停摆对局对 Boss 应以战败记录。")
 	assert_true(
 		bool((snapshot["flags"] as Dictionary).get("encounter_leviathan_due", false)),
 		"战败后 due flag 必须保留以便重试。"
@@ -1259,6 +1261,25 @@ func _drive_battle() -> void:
 		if active.is_empty() or str(active.get("side", "")) != "ally":
 			break
 		session.battle.play_ally_action(_deterministic_action(battle_state, active))
+		guard += 1
+
+
+## 守势停摆驱动：只放防护（无输出），用于确定性的战败路径覆盖。
+## 两侧盟友同时失稳时 active 可能短暂为敌方——经场景的敌回合解析兜底推进。
+func _drive_battle_stall() -> void:
+	var guard := 0
+	while session.battle != null and guard < MAX_BATTLE_GUARD:
+		var battle_state: Dictionary = session.battle.battle_state()
+		if bool(battle_state.get("finished", false)):
+			break
+		var active: Dictionary = COMBAT_ENGINE_SCRIPT.active_unit(battle_state)
+		if active.is_empty():
+			break
+		if str(active.get("side", "")) == "ally":
+			var action_ids: Array = active.get("action_ids", [])
+			session.battle.play_ally_action("guard" if action_ids.has("guard") else _deterministic_action(battle_state, active))
+		else:
+			session.battle.call("_resolve_enemy_turns")
 		guard += 1
 
 
