@@ -6,6 +6,21 @@ const SAVE_VERSION: int = 1
 ## Dictionary and returns an AppResult whose value is the migrated payload.
 ## Version 1 is the initial schema, so its migration list is empty (identity).
 const MIGRATIONS: Dictionary = {1: []}
+## DLX-6 存档内容政策三档（政策文本 docs/save-content-policy.md）。
+const POLICY_HASH_MATCH: String = "hash_match"
+const POLICY_HASH_SUPERSET: String = "hash_superset"
+const POLICY_HASH_DIVERGENT: String = "hash_divergent"
+## sanitize 的 defs 参数类别键：items/events/encounters 由
+## ContentDB.content_defs_snapshot() 供给；世界网格 chunk 目录（chunk_ids）
+## 由集成层按 WorldConfig 注入，save 层不依赖世界模块。
+const DEFS_CATEGORY_ITEMS: String = "items"
+const DEFS_CATEGORY_EVENTS: String = "events"
+const DEFS_CATEGORY_ENCOUNTERS: String = "encounters"
+const DEFS_CHUNK_IDS: String = "chunk_ids"
+## 事件完成标记模板（EventRunner.EVENT_DONE_FLAG_FORMAT = "event_%s_done"）
+## 的前后缀分解。save 层不依赖 narrative 模块，模板字符串在此冻结。
+const EVENT_DONE_FLAG_PREFIX: String = "event_"
+const EVENT_DONE_FLAG_SUFFIX: String = "_done"
 const REQUIRED_SNAPSHOT_FIELDS: Array[String] = [
 	"save_version",
 	"generator_version",
@@ -123,6 +138,135 @@ static func migrate_to_latest(envelope: Dictionary) -> AppResult:
 				return step_result
 			payload = step_result.value
 	return AppResult.success(payload, "migrated")
+
+
+## ---------------------------------------------------------------- DLX-6 读档内容政策
+## 政策文本：docs/save-content-policy.md。三档判定为声明式规则（无表达式求值）：
+## - hash_match：payload.content_hash 与 current_hash 完全一致 → payload 原样。
+## - hash_superset：不一致但孤儿清理零命中（当前内容相对旧档为纯新增，DLC
+##   正常路径）→ payload 原样接受。
+## - hash_divergent：不一致且清理命中（定义被删改）→ 接受，但返回清理后的
+##   深拷贝（"内容不炸玩家档"的降级策略）。
+## 孤儿清理规则（对深拷贝执行，输入永不原地修改；四条规则彼此独立）：
+## 1. inventory：条目 id 不存在于 defs["items"] → 删除；
+## 2. flags：event_*_done 形态且内部事件 id 不存在于 defs["events"] → 删除
+##   （其余形态 flag 一律保留；内部事件 id 为空视为不引用任何事件，保留）；
+## 3. chunk_deltas：chunk id 不在 defs["chunk_ids"]（世界网格目录；键缺失时
+##   整条规则跳过）→ 删除；
+## 4. battle_outcomes：battle id 不存在于 defs["encounters"] → 删除。
+## 返回清理报告：{policy, hash_matches, changed, removed_inventory,
+## removed_flags, removed_chunk_deltas, removed_battle_outcomes, payload}。
+static func sanitize_payload_against_content(
+		payload: Dictionary,
+		current_hash: String,
+		content_defs: Dictionary
+) -> Dictionary:
+	var saved_hash := str(payload.get("content_hash", ""))
+	var hash_matches: bool = saved_hash == current_hash
+	var sanitized: Dictionary = payload.duplicate(true)
+	var removed_inventory: Array[String] = []
+	var removed_flags: Array[String] = []
+	var removed_chunk_deltas: Array[String] = []
+	var removed_battle_outcomes: Array[String] = []
+	if not hash_matches:
+		removed_inventory = _prune_orphan_ids(
+			sanitized, "inventory", _content_def_bucket(content_defs, DEFS_CATEGORY_ITEMS))
+		removed_flags = _prune_orphan_event_done_flags(
+			sanitized, _content_def_bucket(content_defs, DEFS_CATEGORY_EVENTS))
+		removed_chunk_deltas = _prune_orphan_chunk_deltas(sanitized, content_defs)
+		removed_battle_outcomes = _prune_orphan_ids(
+			sanitized, "battle_outcomes", _content_def_bucket(content_defs, DEFS_CATEGORY_ENCOUNTERS))
+	var changed: bool = not (
+		removed_inventory.is_empty()
+		and removed_flags.is_empty()
+		and removed_chunk_deltas.is_empty()
+		and removed_battle_outcomes.is_empty()
+	)
+	var policy := POLICY_HASH_MATCH
+	if not hash_matches:
+		policy = POLICY_HASH_DIVERGENT if changed else POLICY_HASH_SUPERSET
+	return {
+		"policy": policy,
+		"hash_matches": hash_matches,
+		"changed": changed,
+		"removed_inventory": removed_inventory,
+		"removed_flags": removed_flags,
+		"removed_chunk_deltas": removed_chunk_deltas,
+		"removed_battle_outcomes": removed_battle_outcomes,
+		"payload": sanitized,
+	}
+
+
+## defs 类别桶防御读取：键缺失或类型非字典时返回空字典（失败安全）。
+static func _content_def_bucket(content_defs: Dictionary, category: String) -> Dictionary:
+	var bucket: Variant = content_defs.get(category, {})
+	if typeof(bucket) != TYPE_DICTIONARY:
+		return {}
+	return bucket
+
+
+## 规则 1/4 通用形：以定义 ID 字典为白名单，删除 store 中不在白名单内的条目。
+static func _prune_orphan_ids(sanitized: Dictionary, field: String, definitions: Dictionary) -> Array[String]:
+	var removed: Array[String] = []
+	var store_value: Variant = sanitized.get(field, {})
+	if typeof(store_value) != TYPE_DICTIONARY:
+		return removed
+	var store: Dictionary = store_value
+	for raw_key: Variant in store.keys():
+		var key := str(raw_key)
+		if not definitions.has(key):
+			store.erase(raw_key)
+			removed.append(key)
+	return removed
+
+
+## 规则 2：只针对 event_*_done 形态的 flag；内部事件 id 不在事件定义白名单才删。
+static func _prune_orphan_event_done_flags(sanitized: Dictionary, event_defs: Dictionary) -> Array[String]:
+	var removed: Array[String] = []
+	var flags_value: Variant = sanitized.get("flags", {})
+	if typeof(flags_value) != TYPE_DICTIONARY:
+		return removed
+	var flags: Dictionary = flags_value
+	for raw_flag: Variant in flags.keys():
+		var flag := str(raw_flag)
+		var event_id := _event_id_of_done_flag(flag)
+		if event_id.is_empty():
+			continue
+		if not event_defs.has(event_id):
+			flags.erase(raw_flag)
+			removed.append(flag)
+	return removed
+
+
+## event_<event_id>_done → event_id；非该形态（或内部事件 id 为空）返回 ""。
+static func _event_id_of_done_flag(flag: String) -> String:
+	if not flag.begins_with(EVENT_DONE_FLAG_PREFIX) or not flag.ends_with(EVENT_DONE_FLAG_SUFFIX):
+		return ""
+	return flag.substr(
+		EVENT_DONE_FLAG_PREFIX.length(),
+		flag.length() - EVENT_DONE_FLAG_PREFIX.length() - EVENT_DONE_FLAG_SUFFIX.length()
+	)
+
+
+## 规则 3：chunk_deltas 的键必须在世界网格 chunk 目录内；目录键缺失时跳过。
+static func _prune_orphan_chunk_deltas(sanitized: Dictionary, content_defs: Dictionary) -> Array[String]:
+	var removed: Array[String] = []
+	var chunk_ids: Variant = content_defs.get(DEFS_CHUNK_IDS, null)
+	if chunk_ids == null or typeof(chunk_ids) != TYPE_ARRAY:
+		return removed
+	var valid_ids: Dictionary = {}
+	for raw_id: Variant in chunk_ids as Array:
+		valid_ids[str(raw_id)] = true
+	var deltas_value: Variant = sanitized.get("chunk_deltas", {})
+	if typeof(deltas_value) != TYPE_DICTIONARY:
+		return removed
+	var deltas: Dictionary = deltas_value
+	for raw_chunk: Variant in deltas.keys():
+		var chunk_id := str(raw_chunk)
+		if not valid_ids.has(chunk_id):
+			deltas.erase(raw_chunk)
+			removed.append(chunk_id)
+	return removed
 
 
 func canonical_json(value: Variant) -> String:
@@ -414,13 +558,19 @@ func _is_stable_id(value: String) -> bool:
 	return not value.is_empty() and value == value.to_lower() and value.is_valid_identifier()
 
 
-func _is_checksum(value: String) -> bool:
+## 64 位小写十六进制串校验（envelope checksum 与 content_hash 同形）。
+## DLX-6 起 GameState 的 set_content_hash patch op 复用本判定。
+static func is_checksum_hex(value: String) -> bool:
 	if value.length() != 64 or value != value.to_lower():
 		return false
 	for character: String in value:
 		if not "0123456789abcdef".contains(character):
 			return false
 	return true
+
+
+func _is_checksum(value: String) -> bool:
+	return is_checksum_hex(value)
 
 
 func _sha256(text: String) -> String:
