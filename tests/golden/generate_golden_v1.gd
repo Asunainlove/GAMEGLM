@@ -5,11 +5,13 @@ extends SceneTree
 ##   godot --headless --path . --script res://tests/golden/generate_golden_v1.gd
 ## The printed line is the raw SaveCodec.encode_snapshot() output; it must be
 ## copied verbatim into tests/golden/save_v1_golden.json.
-## DLX-6: content_hash semantics now cover "ContentDB definitions + progression
-## config files (endings/event_chain/world_config)". The fixture therefore
+## DLX-6: content_hash semantics cover "ContentDB definitions + progression
+## config files". G7P-2 (S1/S5/S10): the config set is now endings/characters/
+## event_chain/ending_gate/objectives/hints/world_config (see
+## ContentDB.HASH_CONFIG_FILES for the authoritative list). The fixture
 ## records the real bootstrap("res://data") total hash, making it a hash_match
 ## specimen under docs/save-content-policy.md. Maintenance contract: any change
-## to data/** definitions or the three config files requires rerunning this
+## to data/** definitions or any HASH_CONFIG_FILES entry requires rerunning this
 ## generator and updating save_v1_golden.json.
 
 

@@ -195,9 +195,10 @@ func test_missing_chunk_ids_key_skips_chunk_rule_without_touching_other_rules() 
 
 func test_golden_fixture_content_hash_equals_bootstrapped_content_hash() -> void:
 	## golden fixture 的 content_hash 必须等于对 res://data 做一次真实 bootstrap
-	## 的总哈希（六类定义 + endings/event_chain/world_config 三进度配置文件）：
-	## 锁定哈希语义扩展与 golden 重生成的连贯性——内容数据任何改动都必须
-	## 伴随 golden 重生成（政策文档的维护契约）。
+	## 的总哈希（六类定义 + HASH_CONFIG_FILES 进度配置文件——G7P-2 S1/S5/S10
+	## 起为 endings/characters/event_chain/ending_gate/objectives/hints/
+	## world_config 七文件）：锁定哈希语义扩展与 golden 重生成的连贯性——
+	## 内容数据任何改动都必须伴随 golden 重生成（政策文档的维护契约）。
 	var db: Node = (load(CONTENT_DB_PATH) as Script).new()
 	add_child_autofree(db)
 	var boot: AppResult = db.bootstrap("res://data")
