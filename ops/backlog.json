@@ -353,6 +353,14 @@
         "DLX-6",
         "G6P-1"
       ]
+    },
+    {
+      "id": "S2-BOSS-GATE",
+      "title": "Declarative boss gate chain (multi-gate)",
+      "status": "verified",
+      "depends_on": [
+        "DLX-2"
+      ]
     }
   ]
 }
