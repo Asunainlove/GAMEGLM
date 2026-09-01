@@ -44,7 +44,7 @@ const BUILDING_FIELDS: Array[String] = ["id", "kind", "name_zh", "desc_zh", "inp
 const COMBAT_UNIT_FIELDS: Array[String] = ["id", "kind", "name_zh", "max_hp", "stability_max", "track", "speed", "action_ids", "phases", "drops"]
 const COMBAT_ACTION_FIELDS: Array[String] = ["id", "kind", "name_zh", "targeting", "power", "stability_damage", "cost", "heal", "guard_ratio"]
 const EVENT_FIELDS: Array[String] = ["id", "kind", "requires_flag", "once", "steps"]
-const ENCOUNTER_FIELDS: Array[String] = ["id", "name_zh", "trigger_flag", "on_victory_flag", "allies", "enemies", "seed", "intro_event_id"]
+const ENCOUNTER_FIELDS: Array[String] = ["id", "name_zh", "trigger_flag", "on_victory_flag", "allies", "enemies", "seed", "intro_event_id", "max_items_per_type"]
 const ITEM_STACK_FIELDS: Array[String] = ["item_id", "count"]
 const RECIPE_FIELDS: Array[String] = ["input_item_id", "input_count", "extra_input_item_id", "extra_input_count", "output_item_id", "output_count"]
 const PHASE_FIELDS: Array[String] = ["id", "at_hp_ratio", "action_ids"]
@@ -61,17 +61,29 @@ const ENEMY_FIELDS: Array[String] = ["unit_id", "track"]
 ## DLX-1：数据保留文件名——由对应模块自身经 FileAccess 读取并按其 schema 校验，
 ## 不参与 ContentDB 的 kind 分派与定义校验（endings.json 由 Endings 模块装载，
 ## 其条目无 kind 字段，否则 ContentDB bootstrap 会整包失败）。
-const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json"]
+## G7P-2 S5：characters.json 由 Relations 模块装载（角色登记表，无 kind 字段，
+## 同先例），并经 HASH_CONFIG_FILES 贡献 content_hash。
+const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json", "characters.json"]
 
 ## DLX-6：content_hash 语义扩展——"六类定义 + 进度配置文件"的 canonical JSON
-## 总哈希（政策文本 docs/save-content-policy.md）。三文件由 Endings /
-## Progression / WorldConfig 各自装载与校验（装载路径与失败回退不变），本处
-## 只在计算哈希时读原文解析贡献；文件缺失/空/坏 JSON 记为 ""（缺省贡献，
-## 哈希保持确定性——与无这些文件的 fixture 树的哈希语义连续）。相对路径
-## 基于 bootstrap(content_dir)。
+## 总哈希（政策文本 docs/save-content-policy.md）。各文件由对应模块自身装载与
+## 校验（装载路径与失败回退不变），本处只在计算哈希时读原文解析贡献；文件
+## 缺失/空/坏 JSON 记为 ""（缺省贡献，哈希保持确定性——与无这些文件的
+## fixture 树的哈希语义连续）。相对路径基于 bootstrap(content_dir)。
+## G7P-2 S1：ending_gate.json（Progression 结局门旗标表）入哈希——门旗标改动
+## 影响存档兼容性语义，与 event_chain 同类。
+## G7P-2 S5：characters.json（Relations 角色登记表）入哈希（endings 同类）。
+## G7P-2 S10：objectives.json / hints.json（HUD 目标链与提示表）入哈希——
+## 表内容改动影响运行行为，存档兼容性指纹必须覆盖；至此进度配置全家桶
+## （endings/characters/event_chain/ending_gate/world_config/objectives/hints）
+## 全部进 canonical 总哈希。
 const HASH_CONFIG_FILES: Dictionary = {
 	"endings": "content/endings.json",
+	"characters": "content/characters.json",
 	"event_chain": "progression/event_chain.json",
+	"ending_gate": "progression/ending_gate.json",
+	"objectives": "progression/objectives.json",
+	"hints": "progression/hints.json",
 	"world_config": "world/world_config.json",
 }
 
@@ -246,6 +258,30 @@ func validate_refs() -> AppResult:
 			_check_ref(_combat_units, enemy["unit_id"], "combat unit", "encounter '%s' enemies" % encounter_id, dangling)
 		if encounter.has("intro_event_id"):
 			_check_ref(_events, encounter["intro_event_id"], "event", "encounter '%s' intro_event_id" % encounter_id, dangling)
+	# G7P-2 S9：story_key 消费扫描——声明 story_key 的物品（DLX-4 死内容哨兵）
+	# 必须被至少一处声明式消费点引用：建筑 inputs 含它，或事件 effect 的
+	# grant_items 含它。否则记 dangling unreferenced_story_key（内容包离线校验
+	# 即红灯，防哨兵声明与实际内容漂移）。非 story_key 物品不参与本扫描。
+	var consumed_story_items: Dictionary = {}
+	for building_id: String in _buildings:
+		var building: Dictionary = _buildings[building_id]
+		for stack: Dictionary in building.get("inputs", []):
+			consumed_story_items[String(stack["item_id"])] = true
+	for event_id: String in _events:
+		var event: Dictionary = _events[event_id]
+		for step: Dictionary in event["steps"]:
+			if String(step.get("type", "")) != "effect":
+				continue
+			for grant: Dictionary in step.get("grant_items", []):
+				consumed_story_items[String(grant["item_id"])] = true
+	for item_id: String in _items:
+		var item: Dictionary = _items[item_id]
+		if not bool(item.get("story_key", false)):
+			continue
+		if not consumed_story_items.has(item_id):
+			dangling.append(
+				"unreferenced_story_key: story item '%s' is never consumed (no building inputs or event grant_items reference it)" % item_id
+			)
 	if not dangling.is_empty():
 		return AppResult.failure("dangling_ref", "; ".join(PackedStringArray(dangling)))
 	return AppResult.success()
@@ -782,6 +818,11 @@ func _validate_encounter(definition: Dictionary, path: String) -> AppResult:
 		if not result.is_ok:
 			return result
 	result = _require_integer(definition, "seed", path, 0)
+	if not result.is_ok:
+		return result
+	# G7P-2 S4：遭遇可选道具种类上限（缺省 2，由 EncounterDirector 消费；
+	# 0 表示该遭遇不装配道具）。
+	result = _optional_integer(definition, "max_items_per_type", path, 0, 99)
 	if not result.is_ok:
 		return result
 	return _optional_stable_id(definition, "intro_event_id", path)

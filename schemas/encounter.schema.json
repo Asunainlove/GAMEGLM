@@ -41,6 +41,7 @@
       }
     },
     "seed": {"type": "integer", "minimum": 0},
-    "intro_event_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+    "intro_event_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "max_items_per_type": {"type": "integer", "minimum": 0, "maximum": 99}
   }
 }

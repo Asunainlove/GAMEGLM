@@ -275,15 +275,18 @@ func test_start_caps_items_by_inventory_and_skips_zero() -> void:
 	assert_eq(misa.get("items", {}), {"sedative_mist": 1})
 
 
-func test_start_without_item_defs_falls_back_to_frozen_sandbox_items() -> void:
+func test_start_without_item_defs_equips_nothing() -> void:
 	if not _require_director():
 		return
-	# content 未带 item_defs 时，回退契约 §7 冻结的两个沙盒战斗道具 ID 判定。
+	# G7P-2 S4 合法断言更新：battle_usable 判定完全数据驱动后，content 未带
+	# item_defs 即无判定数据源 → 失败安全不装配任何道具（旧"回退冻结清单
+	# FROZEN_SANDBOX_BATTLE_ITEMS"兜底已随数据化删除，生产路径
+	# GameSession._battle_content 始终传入全量 item_defs）。
 	var content: Dictionary = _content()
 	content.erase("item_defs")
 	var config: Dictionary = _director.start(_encounter_def(), content)
 	var misa: Dictionary = config.get("allies", [])[1]
-	assert_eq(misa.get("items", {}), {"sedative_mist": 2, "shock_trap": 1})
+	assert_eq(misa.get("items", {}), {})
 
 
 func test_start_passes_hp_multiplier_through() -> void:

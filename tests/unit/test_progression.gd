@@ -9,6 +9,7 @@ extends GutTest
 const PROGRESSION_SCRIPT_PATH: String = "res://src/progression/progression.gd"
 const EVENT_RUNNER_SCRIPT_PATH: String = "res://src/narrative/event_runner.gd"
 const GAME_STATE_SCRIPT: Script = preload("res://src/state/game_state.gd")
+const BUILDINGS_JSON_PATH: String = "res://data/content/buildings.json"
 
 ## 与 EventRunner 一致的完成标记模板：完整事件 id 已带 event_ 前缀，
 ## 因此实际 flag 形如 event_event_prologue_landing_done（双前缀）。
@@ -53,6 +54,21 @@ func _state_with(flags: Dictionary) -> Dictionary:
 
 func _flags_of(snapshot: Dictionary) -> Dictionary:
 	return snapshot.get("flags", {}) as Dictionary
+
+
+## G7P-2 M12：built 反应 payload 必须携带 building_def（唯一权威路径，生产
+## GameSession 本就携带）。断言语义与迁移前一致：直接读生产 buildings.json。
+func _production_building_def(building_id: String) -> Dictionary:
+	var text: String = FileAccess.get_file_as_string(BUILDINGS_JSON_PATH)
+	var json := JSON.new()
+	if json.parse(text) != OK or typeof(json.get_data()) != TYPE_ARRAY:
+		fail_test("buildings.json must parse as an array.")
+		return {}
+	for entry_value: Variant in json.get_data():
+		if typeof(entry_value) == TYPE_DICTIONARY and String((entry_value as Dictionary).get("id", "")) == building_id:
+			return entry_value
+	fail_test("buildings.json must define %s." % building_id)
+	return {}
 
 
 class DuckStore extends RefCounted:
@@ -405,7 +421,9 @@ func test_react_built_anchor_block_sets_first_anchor_flag() -> void:
 		return
 	var store: Node = _fresh_game_state()
 	var result: AppResult = _progression.react(
-		store.snapshot(), "built", {"building_id": "anchor_block"}, store)
+		store.snapshot(), "built",
+		{"building_id": "anchor_block", "building_def": _production_building_def("anchor_block")},
+		store)
 	assert_true(result.is_ok, result.message)
 	assert_true(bool(_flags_of(store.snapshot()).get("first_anchor_placed", false)))
 
@@ -415,7 +433,9 @@ func test_react_built_anchor_workshop_sets_workshop_flag() -> void:
 		return
 	var store: Node = _fresh_game_state()
 	var result: AppResult = _progression.react(
-		store.snapshot(), "built", {"building_id": "anchor_workshop"}, store)
+		store.snapshot(), "built",
+		{"building_id": "anchor_workshop", "building_def": _production_building_def("anchor_workshop")},
+		store)
 	assert_true(result.is_ok, result.message)
 	assert_true(bool(_flags_of(store.snapshot()).get("anchor_workshop_placed", false)))
 
@@ -426,14 +446,26 @@ func test_react_built_pylon_effect_flag_depends_on_powered() -> void:
 	# 供电成功 → effect_flag 置位。
 	var store: Node = _fresh_game_state()
 	var powered: AppResult = _progression.react(
-		store.snapshot(), "built", {"building_id": "stabilizer_pylon", "powered": true}, store)
+		store.snapshot(), "built",
+		{
+			"building_id": "stabilizer_pylon",
+			"powered": true,
+			"building_def": _production_building_def("stabilizer_pylon"),
+		},
+		store)
 	assert_true(powered.is_ok, powered.message)
 	assert_true(bool(_flags_of(store.snapshot()).get("pylon_stabilized", false)))
 
 	# 未供电 → 成功但不置 effect_flag、零写入。
 	var unpowered_duck := _duck()
 	var unpowered: AppResult = _progression.react(
-		_state_with({}), "built", {"building_id": "stabilizer_pylon", "powered": false}, unpowered_duck)
+		_state_with({}), "built",
+		{
+			"building_id": "stabilizer_pylon",
+			"powered": false,
+			"building_def": _production_building_def("stabilizer_pylon"),
+		},
+		unpowered_duck)
 	assert_true(unpowered.is_ok, unpowered.message)
 	assert_eq(unpowered_duck.commit_calls, 0, "Unpowered effect building must not commit a patch.")
 	assert_eq(unpowered_duck.operations, [] as Array[Dictionary])
@@ -441,7 +473,12 @@ func test_react_built_pylon_effect_flag_depends_on_powered() -> void:
 	# powered 缺省为 true。
 	var default_duck := _duck()
 	var defaulted: AppResult = _progression.react(
-		_state_with({}), "built", {"building_id": "stabilizer_pylon"}, default_duck)
+		_state_with({}), "built",
+		{
+			"building_id": "stabilizer_pylon",
+			"building_def": _production_building_def("stabilizer_pylon"),
+		},
+		default_duck)
 	assert_true(defaulted.is_ok, defaulted.message)
 	assert_eq(default_duck.operations, [
 		{"type": "set_flag", "flag_id": "pylon_stabilized", "enabled": true},
@@ -453,13 +490,25 @@ func test_react_built_echo_chamber_effect_flag_depends_on_powered() -> void:
 		return
 	var store: Node = _fresh_game_state()
 	var powered: AppResult = _progression.react(
-		store.snapshot(), "built", {"building_id": "echo_chamber", "powered": true}, store)
+		store.snapshot(), "built",
+		{
+			"building_id": "echo_chamber",
+			"powered": true,
+			"building_def": _production_building_def("echo_chamber"),
+		},
+		store)
 	assert_true(powered.is_ok, powered.message)
 	assert_true(bool(_flags_of(store.snapshot()).get("echo_chamber_active", false)))
 
 	var unpowered_duck := _duck()
 	var unpowered: AppResult = _progression.react(
-		_state_with({}), "built", {"building_id": "echo_chamber", "powered": false}, unpowered_duck)
+		_state_with({}), "built",
+		{
+			"building_id": "echo_chamber",
+			"powered": false,
+			"building_def": _production_building_def("echo_chamber"),
+		},
+		unpowered_duck)
 	assert_true(unpowered.is_ok, unpowered.message)
 	assert_eq(unpowered_duck.commit_calls, 0)
 	assert_eq(unpowered_duck.operations, [] as Array[Dictionary])

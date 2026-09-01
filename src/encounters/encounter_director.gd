@@ -9,9 +9,12 @@ extends RefCounted
 ##
 ## start 只组装 CombatEngine config：
 ## - allies 的 items：按 encounter_def 里 item_ids 的出现次数计数，数量取
-##   min(出现次数, inventory 存量, 上限 2)；仅装配 battle_usable 的沙盒道具
-##   （content.item_defs 提供时按数据判定，缺失时回退契约 §7 冻结的两个
-##   沙盒战斗道具 ID）。
+##   min(出现次数, inventory 存量, 遭遇上限)；仅装配 battle_usable 的道具
+##   （G7P-2 S4：判定完全数据驱动——item 定义 battle_usable=true 即可装配，
+##   生产路径 GameSession._battle_content 从 ContentDB 传入全量 item_defs；
+##   item_defs 未提供/缺该 id 时失败安全不装配，冻结兜底清单已删除）。
+##   上限来自遭遇定义可选字段 max_items_per_type（G7P-2 S4，缺省 2）：
+##   新增"每种道具带 N 枚"的遭遇 = 改 encounters.json，不改本文件。
 ## - finish：victory → 单 patch（record_battle_outcome + drops 逐项 add_item +
 ##   set_flag(on_victory_flag)）；defeat → patch 仅含 record_battle_outcome
 ##   （due 旗标保留，遭遇可重试）。两种结果都会先把战斗中实际消耗的道具经
@@ -19,8 +22,8 @@ extends RefCounted
 ##   spent_items 对比开局装配与战后剩余算出）。source_id =
 ##   encounter_<id>_<result>_<revision>。
 
-const MAX_ITEMS_PER_TYPE: int = 2
-const FROZEN_SANDBOX_BATTLE_ITEMS: Array[String] = ["sedative_mist", "shock_trap"]
+## 道具种类上限缺省值（遭遇定义可用 max_items_per_type 覆盖）。
+const DEFAULT_MAX_ITEMS_PER_TYPE: int = 2
 
 
 # --- 触发检查（静态纯函数）------------------------------------------------------
@@ -57,6 +60,7 @@ static func check_triggers(state: Dictionary, encounters: Array) -> String:
 ## 返回 CombatEngine.create_battle 所需 config 并附带 "encounter_id"；
 ## 深拷贝 defs/inventory 派生数据，content 事后改写不泄漏进 config。
 static func start(encounter_def: Dictionary, content: Dictionary) -> Dictionary:
+	var max_items_per_type := int(encounter_def.get("max_items_per_type", DEFAULT_MAX_ITEMS_PER_TYPE))
 	var allies: Array = []
 	for entry: Variant in _as_array(encounter_def.get("allies", [])):
 		if typeof(entry) != TYPE_DICTIONARY:
@@ -68,7 +72,8 @@ static func start(encounter_def: Dictionary, content: Dictionary) -> Dictionary:
 			"items": _ally_items(
 				_as_array(source.get("item_ids", [])),
 				_as_dictionary(content.get("inventory", {})),
-				_as_dictionary(content.get("item_defs", {}))
+				_as_dictionary(content.get("item_defs", {})),
+				max_items_per_type
 			),
 		})
 	var enemies: Array = []
@@ -91,9 +96,11 @@ static func start(encounter_def: Dictionary, content: Dictionary) -> Dictionary:
 	}
 
 
-## item_ids 按出现次数计数；数量 = min(出现次数, inventory 存量, 上限 2)，
-## 仅装配 battle_usable 的沙盒道具；数量为 0 的不进 items 字典。
-static func _ally_items(item_ids: Array, inventory: Dictionary, item_defs: Dictionary) -> Dictionary:
+## item_ids 按出现次数计数；数量 = min(出现次数, inventory 存量, 遭遇上限
+## max_items_per_type)，仅装配 battle_usable 的道具；数量为 0 的不进 items 字典。
+static func _ally_items(
+		item_ids: Array, inventory: Dictionary, item_defs: Dictionary, max_items_per_type: int
+) -> Dictionary:
 	var occurrences: Dictionary = {}
 	for value: Variant in item_ids:
 		var item_id := str(value)
@@ -106,7 +113,7 @@ static func _ally_items(item_ids: Array, inventory: Dictionary, item_defs: Dicti
 			continue
 		var amount := mini(
 			mini(int(occurrences[item_id]), int(inventory.get(item_id, 0))),
-			MAX_ITEMS_PER_TYPE
+			max_items_per_type
 		)
 		if amount <= 0:
 			continue
@@ -114,12 +121,14 @@ static func _ally_items(item_ids: Array, inventory: Dictionary, item_defs: Dicti
 	return items
 
 
+## 战斗道具可装配判定（G7P-2 S4 数据化）：item 定义存在时按 battle_usable 布尔
+## 判定；定义缺失（item_defs 未提供或不含该 id）时失败安全返回 false——无数据
+## 源不装配，冻结兜底清单已删除。
 static func _is_battle_usable(item_id: String, item_defs: Dictionary) -> bool:
 	var definition: Dictionary = _as_dictionary(item_defs.get(item_id, {}))
-	if not definition.is_empty():
-		return bool(definition.get("battle_usable", false))
-	# item_defs 未提供该定义时，回退契约 §7 冻结的两个沙盒战斗道具 ID。
-	return FROZEN_SANDBOX_BATTLE_ITEMS.has(item_id)
+	if definition.is_empty():
+		return false
+	return bool(definition.get("battle_usable", false))
 
 
 ## 战斗道具实际消耗：对比遭遇开始装配的初始 items（config.allies[i].items，

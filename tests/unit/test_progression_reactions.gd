@@ -2,34 +2,29 @@ extends GutTest
 
 ## DLX-3 建造反应通用化测试（TDD：先于实现编写，观察 RED 后再实现 GREEN）。
 ##
-## 任务书（DL2）：删除 _react_built 的逐 id match，改为通用规则——输入
-## building_def：place_flag 存在→set_flag（place_flag_powered=true 时需供电）；
-## effect_flag 存在且 powered→set_flag；powered=false 且 effect_flag 存在→不置。
+## 通用规则：输入 building_def（payload 携带，权威输入）——place_flag 存在→
+## set_flag（place_flag_powered=true 时需供电）；effect_flag 存在且 powered→
+## set_flag；powered=false 且 effect_flag 存在→不置。
 ## 建造反应行为逐字节等价：本文件的冻结矩阵来自旧 id-match 实现的真实输出
 ##（anchor_block/anchor_workshop 无条件置位、stabilizer_pylon/echo_chamber
 ## 供电门控、其余建筑 no_op），既有 test_progression.gd 快照零修改为第二证。
 ## 纯数据扩展测试证明"新增建造反应 = 建筑定义加字段"，不改 progression.gd。
+##
+## G7P-2 M12：删除 Progression 自装载反应表回退路径，payload def 为唯一权威。
+## 旧"无 def 回退表"矩阵测试改为"payload 无 def → 失败安全恒 no_op"语义；
+## 旧反应表加载器/坏文件测试随回退路径删除（断言语义说明见
+## ops/evidence/G7P-2.md M12 节）。生产路径（GameSession.request_place）本就
+## 携带 def，集成行为零变化。
 
 const PROGRESSION_SCRIPT_PATH: String = "res://src/progression/progression.gd"
 const BUILDINGS_JSON_PATH: String = "res://data/content/buildings.json"
-const DEFAULT_REACTIONS_PATH: String = "res://data/content/buildings.json"
 const GAME_STATE_SCRIPT: Script = preload("res://src/state/game_state.gd")
 
 var _progression: Script = null
-var _temp_paths: Array[String] = []
 
 
 func before_each() -> void:
 	_progression = load(PROGRESSION_SCRIPT_PATH)
-
-
-func after_each() -> void:
-	# 恢复默认反应表并清理临时文件，防止临时状态泄漏到其他测试文件。
-	if _progression != null and _progression.has_method("load_building_reactions_from"):
-		_progression.load_building_reactions_from(DEFAULT_REACTIONS_PATH)
-	for temp_path: String in _temp_paths:
-		DirAccess.remove_absolute(temp_path)
-	_temp_paths.clear()
 
 
 ## DuckStore/DuckPatch 宿主实例字段：保活注入替身（Callable 只持 ObjectID）。
@@ -93,42 +88,6 @@ func _production_building_defs() -> Dictionary:
 	return defs
 
 
-# ---------------------------------------------------------------- 反应表加载
-
-
-func test_production_reactions_table_loads_from_buildings_json() -> void:
-	if not _require_progression():
-		return
-	var loaded: AppResult = _progression.load_building_reactions_from(DEFAULT_REACTIONS_PATH)
-	assert_true(loaded.is_ok, "生产 buildings.json 必须可作为反应表加载：%s" % loaded.message)
-	var reactions: Dictionary = _progression._reactions_table()
-	assert_eq(reactions.size(), 6, "反应表必须覆盖全部 6 个建筑定义。")
-	assert_eq(
-		String((reactions.get("anchor_block", {}) as Dictionary).get("place_flag", "")),
-		"first_anchor_placed",
-		"anchor_block 必须声明 place_flag。"
-	)
-	assert_eq(
-		String((reactions.get("anchor_workshop", {}) as Dictionary).get("place_flag", "")),
-		"anchor_workshop_placed",
-		"anchor_workshop 必须声明 place_flag。"
-	)
-	assert_eq(
-		String((reactions.get("stabilizer_pylon", {}) as Dictionary).get("effect_flag", "")),
-		"pylon_stabilized",
-		"stabilizer_pylon 的 effect_flag 语义保持不变（供电门控）。"
-	)
-	assert_eq(
-		String((reactions.get("echo_chamber", {}) as Dictionary).get("effect_flag", "")),
-		"echo_chamber_active",
-		"echo_chamber 的 effect_flag 语义保持不变（供电门控）。"
-	)
-	assert_true(
-		String((reactions.get("dust_refiner", {}) as Dictionary).get("place_flag", "")).is_empty(),
-		"无里程碑语义的建筑不得声明 place_flag。"
-	)
-
-
 # ---------------------------------------------------------------- 等价快照矩阵
 
 
@@ -161,39 +120,12 @@ func _frozen_built_matrix() -> Array:
 	]
 
 
-func test_built_reactions_match_frozen_matrix_without_def() -> void:
-	if not _require_progression():
-		return
-	var loaded: AppResult = _progression.load_building_reactions_from(DEFAULT_REACTIONS_PATH)
-	assert_true(loaded.is_ok, loaded.message)
-	# 无 building_def 的旧调用形态（直接 react 的既有测试快照路径）必须逐字节等价。
-	for row: Array in _frozen_built_matrix():
-		var duck := _duck()
-		var result: AppResult = _progression.react(
-			{"revision": 5, "flags": {}}, "built",
-			{"building_id": String(row[0]), "powered": bool(row[1])}, duck)
-		assert_true(
-			result.is_ok, "built(%s, powered=%s) 必须成功。" % [row[0], row[1]]
-		)
-		assert_eq(
-			duck.operations, row[2] as Array[Dictionary],
-			"built(%s, powered=%s) 的 ops 必须与迁移前一致。" % [row[0], row[1]]
-		)
-		if (row[2] as Array).is_empty():
-			assert_eq(duck.commit_calls, 0, "无反应建筑不得提交 patch。")
-			assert_eq(String(result.code), "no_op")
-		else:
-			assert_eq(duck.commit_calls, 1)
-
-
 func test_built_reactions_match_frozen_matrix_with_payload_def() -> void:
 	if not _require_progression():
 		return
-	var loaded: AppResult = _progression.load_building_reactions_from(DEFAULT_REACTIONS_PATH)
-	assert_true(loaded.is_ok, loaded.message)
 	var defs: Dictionary = _production_building_defs()
 	assert_false(defs.is_empty(), "前置：生产建筑定义必须可读。")
-	# 集成调用形态（payload 携带 building_def）必须与无 def 的回退路径逐字节一致。
+	# 集成调用形态（payload 携带 building_def，唯一权威路径）与迁移前逐字节一致。
 	for row: Array in _frozen_built_matrix():
 		var duck := _duck()
 		var result: AppResult = _progression.react(
@@ -208,6 +140,28 @@ func test_built_reactions_match_frozen_matrix_with_payload_def() -> void:
 			duck.operations, row[2] as Array[Dictionary],
 			"payload def 路径的 ops 必须与冻结矩阵一致。"
 		)
+		if (row[2] as Array).is_empty():
+			assert_eq(duck.commit_calls, 0, "无反应建筑不得提交 patch。")
+			assert_eq(String(result.code), "no_op")
+		else:
+			assert_eq(duck.commit_calls, 1)
+
+
+func test_built_without_payload_def_is_fail_safe_no_op() -> void:
+	if not _require_progression():
+		return
+	# G7P-2 M12 合法断言更新（取代旧"无 def 回退自装载反应表"矩阵测试）：
+	# payload 不携带 building_def 时没有权威 def 可用 → 成功 no_op 零写入
+	#（失败安全语义与旧空表兜底一致，但不再隐式读盘）。
+	for row: Array in _frozen_built_matrix():
+		var duck := _duck()
+		var result: AppResult = _progression.react(
+			{"revision": 5, "flags": {}}, "built",
+			{"building_id": String(row[0]), "powered": bool(row[1])}, duck)
+		assert_true(result.is_ok, "无 def 的 built 必须成功 no_op。")
+		assert_eq(duck.commit_calls, 0, "无 def 的 built 不得提交 patch。")
+		assert_eq(duck.operations, [] as Array[Dictionary])
+		assert_eq(String(result.code), "no_op")
 
 
 # ---------------------------------------------------------------- 通用规则（纯数据扩展）
@@ -303,55 +257,14 @@ func test_built_def_without_flags_is_no_op_even_for_known_id() -> void:
 	assert_eq(String(result.code), "no_op")
 
 
-# ---------------------------------------------------------------- 失败安全
-
-
-func test_missing_reactions_file_fails_safe_and_pushes_error() -> void:
+func test_built_with_non_dictionary_def_is_no_op() -> void:
 	if not _require_progression():
 		return
-	var result: AppResult = _progression.load_building_reactions_from(
-		"res://data/progression/definitely_missing_reactions.json")
-	assert_false(result.is_ok, "缺失反应表文件必须加载失败。")
-	assert_eq(result.code, "missing_reactions_file")
-	# 规范要求文件缺失 push_error；预期错误断言同时消费该错误。
-	assert_push_error("building reactions rejected")
-	# 失败安全：回退表为空时，无 def 的 built 反应恒 no_op。
+	# def 形态非法（非字典）按空 def 处理：失败安全 no_op，不抛错。
 	var duck := _duck()
-	var react_result: AppResult = _progression.react(
-		{"revision": 5, "flags": {}}, "built", {"building_id": "anchor_block"}, duck)
-	assert_true(react_result.is_ok, "坏表下 built 必须失败安全（成功 + 零写入）。")
+	var result: AppResult = _progression.react(
+		{"revision": 5, "flags": {}}, "built",
+		{"building_id": "anchor_block", "powered": true, "building_def": "anchor_block"}, duck)
+	assert_true(result.is_ok, "非法 def 形态必须失败安全。")
 	assert_eq(duck.commit_calls, 0)
 	assert_eq(duck.operations, [] as Array[Dictionary])
-
-
-func test_malformed_reactions_files_are_rejected() -> void:
-	if not _require_progression():
-		return
-	var bad_cases: Array = [
-		["syntax_error", "{\"id\": not json"],
-		["not_an_array", "{\"id\": \"anchor_block\"}"],
-		["entry_not_object", "[\"anchor_block\"]"],
-		["missing_id", "[{\"place_flag\": \"x\"}]"],
-		["duplicate_id", "[{\"id\": \"b1\"}, {\"id\": \"b1\"}]"],
-		["place_flag_wrong_type", "[{\"id\": \"b1\", \"place_flag\": 7}]"],
-		["place_flag_not_stable_id", "[{\"id\": \"b1\", \"place_flag\": \"First Flag\"}]"],
-		["powered_wrong_type", "[{\"id\": \"b1\", \"place_flag_powered\": \"yes\"}]"],
-		["effect_flag_wrong_type", "[{\"id\": \"b1\", \"effect_flag\": []}]"],
-	]
-	for case_entry: Array in bad_cases:
-		var path := _write_temp_reactions(String(case_entry[0]), String(case_entry[1]))
-		var result: AppResult = _progression.load_building_reactions_from(path)
-		assert_false(result.is_ok, "坏反应表 %s 必须被拒绝。" % String(case_entry[0]))
-		assert_false(result.message.is_empty(), "拒绝信息必须说明原因。")
-		assert_push_error("Progression: building reactions rejected")
-
-
-func _write_temp_reactions(case_name: String, text: String) -> String:
-	var path: String = "user://dlx3_reactions_%s_%d.json" % [case_name, Time.get_ticks_usec()]
-	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
-	assert_not_null(file, "临时反应表必须可写：%s" % path)
-	if file != null:
-		file.store_string(text)
-		file.close()
-	_temp_paths.append(path)
-	return path

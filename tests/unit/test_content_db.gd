@@ -364,11 +364,15 @@ func test_content_hash_includes_progression_config_files() -> void:
 	# DLX-6 哈希语义扩展：endings/event_chain/world_config 三个进度配置文件由
 	# 各模块自身装载不变，但其内容必须贡献 content_hash 总哈希——任一文件
 	# 内容变化（在不触碰六类定义的前提下）必须改变哈希。
+	# G7P-2 S10 增量：objectives.json / hints.json（HUD 目标链与提示表）同样
+	# 入哈希——表内容改动影响运行行为，存档兼容性指纹必须覆盖。
 	var base_root := FIXTURE_ROOT + "_hash_cfg"
 	_remove_dir_recursive(base_root)
 	_write_text_file(base_root + "/content/alpha.json", '{"id": "starsoil_dust", "kind": "material", "name_zh": "星壤尘", "stack_limit": 99}')
 	_write_text_file(base_root + "/content/endings.json", '{"endings": []}')
 	_write_text_file(base_root + "/progression/event_chain.json", "[]")
+	_write_text_file(base_root + "/progression/objectives.json", "[]")
+	_write_text_file(base_root + "/progression/hints.json", "[]")
 	_write_text_file(base_root + "/world/world_config.json", '{"grid_size": [4, 2]}')
 
 	var baseline: Node = _new_db()
@@ -394,6 +398,18 @@ func test_content_hash_includes_progression_config_files() -> void:
 	var world_mutated: Node = _new_db()
 	assert_true(world_mutated.bootstrap(base_root).is_ok)
 	assert_ne(world_mutated.content_hash(), hash_value, "world_config.json 变化必须改变总哈希。")
+
+	_write_text_file(base_root + "/world/world_config.json", '{"grid_size": [4, 2]}')
+	_write_text_file(base_root + "/progression/objectives.json", '[{"text_zh": "改动后的目标"}]')
+	var objectives_mutated: Node = _new_db()
+	assert_true(objectives_mutated.bootstrap(base_root).is_ok)
+	assert_ne(objectives_mutated.content_hash(), hash_value, "objectives.json 变化必须改变总哈希。")
+
+	_write_text_file(base_root + "/progression/objectives.json", "[]")
+	_write_text_file(base_root + "/progression/hints.json", '[{"text_zh": "改动后的提示"}]')
+	var hints_mutated: Node = _new_db()
+	assert_true(hints_mutated.bootstrap(base_root).is_ok)
+	assert_ne(hints_mutated.content_hash(), hash_value, "hints.json 变化必须改变总哈希。")
 
 
 func test_content_defs_snapshot_returns_defensive_items_events_encounters() -> void:

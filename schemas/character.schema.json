@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/character.schema.json",
+  "title": "Starsoil character registry",
+  "description": "G7P-2 S5 角色登记表：可建关系角色的 id/显示名（可选 accent_color 展示色）单一来源。Relations 关系白名单与 Hud 关系面板行同源读表——新增可建关系角色 = 本表加一个条目，零代码。文件由 Relations.load_characters_from 装载（最小校验：数组、id 稳定唯一、name_zh 非空），缺失/坏文件 push_error 并回退缺省 {luoxian, misa}。ContentDB 侧为数据保留文件（RESERVED_DATA_FILENAMES，endings.json 先例），不参与 kind 分派但贡献 content_hash。",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["id", "name_zh"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+      "name_zh": {"type": "string", "minLength": 1},
+      "accent_color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"}
+    }
+  }
+}

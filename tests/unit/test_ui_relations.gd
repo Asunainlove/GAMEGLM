@@ -12,12 +12,15 @@ extends GutTest
 
 const HUD_SCENE_PATH: String = "res://scenes/ui_hud.tscn"
 const THEME_PATH: String = "res://themes/starsoil_theme.tres"
-const POLICY_EVENT_PATH: String = "res://data/events/event_policy.json"
+## G7P-2 S3 合法更新：政策门提示改扫描 data/events/*.json 全目录（多文件化），
+## 生产门集不变（仅 event_policy.json 携带 requires_trust 对象选项）。
+const EVENTS_DIR: String = "res://data/events"
 const ENDINGS_PATH: String = "res://data/content/endings.json"
 
 var _fake: FakeSnapshotProvider = null
 var _hud: Hud = null
 var _temp_paths: Array[String] = []
+var _temp_dirs: Array[String] = []
 
 
 class FakeSnapshotProvider:
@@ -36,10 +39,13 @@ func after_each() -> void:
 	_hud = null
 	_fake = null
 	# 恢复默认门提示数据，防止临时表状态泄漏到其他测试文件。
-	Hud.load_relation_gates_from(POLICY_EVENT_PATH, ENDINGS_PATH)
+	Hud.load_relation_gates_from(EVENTS_DIR, ENDINGS_PATH)
 	for temp_path: String in _temp_paths:
 		DirAccess.remove_absolute(temp_path)
 	_temp_paths.clear()
+	for temp_dir: String in _temp_dirs:
+		_remove_dir_recursive(temp_dir)
+	_temp_dirs.clear()
 
 
 func _make_hud(payload: Dictionary) -> Hud:
@@ -104,6 +110,41 @@ func _write_temp_json(case_name: String, text: String) -> String:
 		file.close()
 	_temp_paths.append(path)
 	return path
+
+
+## G7P-2 S3：门数据注入改为"临时事件目录 + 事件文件"形态（多文件扫描）。
+func _write_temp_events_dir(file_name: String, text: String) -> String:
+	var dir: String = "user://dlx4_gate_events_%d" % Time.get_ticks_usec()
+	var make_error: Error = DirAccess.make_dir_recursive_absolute(dir)
+	assert_eq(make_error, OK, "临时事件目录必须可创建：%s" % dir)
+	_temp_dirs.append(dir)
+	var path: String = dir.path_join(file_name)
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	assert_not_null(file, "临时事件文件必须可写：%s" % path)
+	if file != null:
+		file.store_string(text)
+		file.close()
+	_temp_paths.append(path)
+	return path
+
+
+func _remove_dir_recursive(tree: String) -> void:
+	if not DirAccess.dir_exists_absolute(tree):
+		return
+	var dir := DirAccess.open(tree)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		if dir.current_is_dir():
+			if entry != "." and entry != "..":
+				_remove_dir_recursive(tree + "/%s" % entry)
+		else:
+			DirAccess.remove_absolute(tree + "/%s" % entry)
+		entry = dir.get_next()
+	dir.list_dir_end()
+	DirAccess.remove_absolute(tree)
 
 
 # ---------------------------------------------------------------- 场景契约
@@ -230,7 +271,7 @@ func test_symbiosis_gate_hint_disappears_at_threshold_and_without_flag() -> void
 
 
 func test_gate_table_loads_thresholds_from_production_data_files() -> void:
-	var result: AppResult = Hud.load_relation_gates_from(POLICY_EVENT_PATH, ENDINGS_PATH)
+	var result: AppResult = Hud.load_relation_gates_from(EVENTS_DIR, ENDINGS_PATH)
 	assert_true(result.is_ok, "生产数据文件必须能装载门提示表：%s" % result.message)
 	var entries: Array[Dictionary] = Hud._gate_entries()
 	assert_eq(entries.size(), 2, "生产数据必须派生出政策门 + 共生门两条。")
@@ -279,9 +320,9 @@ func test_gate_data_is_injectable_and_value_driven() -> void:
 			"extra_flag": "echo_chamber_active",
 		},
 	]
-	var policy_path := _write_temp_json("policy", JSON.stringify(policy_event, "  "))
+	var policy_path := _write_temp_events_dir("event_policy_test.json", JSON.stringify(policy_event, "  "))
 	var endings_path := _write_temp_json("endings", JSON.stringify(endings, "  "))
-	assert_true(Hud.load_relation_gates_from(policy_path, endings_path).is_ok, "临时门数据必须可装载。")
+	assert_true(Hud.load_relation_gates_from(policy_path.get_base_dir(), endings_path).is_ok, "临时门数据必须可装载。")
 
 	var locked: Hud = _make_hud(_payload({"misa": {"trust": 10, "affection": 0}}, {}))
 	var locked_lines: Array[String] = _lines_containing(locked.get_node("RelationsPanel"), "尚未赢得弥砂的信任")
@@ -302,11 +343,50 @@ func test_gate_data_is_injectable_and_value_driven() -> void:
 		assert_true(symbiotic_lines[0].contains("15"), "剩余点数必须按注入阈值推导（65 - 50），实际：%s" % symbiotic_lines[0])
 
 
+func test_gate_hints_derive_from_all_event_files_in_dir() -> void:
+	# G7P-2 S3：目录内两个事件文件各带一个信任门选项 → 两条门提示自动派生
+	#（新增信任门事件 = data/events 加 JSON 文件，零代码）。
+	var first: Dictionary = {
+		"id": "event_gate_first", "kind": "choice",
+		"steps": [{"type": "choice", "choice_id": "gate_first", "prompt_zh": "选择？", "options": [
+			{"id": "gate_first_opt", "text_zh": "头一门：需要弥砂点头。",
+			 "set_flag": "g7p2_gate_first",
+			 "requires_trust": {"char_id": "misa", "dim": "trust", "value": 25}},
+		]}],
+	}
+	var second: Dictionary = {
+		"id": "event_gate_second", "kind": "choice",
+		"steps": [{"type": "choice", "choice_id": "gate_second", "prompt_zh": "选择？", "options": [
+			{"id": "gate_second_opt", "text_zh": "第二门：需要洛弦点头。",
+			 "set_flag": "g7p2_gate_second",
+			 "requires_trust": {"char_id": "luoxian", "dim": "trust", "value": 45}},
+		]}],
+	}
+	var dir: String = "user://dlx4_gate_events_multi_%d" % Time.get_ticks_usec()
+	assert_eq(DirAccess.make_dir_recursive_absolute(dir), OK)
+	_temp_dirs.append(dir)
+	for entry: Array in [["event_gate_first.json", first], ["event_gate_second.json", second]]:
+		var file: FileAccess = FileAccess.open(dir.path_join(String(entry[0])), FileAccess.WRITE)
+		assert_not_null(file)
+		if file != null:
+			file.store_string(JSON.stringify(entry[1], "  "))
+			file.close()
+			_temp_paths.append(dir.path_join(String(entry[0])))
+	assert_true(
+		Hud.load_relation_gates_from(dir, ENDINGS_PATH).is_ok,
+		"多文件事件目录必须整包装载成功。"
+	)
+	var derived_flags: Dictionary = {}
+	for gate: Dictionary in Hud._gate_entries():
+		derived_flags[String(gate["flag_id"])] = true
+	assert_true(derived_flags.has("g7p2_gate_first"), "第一个事件文件的门必须自动派生。")
+	assert_true(derived_flags.has("g7p2_gate_second"), "第二个事件文件的门必须自动派生。")
+
+
 func test_bad_gate_files_fail_safe_without_breaking_rows() -> void:
-	var result: AppResult = Hud.load_relation_gates_from("res://missing_policy.json", "res://missing_endings.json")
+	var result: AppResult = Hud.load_relation_gates_from("res://missing_events_dir", "res://missing_endings.json")
 	assert_false(result.is_ok, "缺失数据文件必须报告失败。")
 	assert_push_error("Hud: relation gate data rejected")
-	assert_false(result.is_ok, "缺失数据文件必须报告失败。")
 	var hud: Hud = _make_hud(_payload({"luoxian": {"trust": 10, "affection": 0}}, {}))
 	assert_true(
 		_lines_containing(hud.get_node("RelationsPanel"), "尚未赢得").is_empty(),
