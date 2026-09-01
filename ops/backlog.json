@@ -304,6 +304,14 @@
       "depends_on": [
         "DLX-2"
       ]
+    },
+    {
+      "id": "DLX-4",
+      "title": "Trust visibility + seed consumer + world response (P0)",
+      "status": "verified",
+      "depends_on": [
+        "DLX-3"
+      ]
     }
   ]
 }
