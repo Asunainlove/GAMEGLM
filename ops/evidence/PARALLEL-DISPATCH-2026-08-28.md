@@ -50,3 +50,11 @@
 - Final: 631/631 tests, all gates exit 0, 11-schema offline validation PASS (array-document fix + 4 schema registrations).
 - Re-audit: six scenarios 0 GDScript diff; discipline all PASS; PM re-eval Q1 4/5, Q2 4/5, Q3 4.5/5 (from 3.5/4/3).
 - Project state: G6 art/audio production (contracts ready, human approval gate) -> G7 human gates. Remaining S/M follow-ups logged in re-audit report.
+
+# Final project checkpoint: G7P wave complete (2026-08-31)
+
+- G7P-2 (S-level cleanup, 8 items datafied, 660/660), G6P-1 (asset adapter layer, 696/696), G7P-1 (full-loop playthrough suite, 700/700) merged and tagged.
+- G7P-1 found and fixed two P0 production defects that all prior integration tests masked: (1) story deadlock - station_mode required echo_chamber which required echo_seed available only post-station_mode (fixed: misa_campfire grants the seed, chain position 7); (2) guard button rejected by engine (self-target empty, fixed in battle_scene._auto_target).
+- Balance ruling: allies 60/45 hp, boss surge 6 / quake 5 (boss was mathematically unwinnable at original values; verified by full-loop simulation both before and after).
+- Final main state: 700/700 tests, Verify-Toolchain exit 0, Verify-Slice exit 0 (GATE4 export PASS), validate_content PASS.
+- Code-side completion: G1-G5 charter scope + DLC-ready reusable architecture + automated three-route playthrough evidence. Remaining human gates: G6 asset production (docs/art contracts, provenance + approval), G7 human playthrough (45-60min pacing calibration, external playtest, originality final review).
