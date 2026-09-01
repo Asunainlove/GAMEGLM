@@ -336,6 +336,14 @@
       "depends_on": [
         "DLX-6"
       ]
+    },
+    {
+      "id": "G6P-1",
+      "title": "Asset adapter layer (drop-in art with greybox fallback)",
+      "status": "verified",
+      "depends_on": [
+        "DLX-5"
+      ]
     }
   ]
 }
