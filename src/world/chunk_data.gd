@@ -60,37 +60,6 @@ const CELL_DEF_ROCK_WALL: Dictionary = {
 	"yield_amount": 0,
 }
 
-## W002-GAP2 手工矿井所在 chunk（4x2 网格最东南 chunk，世界格 x∈[96,128)、
-## y∈[32,64)）。生成时以 generate_mine 覆盖程序生成结果。
-const MINE_CHUNK_ID: String = "chunk_3_1"
-
-## 手工矿井岩壁矩形（chunk 本地坐标，Rect2i(position, size)，end=position+size
-## 为开区间下界）。布局：北岩体 + 入口走廊（y=8..9，西端 x=0 开口衔接 chunk_2_1 土壤）+
-## 竖井（x=12..13）+ 中央矿脉富集腔（x=6..25, y=13..21）+ 南端 Boss 房
-## （x=10..19, y=22..31，10x10 开阔）。
-const MINE_WALL_RECTS: Array[Rect2i] = [
-	Rect2i(0, 0, 32, 8),
-	Rect2i(14, 8, 18, 2),
-	Rect2i(0, 10, 12, 3),
-	Rect2i(14, 10, 18, 3),
-	Rect2i(0, 13, 6, 9),
-	Rect2i(26, 13, 6, 9),
-	Rect2i(0, 22, 10, 10),
-	Rect2i(20, 22, 12, 10),
-]
-
-## 手工矿井矿脉矩形（含矿种）：dust 12+12、shard 16+16、core 9+9+6，
-## 总计 80 格，比例 3:4:3。走廊（D1）与腔内（D2..C3）散布，Boss 房无矿。
-const MINE_ORE_VEINS: Dictionary = {
-	"ore_dust": [Rect2i(3, 8, 6, 2), Rect2i(17, 13, 6, 2)],
-	"ore_shard": [Rect2i(7, 15, 4, 4), Rect2i(14, 15, 4, 4)],
-	"ore_core": [Rect2i(8, 19, 3, 3), Rect2i(20, 19, 3, 3), Rect2i(24, 16, 2, 3)],
-}
-
-## Boss 房矩形（chunk 本地坐标）：世界格 y >= 32+22 即腔体南端，供触发链使用。
-const MINE_BOSS_ROOM_RECT: Rect2i = Rect2i(10, 22, 10, 10)
-
-
 ## Parses a "chunk_<x>_<y>" id into its grid coordinates inside the world grid.
 ## Returns Vector2i(-1, -1) when the id does not follow the pattern.
 static func grid_coords(chunk_id: String) -> Vector2i:
@@ -128,21 +97,24 @@ static func generate(chunk_id: String, world_seed: int, enriched: bool = false) 
 	return {"chunk_id": chunk_id, "cells": cells}
 
 
-## W002-GAP2 手工 authored 矿井（无 RNG）：按 MINE_WALL_RECTS / MINE_ORE_VEINS
-## 固定布局填充 chunk_3_1。cells 只存非 soil 格（rock_wall 墙 + 矿），返回结构
-## 与 generate() 完全一致；同参数重复调用结果全等（确定性由常量表保证，不依赖
-## world_seed）。布局（chunk 本地坐标，北在上南在下）：
-##   - 入口走廊 y=8..9（西端 x=0 开口，衔接 chunk_2_1 全 soil 边缘，天然可通行）；
-##   - 竖井 x=12..13 连接走廊与矿脉腔；
-##   - 中央矿脉富集腔 x=6..25, y=13..21（高密度矿）；
-##   - Boss 房 x=10..19, y=22..31（腔体南端 10x10 开阔区，无矿）。
-static func generate_mine(chunk_id: String) -> Dictionary:
+## DLX-5 authored 地区生成（无 RNG）：按外置 layout（WorldConfig 解析
+## world_config.json regions[].layout 的归一化结果）固定布局填充任意
+## authored chunk。语义与迁移前的 generate_mine 完全一致：
+##   - wall_rects（Array[Rect2i]）→ 逐格填充 rock_wall（世界/表现层经
+##     CELL_DEF_ROCK_WALL 冻结 def 解析，不可采不可建）；
+##   - ore_rects（Array[{rect: Rect2i, type: String}]）→ 逐格填充对应矿种，
+##     文件顺序即填充顺序（后写覆盖前写）；
+##   - boss_room_rect → 仅作地区标记（触发链消费），**不填格**——Boss 房
+##     必须保持开阔无矿。
+## cells 只存非 soil 格，返回结构与 generate() 完全一致；同 layout 重复调用
+## 结果全等（确定性由数据表保证，不依赖 world_seed 与 RNG）。
+static func generate_authored(chunk_id: String, layout: Dictionary) -> Dictionary:
 	var cells: Dictionary = {}
-	for rect: Rect2i in MINE_WALL_RECTS:
+	for rect: Rect2i in layout.get("wall_rects", []) as Array:
 		_fill_rect(cells, rect, "rock_wall")
-	for ore_type: String in MINE_ORE_VEINS:
-		for rect: Rect2i in MINE_ORE_VEINS[ore_type]:
-			_fill_rect(cells, rect, ore_type)
+	for ore_rect_value: Variant in layout.get("ore_rects", []) as Array:
+		var ore_rect: Dictionary = ore_rect_value
+		_fill_rect(cells, ore_rect["rect"], str(ore_rect["type"]))
 	return {"chunk_id": chunk_id, "cells": cells}
 
 

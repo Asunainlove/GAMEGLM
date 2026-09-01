@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/world-config.schema.json",
+  "title": "Starsoil world configuration",
+  "description": "DLX-5 世界布局外置：网格尺寸、seed 覆盖、岩壁色与 authored 地区声明。region.layout 的矩形均为 chunk 本地坐标 [x,y,w,h]（含端点，end=position+size 为开区间下界），w/h>=1 且不越界 CHUNK_SIZE(32)；ore_rects.type 枚举矿种；boss_room_rect 仅作地区标记（生成时不填格）。region.entry 声明位置触发的入口事件链（event_id 为 ContentDB 事件 id，entered_flag 为置位 flag）；boss_checkpoint_min_local_y 为本地 y 下界（世界 y = chunk 原点 y + 该值）触发玩家位置检查点。运行时由 WorldConfig 做最小校验（结构、稳定 ID、矩形边界、chunk 在网格内、id 唯一），坏文件 push_error 并整体回退 4x2 无地区。",
+  "type": "object",
+  "required": ["grid_size", "regions"],
+  "additionalProperties": false,
+  "properties": {
+    "grid_size": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "world_seed": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "非 null 时覆盖快照 world_seed；null（缺省）沿用 GameState 快照。"
+    },
+    "mine_rock_wall_color": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"type": "number", "minimum": 0, "maximum": 1}
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["chunk_id", "layout"],
+        "additionalProperties": false,
+        "properties": {
+          "chunk_id": {"type": "string", "pattern": "^chunk_[0-9]+_[0-9]+$"},
+          "layout": {
+            "type": "object",
+            "required": ["wall_rects", "ore_rects", "boss_room_rect"],
+            "additionalProperties": false,
+            "properties": {
+              "wall_rects": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/localRect"}
+              },
+              "ore_rects": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["rect", "type"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "rect": {"$ref": "#/$defs/localRect"},
+                    "type": {"type": "string", "enum": ["ore_dust", "ore_shard", "ore_core"]}
+                  }
+                }
+              },
+              "boss_room_rect": {"$ref": "#/$defs/localRect"}
+            }
+          },
+          "entry": {
+            "type": "object",
+            "required": ["event_id", "entered_flag"],
+            "additionalProperties": false,
+            "properties": {
+              "event_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+              "entered_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+            }
+          },
+          "boss_checkpoint_min_local_y": {"type": "integer", "minimum": 0, "maximum": 32}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "localRect": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"type": "integer", "minimum": 0}
+    }
+  }
+}

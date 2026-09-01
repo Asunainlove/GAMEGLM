@@ -31,16 +31,19 @@ extends Node
 ##   胜利时 Progression.react(encounter_won)；卸载战斗场景，战败保留 due flag。
 ## - 结局链：Progression.ending_ready 且 due_event 为空且无战斗 → ending.tscn。
 ## - 引导链（W003-A3 / DLX-3）：首次操作提示经 HUD HintToast 队列展示——开局
-##   2s 总提示、首次选中建筑、首次材料不足建造失败、首次进入矿井（mine_entered
-##   置位后）、遭遇触发前由本节点按触发点调用；触发条件与文案读
-##   data/progression/hints.json（_show_hints_for_trigger 按表订阅），首次 O
-##   覆盖层由 HUD 内部触发点读表。一次性标记 hint_<id>_seen 由本节点注入
-##   hud.hint_seen_callback 的回调经 patch 落账（表现层不直接写状态）。
+##   2s 总提示、首次选中建筑、首次材料不足建造失败、首次进入 authored 地区
+##   （region entered flag 置位后，DLX-5）、遭遇触发前由本节点按触发点调用；
+##   触发条件与文案读 data/progression/hints.json（_show_hints_for_trigger 按表
+##   订阅），首次 O 覆盖层由 HUD 内部触发点读表。一次性标记 hint_<id>_seen 由
+##   本节点注入 hud.hint_seen_callback 的回调经 patch 落账（表现层不直接写状态）。
 ## - 存档链：每次 patch 提交后节流 SaveService.save_slot("auto")；启动时尝试
 ##   load → restore_snapshot。主菜单手动保存写 "manual" 槽并在 HUD 闪现提示；
 ##   重新开始先经 GameState.reset_to_initial 归零持久状态（Autoload 或注入
 ##   store），再经 SaveService.delete_slot 删除 auto/manual 槽全部候选文件，
 ##   最后重载当前场景（W001-P06 修复 P05 两个缺陷：内存状态残留与镜像命名）。
+## - 地区触发链（DLX-5）：矿井入口事件、entered flag、Boss 房检查带与网格尺寸
+##   全部外置于 data/world/world_config.json（WorldConfig 装载缓存，坏文件
+##   push_error 并兜底 4x2 无地区）。
 ##
 ## 表现层约束：本节点绝不直接改持久字典，一切变更经注入 store（契约 §0：
 ## null → GameState autoload）的各模块 API / patch 提交完成。
@@ -50,8 +53,6 @@ signal encounter_started(encounter_id: String)
 signal ending_shown
 
 const TOOL_TIER: int = 2
-const CHUNK_GRID_WIDTH: int = 4
-const CHUNK_GRID_HEIGHT: int = 2
 const DEFAULT_BUILDING_ID: String = "anchor_block"
 ## DLX-3 热键泛化：常量 BUILDING_HOTBAR_SIZE 退役。热键上限 = 
 ## min(max(6, 建筑定义数), 9)——下限 6 保持既有布局承诺，上限 9 为备用数字键
@@ -70,14 +71,14 @@ const SAVE_NOTICE_SECONDS: float = 1.5
 ## W003-A3 开局总提示（hint_move）的延迟秒数。
 const MOVE_HINT_DELAY_SECONDS: float = 2.0
 
-## W002-GAP2 手工矿井/Boss 区触发链常量。事件经既有事件展示路径（start/pump/
-## complete）驱动；mine_entered 与 encounter_leviathan_due 由事件 effect 步骤
-## 经 EventRunner/Progression 既有语义落账，与"双胜+policy"路径写同一 flag 幂等。
-const MINE_CHUNK_ID: String = "chunk_3_1"
-const MINE_ENTRY_EVENT_ID: String = "event_mine_threshold"
-const MINE_ENTERED_FLAG: String = "mine_entered"
-## Boss 房区域 = chunk_3_1 内本地 y >= 22（世界格 y >= 32+22 = 54，腔体南端）。
-const MINE_BOSS_ROOM_LOCAL_MIN_Y: int = 22
+## DLX-5 地区级触发链：入口事件/entered flag/Boss 检查带全部外置于
+## world_config.json regions[]（WorldConfig 装载），新增手工地区 = 加一个
+## JSON 条目，零代码改动（test_world_dlx5 纯数据扩区测试证明）。
+## 事件经既有事件展示路径（start/pump/complete）驱动；entered_flag 与
+## encounter_leviathan_due 由事件 effect 步骤经 EventRunner/Progression 既有
+## 语义落账。MINE_HINT_TRIGGER 是提示表（hints.json）的触发点键——entered flag
+## 置位后的深处提示仍按该触发点订阅，文案与去重由提示表/一次性标记承担。
+const MINE_HINT_TRIGGER: String = "mine_entered"
 const BOSS_ROOM_CHECKPOINT_REASON: String = "boss_room_enter"
 
 ## 契约 §0 注入模式：持久层 store，null → GameState autoload。
@@ -192,20 +193,21 @@ func _building_hotbar_size() -> int:
 # ---------------------------------------------------------------- 编排主循环
 
 
-## 每帧（或测试手动）推进一条链路：位置检查点优先，其次事件（矿井入口事件
-## 按位置触发，优先级高于 due_event 链——入口台词应在踏进矿井的第一时间呈现，
-## 拖到 due 链之后会让玩家深入矿井后才听到入口对话），再次遭遇，最后结局。
+## 每帧（或测试手动）推进一条链路：位置检查点优先，其次事件（地区入口事件
+## 按位置触发，优先级高于 due_event 链——入口台词应在踏进地区的第一时间呈现，
+## 拖到 due 链之后会让玩家深入地区后才听到入口对话），再次遭遇，最后结局。
 func tick() -> void:
 	if not ContentDB.is_bootstrapped():
 		return
 	if active_event_id != "" or battle != null or ending != null:
 		return
 	var state := _snapshot()
-	_record_boss_room_checkpoint(state)
-	_show_mine_hint_if_due(state)
+	_record_boss_room_checkpoints()
+	_show_mine_hints_if_due(state)
 	if dialogue_box != null:
-		if _mine_entry_due(state):
-			_start_event(MINE_ENTRY_EVENT_ID)
+		var region_event_id := _region_entry_event_due(state)
+		if region_event_id != "":
+			_start_event(region_event_id)
 			return
 		# DLX-2：event_envoy_trust（DLX-1 tick 过渡钩子）已并入外置事件链
 		# （data/progression/event_chain.json 链首条目），经 due_event 统一触发。
@@ -224,38 +226,55 @@ func tick() -> void:
 		_show_ending()
 
 
-## W002-GAP2 Boss 房检查点：玩家格进入 chunk_3_1 腔体南端（世界格 y >= 54）时
-## 调用既有 set_player_position 检查点。幂等性由 patch 通道保证：同 revision
-## 同 source 的重复提交经 GameState already_applied 短路，不产生额外持久变化。
-func _record_boss_room_checkpoint(_state: Dictionary) -> void:
+## DLX-5 Boss 房检查点（W002-GAP2 泛化）：遍历 world_config regions[]，玩家格
+## 进入某地区声明带（chunk 本地 y >= boss_checkpoint_min_local_y）时调用既有
+## set_player_position 检查点。幂等性由 patch 通道保证：同 revision 同 source
+## 的重复提交经 GameState already_applied 短路，不产生额外持久变化。chunk 之间
+## 互不重叠（装载期拒绝重复 chunk_id），一次 tick 至多命中一个地区。
+func _record_boss_room_checkpoints() -> void:
 	var cell := _player_cell()
-	var origin := ChunkData.chunk_origin(MINE_CHUNK_ID)
-	if cell.x < origin.x or cell.x >= origin.x + ChunkData.CHUNK_SIZE:
-		return
-	if cell.y < origin.y + MINE_BOSS_ROOM_LOCAL_MIN_Y or cell.y >= origin.y + ChunkData.CHUNK_SIZE:
-		return
-	_checkpoint_player_position(BOSS_ROOM_CHECKPOINT_REASON)
+	for region: Dictionary in WorldConfig.regions():
+		if not region.has("boss_checkpoint_min_local_y"):
+			continue
+		var origin := ChunkData.chunk_origin(str(region.get("chunk_id", "")))
+		var min_local_y := int(region.get("boss_checkpoint_min_local_y", 0))
+		if cell.x < origin.x or cell.x >= origin.x + ChunkData.CHUNK_SIZE:
+			continue
+		if cell.y < origin.y + min_local_y or cell.y >= origin.y + ChunkData.CHUNK_SIZE:
+			continue
+		_checkpoint_player_position(BOSS_ROOM_CHECKPOINT_REASON)
 
 
-## W002-GAP2 矿井入口判定：首次进入 chunk_3_1（世界格 x>=96 且 y>=32）且
-## mine_entered / 事件 done 均未置位时返回 true。不走 Progression.due_event 链
-## 的原因：due_event 为 src/progression 冻结静态链（本包禁改），矿井入口是位置
-## 触发事件，由本节点自检后走与 due 事件完全相同的展示路径（_start_event →
-## 步骤泵 → complete_event + completed_events 记账），持久语义无差别。
-func _mine_entry_due(state: Dictionary) -> bool:
+## DLX-5 地区入口判定（W002-GAP2 泛化）：按 regions[] 声明顺序返回第一个满足
+## 条件的入口事件 id（均不满足返回 ""）。条件与迁移前逐条一致：entered flag /
+## 事件 done 均未置位、事件定义存在、玩家格位于该地区 chunk 内。不走
+## Progression.due_event 链的原因不变：due_event 为 src/progression 冻结静态链
+## （本包禁改），地区入口是位置触发事件，由本节点自检后走与 due 事件完全相同
+## 的展示路径（_start_event → 步骤泵 → complete_event + completed_events 记账），
+## 持久语义无差别。
+func _region_entry_event_due(state: Dictionary) -> String:
 	var flags: Dictionary = state.get("flags", {}) as Dictionary
-	if bool(flags.get(MINE_ENTERED_FLAG, false)):
-		return false
-	if bool(flags.get(EventRunner.EVENT_DONE_FLAG_FORMAT % MINE_ENTRY_EVENT_ID, false)):
-		return false
-	if ContentDB.get_event(MINE_ENTRY_EVENT_ID).is_empty():
-		return false
-	return _is_in_mine_region(_player_cell())
+	var cell := _player_cell()
+	for region: Dictionary in WorldConfig.regions():
+		var entry: Dictionary = region.get("entry", {}) as Dictionary
+		var event_id := str(entry.get("event_id", ""))
+		var entered_flag := str(entry.get("entered_flag", ""))
+		if event_id.is_empty() or entered_flag.is_empty():
+			continue
+		if bool(flags.get(entered_flag, false)):
+			continue
+		if bool(flags.get(EventRunner.EVENT_DONE_FLAG_FORMAT % event_id, false)):
+			continue
+		if ContentDB.get_event(event_id).is_empty():
+			continue
+		if _is_in_region_chunk(cell, str(region.get("chunk_id", ""))):
+			return event_id
+	return ""
 
 
-## 玩家格是否位于手工矿井 chunk（世界格矩形）内。
-func _is_in_mine_region(cell: Vector2i) -> bool:
-	var origin := ChunkData.chunk_origin(MINE_CHUNK_ID)
+## 玩家格是否位于指定 chunk（世界格矩形）内。
+func _is_in_region_chunk(cell: Vector2i, chunk_id: String) -> bool:
+	var origin := ChunkData.chunk_origin(chunk_id)
 	return (
 		cell.x >= origin.x
 		and cell.x < origin.x + ChunkData.CHUNK_SIZE
@@ -1022,8 +1041,10 @@ func _selected_building_def() -> Dictionary:
 
 
 func _resolve_chunk_id(cell: Vector2i) -> String:
-	var grid_x := clampi(floori(float(cell.x) / float(ChunkData.CHUNK_SIZE)), 0, CHUNK_GRID_WIDTH - 1)
-	var grid_y := clampi(floori(float(cell.y) / float(ChunkData.CHUNK_SIZE)), 0, CHUNK_GRID_HEIGHT - 1)
+	# DLX-5：网格尺寸读 world_config（WorldConfig 兜底 4x2）。
+	var grid := WorldConfig.grid_size()
+	var grid_x := clampi(floori(float(cell.x) / float(ChunkData.CHUNK_SIZE)), 0, grid.x - 1)
+	var grid_y := clampi(floori(float(cell.y) / float(ChunkData.CHUNK_SIZE)), 0, grid.y - 1)
 	return "chunk_%d_%d" % [grid_x, grid_y]
 
 
@@ -1077,12 +1098,17 @@ func _show_move_hint_if_due() -> void:
 	_show_hints_for_trigger(_snapshot(), "boot")
 
 
-## mine_entered 置位后（首次进入矿井）的深处提示；tick 每帧检查，开销为一次字典读。
-## DLX-3：触发条件与文案读提示表（mine_entered 触发点）。
-func _show_mine_hint_if_due(state: Dictionary) -> void:
-	if not bool((state.get("flags", {}) as Dictionary).get(MINE_ENTERED_FLAG, false)):
-		return
-	_show_hints_for_trigger(state, "mine_entered")
+## 地区 entered flag 置位后（首次进入任一 authored 地区）的深处提示；tick 每帧
+## 检查，开销为 regions 遍历。DLX-3：触发条件与文案读提示表；DLX-5：遍历
+## regions[] 的 entered_flag，命中任一即按 MINE_HINT_TRIGGER 触发点订阅（提示
+## id 去重保证多地区不重复展示）。
+func _show_mine_hints_if_due(state: Dictionary) -> void:
+	var flags: Dictionary = state.get("flags", {}) as Dictionary
+	for region: Dictionary in WorldConfig.regions():
+		var entered_flag := str((region.get("entry", {}) as Dictionary).get("entered_flag", ""))
+		if not entered_flag.is_empty() and bool(flags.get(entered_flag, false)):
+			_show_hints_for_trigger(state, MINE_HINT_TRIGGER)
+			return
 
 
 ## DLX-3 通用触发点：按提示表订阅 trigger_point 命中的全部提示，逐条经

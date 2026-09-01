@@ -1,0 +1,37 @@
+{
+  "grid_size": [4, 2],
+  "world_seed": null,
+  "mine_rock_wall_color": [0.24, 0.2, 0.16],
+  "regions": [
+    {
+      "chunk_id": "chunk_3_1",
+      "layout": {
+        "wall_rects": [
+          [0, 0, 32, 8],
+          [14, 8, 18, 2],
+          [0, 10, 12, 3],
+          [14, 10, 18, 3],
+          [0, 13, 6, 9],
+          [26, 13, 6, 9],
+          [0, 22, 10, 10],
+          [20, 22, 12, 10]
+        ],
+        "ore_rects": [
+          {"rect": [3, 8, 6, 2], "type": "ore_dust"},
+          {"rect": [17, 13, 6, 2], "type": "ore_dust"},
+          {"rect": [7, 15, 4, 4], "type": "ore_shard"},
+          {"rect": [14, 15, 4, 4], "type": "ore_shard"},
+          {"rect": [8, 19, 3, 3], "type": "ore_core"},
+          {"rect": [20, 19, 3, 3], "type": "ore_core"},
+          {"rect": [24, 16, 2, 3], "type": "ore_core"}
+        ],
+        "boss_room_rect": [10, 22, 10, 10]
+      },
+      "entry": {
+        "event_id": "event_mine_threshold",
+        "entered_flag": "mine_entered"
+      },
+      "boss_checkpoint_min_local_y": 22
+    }
+  ]
+}

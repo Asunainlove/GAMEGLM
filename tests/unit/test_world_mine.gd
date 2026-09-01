@@ -4,13 +4,16 @@ extends GutTest
 ##
 ## 章程 Locked scope 第 1 条要求 4x2 Chunk 琉砂海地区"和一个手工矿井/Boss 区"。
 ## 本文件覆盖：
-## - ChunkData.generate_mine：手工固定布局（无 RNG）、确定性、矿石总量 60..90、
-##   ore_dust/ore_shard/ore_core 比例 3:4:3、入口/走廊开阔、Boss 房 10x10 无矿；
+## - ChunkData.generate_authored（DLX-5：布局数据外置 world_config.json，经
+##   WorldConfig.layout_for_chunk 装载；语义与迁移前 generate_mine 完全一致）：
+##   手工固定布局（无 RNG）、确定性、矿石总量 60..90、ore_dust/ore_shard/ore_core
+##   比例 3:4:3、入口/走廊开阔、Boss 房 10x10 无矿；
 ## - rock_wall 新格型：cell_def 冻结值（hardness 0 / min_tier 9）+ Gathering
 ##   工具等级守卫（min_tier 9 现有工具永不满足）；
-## - WorldRenderer：rock_wall 专用单色 source（深褐），绘制在 Ground 层（随
-##   覆盖层切换隐藏的必须是矿，不是墙）；
-## - world.tscn：chunk_3_1 用 generate_mine 覆盖程序生成，其余 7 chunk 不变。
+## - WorldRenderer：rock_wall 专用单色 source（深褐，DLX-5 起颜色读配置），
+##   绘制在 Ground 层（随覆盖层切换隐藏的必须是矿，不是墙）；
+## - world.tscn：chunk_3_1 按外置 region 声明用 generate_authored 覆盖程序生成，
+##   其余 7 chunk 不变。
 
 const CHUNK_DATA_SCRIPT: Script = preload("res://src/world/chunk_data.gd")
 const GATHERING_SCRIPT: Script = preload("res://src/gathering/gathering.gd")
@@ -118,20 +121,28 @@ func _count_type(cells: Dictionary, cell_type: String) -> int:
 	return count
 
 
+## DLX-5 合法断言更新：generate_mine 常量耦合退役，authored 矿井改为
+## generate_authored + 外置布局（WorldConfig 装载 world_config.json）。
+## 断言值（采样/计数/比例/矩形）保持迁移前逐字节不变——本文件即等价快照。
+func _mine_chunk() -> Dictionary:
+	return CHUNK_DATA_SCRIPT.generate_authored(
+		MINE_CHUNK_ID, WorldConfig.layout_for_chunk(MINE_CHUNK_ID))
+
+
 # --------------------------------------------------------------- 任务 1：手工布局
 
 
-func test_generate_mine_is_deterministic_and_structure_compatible() -> void:
-	var first: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)
-	var second: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)
+func test_generate_authored_is_deterministic_and_structure_compatible() -> void:
+	var first: Dictionary = _mine_chunk()
+	var second: Dictionary = _mine_chunk()
 	assert_eq(str(first.get("chunk_id", "")), MINE_CHUNK_ID)
-	assert_eq(first, second, "generate_mine 是手工固定布局，两次生成必须全等。")
+	assert_eq(first, second, "authored 生成是手工固定布局，两次生成必须全等。")
 	assert_true(first.has("cells"), "返回结构必须与 generate 一致（cells 字典）。")
 	assert_gt((first["cells"] as Dictionary).size(), 0)
 
 
-func test_generate_mine_cells_stay_in_bounds_and_use_known_types() -> void:
-	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)["cells"]
+func test_generate_authored_cells_stay_in_bounds_and_use_known_types() -> void:
+	var cells: Dictionary = _mine_chunk()["cells"]
 	var known_types: Array[String] = ["rock_wall", "ore_dust", "ore_shard", "ore_core"]
 	for cell: Vector2i in cells:
 		assert_true(cell.x >= 0 and cell.x < 32, "矿井格 x 越界: %s" % cell)
@@ -139,8 +150,8 @@ func test_generate_mine_cells_stay_in_bounds_and_use_known_types() -> void:
 		assert_has(known_types, str(cells[cell]), "未知格型: %s" % str(cells[cell]))
 
 
-func test_generate_mine_ore_total_and_ratio_match_contract() -> void:
-	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)["cells"]
+func test_generate_authored_ore_total_and_ratio_match_contract() -> void:
+	var cells: Dictionary = _mine_chunk()["cells"]
 	var dust := _count_type(cells, "ore_dust")
 	var shard := _count_type(cells, "ore_shard")
 	var core := _count_type(cells, "ore_core")
@@ -153,8 +164,8 @@ func test_generate_mine_ore_total_and_ratio_match_contract() -> void:
 	assert_eq(core, 24)
 
 
-func test_generate_mine_keeps_entry_and_corridor_open() -> void:
-	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)["cells"]
+func test_generate_authored_keeps_entry_and_corridor_open() -> void:
+	var cells: Dictionary = _mine_chunk()["cells"]
 	for local_cell: Vector2i in ENTRY_LOCAL_CELLS:
 		assert_false(
 			cells.has(local_cell),
@@ -167,8 +178,8 @@ func test_generate_mine_keeps_entry_and_corridor_open() -> void:
 		)
 
 
-func test_generate_mine_boss_room_is_open_with_no_ore() -> void:
-	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)["cells"]
+func test_generate_authored_boss_room_is_open_with_no_ore() -> void:
+	var cells: Dictionary = _mine_chunk()["cells"]
 	for y: int in range(BOSS_ROOM_RECT.position.y, BOSS_ROOM_RECT.end.y):
 		for x: int in range(BOSS_ROOM_RECT.position.x, BOSS_ROOM_RECT.end.x):
 			assert_false(
@@ -177,8 +188,8 @@ func test_generate_mine_boss_room_is_open_with_no_ore() -> void:
 			)
 
 
-func test_generate_mine_walls_flank_corridor_and_enclose_rooms() -> void:
-	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)["cells"]
+func test_generate_authored_walls_flank_corridor_and_enclose_rooms() -> void:
+	var cells: Dictionary = _mine_chunk()["cells"]
 	for local_cell: Vector2i in WALL_SAMPLES:
 		assert_eq(
 			str(cells.get(local_cell, "")), "rock_wall",
@@ -186,8 +197,8 @@ func test_generate_mine_walls_flank_corridor_and_enclose_rooms() -> void:
 		)
 
 
-func test_generate_mine_ore_samples_match_authored_distribution() -> void:
-	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)["cells"]
+func test_generate_authored_ore_samples_match_authored_distribution() -> void:
+	var cells: Dictionary = _mine_chunk()["cells"]
 	for local_cell: Vector2i in ORE_SAMPLES:
 		assert_eq(
 			str(cells.get(local_cell, "")), str(ORE_SAMPLES[local_cell]),
@@ -199,7 +210,7 @@ func test_generate_mine_ore_samples_match_authored_distribution() -> void:
 
 
 func test_cell_def_returns_frozen_rock_wall_definition() -> void:
-	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)["cells"]
+	var cells: Dictionary = _mine_chunk()["cells"]
 	var definition: Dictionary = CHUNK_DATA_SCRIPT.cell_def(cells, Vector2i(0, 7))
 	assert_eq(definition, CELL_DEF_ROCK_WALL, "rock_wall 必须返回冻结 def（hardness 0 / min_tier 9）。")
 	definition["min_tier"] = 0
@@ -211,7 +222,7 @@ func test_cell_def_returns_frozen_rock_wall_definition() -> void:
 
 
 func test_mine_ore_cells_stay_minable() -> void:
-	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate_mine(MINE_CHUNK_ID)["cells"]
+	var cells: Dictionary = _mine_chunk()["cells"]
 	assert_eq(
 		CHUNK_DATA_SCRIPT.cell_def(cells, Vector2i(5, 8)), CELL_DEF_ORE_DUST,
 		"走廊矿格必须保持 ore_dust 可采 def。"
@@ -299,7 +310,7 @@ func test_world_overrides_chunk_3_1_with_authored_mine() -> void:
 	var wall_def: Dictionary = world.call("cell_def_at", MINE_CHUNK_ID, wall_world_cell)
 	assert_eq(
 		str(wall_def.get("type", "")), "rock_wall",
-		"chunk_3_1 必须用 generate_mine 覆盖程序生成结果（世界格墙可解析）。"
+		"chunk_3_1 必须按外置 region 声明用 generate_authored 覆盖程序生成结果（世界格墙可解析）。"
 	)
 	assert_eq(int(wall_def.get("min_tier", 0)), 9, "cell_def_at 对 rock_wall 必须返回 min_tier 9。")
 	assert_eq(int(wall_def.get("hardness", -1)), 0, "cell_def_at 对 rock_wall 必须返回 hardness 0。")

@@ -106,10 +106,11 @@ func test_world_boots_enriched_when_exploited_flag_preset() -> void:
 		CHUNK_DATA.generate(PROBE_CHUNK_ID, WORLD_SEED, true)["cells"],
 		"exploited flag 已置时启动生成必须产出富集 chunk 数据。"
 	)
-	# 手工矿井恒为 authored 布局，不受富集影响。
+	# 手工矿井恒为 authored 布局，不受富集影响（DLX-5：布局经 WorldConfig 外置装载）。
 	assert_eq(
 		_observed_cells(world, "chunk_3_1"),
-		CHUNK_DATA.generate_mine("chunk_3_1")["cells"],
+		CHUNK_DATA.generate_authored(
+			"chunk_3_1", WorldConfig.layout_for_chunk("chunk_3_1"))["cells"],
 		"手工矿井 chunk 必须保持 authored 布局。"
 	)
 

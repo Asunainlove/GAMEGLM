@@ -62,11 +62,13 @@ func _instantiate_world(initial_data: Dictionary = {}) -> Node2D:
 
 
 func _ore_cell(chunk_id: String, ore_type: String) -> Vector2i:
-	# W002-GAP2 合法断言更新：chunk_3_1 改为手工 authored 矿井布局，
-	# 实况矿格须取自 generate_mine（程序 generate 已不代表该 chunk）。
+	# W002-GAP2 合法断言更新：chunk_3_1 为手工 authored 矿井布局，实况矿格须取自
+	# 布局数据（DLX-5：generate_authored + 外置 world_config 布局，程序 generate
+	# 已不代表该 chunk）。
 	var cells: Dictionary = {}
 	if chunk_id == "chunk_3_1":
-		cells = CHUNK_DATA_SCRIPT.generate_mine(chunk_id)["cells"]
+		cells = CHUNK_DATA_SCRIPT.generate_authored(
+			chunk_id, WorldConfig.layout_for_chunk(chunk_id))["cells"]
 	else:
 		cells = CHUNK_DATA_SCRIPT.generate(chunk_id, DEFAULT_WORLD_SEED)["cells"]
 	for cell: Vector2i in cells:

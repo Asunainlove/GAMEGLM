@@ -2,23 +2,28 @@ extends Node2D
 
 ## world.tscn root script (module contract section 4).
 ##
-## Owns the 4x2 slice-world chunk grid (chunk_0_0 .. chunk_3_1), renders every
+## Owns the slice-world chunk grid (chunk_0_0 .. chunk_<w>_<h>), renders every
 ## chunk through WorldRenderer at its chunk origin (W002-GAP3), and keeps the
 ## presentation in sync with GameState by polling snapshot revisions. This
 ## script never mutates persistent state: it reads snapshots (injectable
 ## provider) and mirrors chunk_deltas of ALL chunks onto the TileMapLayers.
 ##
 ## Coordinate conventions (W002-GAP3):
-## - Chunk data (ChunkData.generate) is chunk-local (0..31 per axis).
+## - Chunk data (ChunkData.generate / generate_authored) is chunk-local
+##   (0..31 per axis).
 ## - App-layer cells (player intents, chunk_deltas, placed_buildings) are
 ##   world-absolute. cell_def_at() therefore translates world cells into
 ##   chunk-local lookups via ChunkData.chunk_origin.
+##
+## DLX-5 世界布局外置：网格尺寸、authored 地区（布局 + 生成分发）与岩壁色
+## 外置于 data/world/world_config.json（WorldConfig 装载缓存；文件缺失/坏文件
+## push_error 并兜底 4x2 无地区）。新增手工地区 = 加一个 regions[] JSON 条目，
+## 零代码改动。
 
-const CHUNK_GRID_SIZE := Vector2i(4, 2)
+## 兜底网格与迁移前 CHUNK_GRID_SIZE 常量一致；运行时以 WorldConfig 为准。
+const FALLBACK_GRID_SIZE := Vector2i(4, 2)
 ## 32 cells x 32 px = 1024 px per chunk edge.
 const CHUNK_PIXELS: int = ChunkData.CHUNK_SIZE * ChunkData.CELL_SIZE
-## Full world extent in pixels (4 x 1024, 2 x 1024).
-const WORLD_PIXEL_SIZE := Vector2i(CHUNK_GRID_SIZE.x * CHUNK_PIXELS, CHUNK_GRID_SIZE.y * CHUNK_PIXELS)
 const SNAPSHOT_POLL_SECONDS: float = 0.5
 const SNAPSHOT_POLL_TIMER_NAME: String = "SnapshotPollTimer"
 const DEFAULT_PLAYER_START_CELL: Vector2i = Vector2i(-1, -1)
@@ -43,6 +48,9 @@ var _chunks: Dictionary = {}
 var _renderer: WorldRenderer
 var _last_revision: int = -1
 
+## DLX-5：世界网格 chunk 数（WorldConfig 装载，_ready 解析一次）。
+var _grid_size: Vector2i = FALLBACK_GRID_SIZE
+
 ## DLX-4 世界回应运行态：最近一次生成/重生成所用 exploited 值与其初始化标记
 ##（_ready 前的首次 _generate_chunks 记为已初始化，此后轮询只对跳变反应）。
 var _world_response_exploited: bool = false
@@ -55,6 +63,7 @@ var _world_response_initialized: bool = false
 
 
 func _ready() -> void:
+	_grid_size = WorldConfig.grid_size()
 	_renderer = WorldRenderer.new()
 	_renderer.name = "WorldRenderer"
 	add_child(_renderer)
@@ -126,19 +135,29 @@ func place_player_at_cell(cell: Vector2i) -> bool:
 
 func _generate_chunks() -> void:
 	var snapshot := _read_snapshot()
-	var world_seed := int(snapshot.get("world_seed", 0))
+	var world_seed := _resolve_world_seed(snapshot)
 	# DLX-4：启动生成（含读档）按快照 flags 决定富集；并记为跳变检测基线。
 	_world_response_exploited = _exploited_flag_of(snapshot)
 	_world_response_initialized = true
-	for grid_y: int in CHUNK_GRID_SIZE.y:
-		for grid_x: int in CHUNK_GRID_SIZE.x:
+	for grid_y: int in _grid_size.y:
+		for grid_x: int in _grid_size.x:
 			var chunk_id := "chunk_%d_%d" % [grid_x, grid_y]
-			if chunk_id == ChunkData.MINE_CHUNK_ID:
-				# W002-GAP2：手工矿井/Boss 区（authored，无 RNG）覆盖程序生成结果；
-				# 其余 7 chunk 保持种子确定性生成。
-				_chunks[chunk_id] = ChunkData.generate_mine(chunk_id)
+			var region: Dictionary = WorldConfig.region_for_chunk(chunk_id)
+			if not region.is_empty():
+				# DLX-5：authored 地区按外置布局覆盖程序生成结果（无 RNG）；
+				# 其余 chunk 保持种子确定性生成。
+				_chunks[chunk_id] = ChunkData.generate_authored(chunk_id, region["layout"])
 			else:
 				_chunks[chunk_id] = ChunkData.generate(chunk_id, world_seed, _world_response_exploited)
+
+
+## 世界 seed 解析：world_config.world_seed 非 null 时覆盖快照（DLX-5 外置）；
+## null（迁移缺省值）沿用 GameState 快照——行为与迁移前逐字节一致。
+func _resolve_world_seed(snapshot: Dictionary) -> int:
+	var seed_override: Variant = WorldConfig.seed_override()
+	if seed_override != null:
+		return int(seed_override)
+	return int(snapshot.get("world_seed", 0))
 
 
 ## 只读提取 exploited flag；快照缺 flags 时按 false。
@@ -150,7 +169,8 @@ func _exploited_flag_of(snapshot: Dictionary) -> bool:
 ## 生成发生跳变时，对无破坏记录（scar-free）的程序 chunk 以新参数重新
 ## generate 并全层重渲染，随后重放 chunk_deltas——已破坏格保持擦除；有破坏
 ## 记录的 chunk 保留原始生成数据（破坏格不得在富集数据中"复活"成为可采格；
-## Gathering 亦有 destroyed delta 硬门）。矿井 chunk 恒为 authored，不参与。
+## Gathering 亦有 destroyed delta 硬门）。authored 地区 chunk（DLX-5 外置声明）
+## 恒为固定布局，不参与。
 ## 实现选择：scar-free 判定按"该 chunk 存在 destroyed delta"二值划分，重生成
 ## 后走 _render_all_chunks + refresh_from_snapshot 全层重绘 + delta 重放，
 ## 不做逐格局部补丁——跳变是一次性事件，全量重绘成本可忽略且正确性显然。
@@ -167,7 +187,7 @@ func _reconcile_world_response(snapshot: Dictionary) -> void:
 
 
 func _regenerate_scar_free_chunks(snapshot: Dictionary) -> void:
-	var world_seed := int(snapshot.get("world_seed", 0))
+	var world_seed := _resolve_world_seed(snapshot)
 	var deltas: Dictionary = snapshot.get("chunk_deltas", {}) as Dictionary
 	var scarred: Dictionary = {}
 	for chunk_id_value: Variant in deltas:
@@ -176,22 +196,22 @@ func _regenerate_scar_free_chunks(snapshot: Dictionary) -> void:
 			if delta != null and bool(delta.get("destroyed", false)):
 				scarred[str(chunk_id_value)] = true
 				break
-	for grid_y: int in CHUNK_GRID_SIZE.y:
-		for grid_x: int in CHUNK_GRID_SIZE.x:
+	for grid_y: int in _grid_size.y:
+		for grid_x: int in _grid_size.x:
 			var chunk_id := "chunk_%d_%d" % [grid_x, grid_y]
-			if chunk_id == ChunkData.MINE_CHUNK_ID or scarred.has(chunk_id):
+			if not WorldConfig.region_for_chunk(chunk_id).is_empty() or scarred.has(chunk_id):
 				continue
 			_chunks[chunk_id] = ChunkData.generate(chunk_id, world_seed, _world_response_exploited)
 	_render_all_chunks()
 	refresh_from_snapshot()
 
 
-## Renders the full 4x2 chunk grid onto the shared layers, each chunk at its
+## Renders the full chunk grid onto the shared layers, each chunk at its
 ## grid origin (grid coordinates x CHUNK_SIZE cells).
 func _render_all_chunks() -> void:
 	_renderer.clear_layers()
-	for grid_y: int in CHUNK_GRID_SIZE.y:
-		for grid_x: int in CHUNK_GRID_SIZE.x:
+	for grid_y: int in _grid_size.y:
+		for grid_x: int in _grid_size.x:
 			var chunk_id := "chunk_%d_%d" % [grid_x, grid_y]
 			_renderer.render(_chunks[chunk_id], Vector2i(grid_x, grid_y) * ChunkData.CHUNK_SIZE)
 
