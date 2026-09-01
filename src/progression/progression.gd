@@ -23,11 +23,10 @@ extends RefCounted
 ## DLX-3：_react_built 删除逐 id match，改为通用规则——输入 building_def：
 ## place_flag 存在→set_flag（place_flag_powered=true 时需供电）；effect_flag
 ## 存在且 powered→set_flag；powered=false 且 effect_flag 存在→不置（单调保持）。
-## building_def 由调用方经 payload 携带（GameSession 从 ContentDB 取选中定义）；
-## 旧调用形态（payload 无 def，如既有测试快照）回退到本模块自装载的建造反应表
-## （直接读 data/content/buildings.json 提取 place_flag/place_flag_powered/
-## effect_flag，最小校验，缺失/坏文件 push_error 并回退空表 → built 恒 no_op
-## 失败安全）。回退表与 ContentDB 同源同文件、只读，不改变内容不可变约定。
+## building_def 由调用方经 payload 携带（GameSession 从 ContentDB 取选中定义）。
+## G7P-2 M12：删除"payload 无 def 时自装载反应表"的回退路径，payload def 为
+## 唯一权威——缺失 def → 空 def → no_op（失败安全恒零写入），单一判定路径
+## 消除双路径漂移面。
 ## G7P-2 S1：ending_ready 的遭遇胜利旗标集外置到 data/progression/ending_gate.json
 ## （schema schemas/ending-gate.schema.json，与 event_chain 同一 bootstrap 模式）：
 ## 缺失/坏文件 push_error 并回退空表 → ending_ready 失败安全恒 false（永不满足，
@@ -53,9 +52,6 @@ const EVENT_CHAIN_PATH: String = "res://data/progression/event_chain.json"
 ## G7P-2 S1：结局门控旗标表路径（bootstrap 缺省加载；测试可经
 ## load_ending_gate_from 注入临时门表）。
 const ENDING_GATE_PATH: String = "res://data/progression/ending_gate.json"
-## DLX-3：建造反应回退表数据源（与 ContentDB 同一 buildings.json；仅当 built
-## payload 未携带 building_def 时经此回退解析 place_flag/effect_flag）。
-const BUILDING_REACTIONS_PATH: String = "res://data/content/buildings.json"
 
 ## DLX-2 链缓存：bootstrap 一次性加载；失败同样记为已引导（tick 每帧调用
 ## due_event，不得逐帧重读坏文件），显式 load_chain_from 可重新加载修复。
@@ -69,14 +65,6 @@ static var _chain_last_load: AppResult = null
 static var _ending_gate: Dictionary = {}
 static var _ending_gate_bootstrapped: bool = false
 static var _ending_gate_last_load: AppResult = null
-
-## DLX-3 建造反应表缓存：building_id → {place_flag, place_flag_powered,
-## effect_flag}（仅提取反应字段）。惰性加载（未引导时首次 built 回退触发），
-## 失败记为已引导避免逐帧重读坏文件；显式 load_building_reactions_from 可
-## 重新加载修复（测试注入临时表）。
-static var _building_reactions: Dictionary = {}
-static var _reactions_bootstrapped: bool = false
-static var _reactions_last_load: AppResult = null
 
 
 ## 按契约 §7 事件顺序返回应触发的事件 id：第一个未 done 且前置满足者；
@@ -378,9 +366,9 @@ static func _react_mined(state: Dictionary, store: Object) -> AppResult:
 
 ## DLX-3 建造反应通用规则（替换旧逐 id match，行为逐字节等价——冻结矩阵见
 ## tests/unit/test_progression_reactions.gd 与 ops/evidence/DLX-3.md）：
-## 输入 building_def 优先取 payload.building_def（集成路径：GameSession 传入
-## ContentDB 选中定义）；payload 无 def 时回退本模块自装载的反应表（同源
-## buildings.json，旧直接调用形态的兼容路径）。规则：
+## building_def 取 payload.building_def（权威输入，集成路径：GameSession 传入
+## ContentDB 选中定义）。G7P-2 M12：payload 无 def 时不再回退自装载反应表——
+## 空 def → 无反应字段 → 成功 no_op 零写入（失败安全，单一权威路径）。规则：
 ## - place_flag 存在 → set_flag；place_flag_powered=true 时需供电才置位
 ##   （缺省 false，放置即置——anchor_block/anchor_workshop 里程碑语义）；
 ## - effect_flag 存在且 powered → set_flag；powered=false → 不置（单调保持，
@@ -394,7 +382,7 @@ static func _react_built(state: Dictionary, payload: Dictionary, store: Object) 
 			"Built payload requires a stable snake_case building_id, got %s." % building_id
 		)
 	var powered: bool = bool(payload.get("powered", true))
-	var building_def: Dictionary = _built_def_of(payload, building_id)
+	var building_def: Dictionary = _built_def_of(payload)
 	var operations: Array[Dictionary] = []
 	var place_flag := String(building_def.get("place_flag", ""))
 	if not place_flag.is_empty():
@@ -408,100 +396,13 @@ static func _react_built(state: Dictionary, payload: Dictionary, store: Object) 
 	return _commit_operations(state, "built", operations, store)
 
 
-## built 反应的 def 解析：payload.building_def 为非空字典时权威采用（调用方
-## 注入，支持纯数据扩展测试）；否则回退自装载反应表（缺失 id → 空 def → no_op）。
-static func _built_def_of(payload: Dictionary, building_id: String) -> Dictionary:
+## built 反应的 def 解析（G7P-2 M12 单一权威）：payload.building_def 为字典时
+## 采用；缺失/形态非法 → 空 def → no_op（失败安全零写入，不再自装载回退表）。
+static func _built_def_of(payload: Dictionary) -> Dictionary:
 	var def_value: Variant = payload.get("building_def", {})
-	if typeof(def_value) == TYPE_DICTIONARY and not (def_value as Dictionary).is_empty():
+	if typeof(def_value) == TYPE_DICTIONARY:
 		return def_value
-	return _reaction_def(building_id)
-
-
-# ---------------------------------------------------------------- 建造反应表（DLX-3）
-
-
-## 反应表只读访问器（测试断言用）：未引导时惰性加载生产 buildings.json。
-static func _reactions_table() -> Dictionary:
-	if not _reactions_bootstrapped:
-		load_building_reactions_from(BUILDING_REACTIONS_PATH)
-	return _building_reactions
-
-
-## 单建筑反应字段（回退路径）：未引导时惰性加载；未知 id 返回空 def。
-static func _reaction_def(building_id: String) -> Dictionary:
-	return (_reactions_table().get(building_id, {}) as Dictionary)
-
-
-## 加载指定路径的建造反应表：成功时缓存 building_id → 反应字段归一化条目；
-## 缺失/坏文件 push_error 并把表回退为空（built 反应失败安全恒 no_op）。
-## 测试经本方法注入临时表。
-static func load_building_reactions_from(path: String) -> AppResult:
-	var result: AppResult = _read_and_validate_building_reactions(path)
-	_reactions_bootstrapped = true
-	_reactions_last_load = result
-	if result.is_ok:
-		_building_reactions = result.value
-	else:
-		_building_reactions = {}
-		push_error("Progression: building reactions rejected (%s): %s" % [path, result.message])
-	return result
-
-
-static func _read_and_validate_building_reactions(path: String) -> AppResult:
-	if not FileAccess.file_exists(path):
-		return AppResult.failure(
-			"missing_reactions_file", "Building reactions file not found: %s" % path
-		)
-	var text: String = FileAccess.get_file_as_string(path)
-	var json := JSON.new()
-	var parse_error: Error = json.parse(text)
-	if parse_error != OK:
-		return AppResult.failure(
-			"invalid_reactions_file",
-			"Building reactions file is not valid JSON at line %d." % json.get_error_line()
-		)
-	var parsed: Variant = json.get_data()
-	if typeof(parsed) != TYPE_ARRAY:
-		return AppResult.failure("invalid_reactions_file", "Building reactions file must contain a JSON array.")
-	var reactions: Dictionary = {}
-	for entry_value: Variant in parsed:
-		var problem: String = _reactions_entry_error(entry_value, reactions)
-		if not problem.is_empty():
-			return AppResult.failure("invalid_reactions_file", problem)
-	var normalized: Dictionary = {}
-	for entry_value: Variant in parsed:
-		var entry: Dictionary = entry_value
-		normalized[String(entry["id"])] = {
-			"place_flag": String(entry.get("place_flag", "")),
-			"place_flag_powered": bool(entry.get("place_flag_powered", false)),
-			"effect_flag": String(entry.get("effect_flag", "")),
-		}
-	return AppResult.success(normalized)
-
-
-## 最小语义校验：对象形态、id 稳定（snake_case）且唯一、反应字段类型
-##（place_flag/effect_flag 可选稳定 ID，place_flag_powered 可选布尔）。
-static func _reactions_entry_error(entry_value: Variant, seen_ids: Dictionary) -> String:
-	if typeof(entry_value) != TYPE_DICTIONARY:
-		return "Building reactions entry is not an object."
-	var entry: Dictionary = entry_value
-	var id_value: Variant = entry.get("id")
-	if typeof(id_value) != TYPE_STRING:
-		return "Building reactions entry is missing a string id."
-	var building_id := String(id_value)
-	if not _is_stable_id(building_id):
-		return "Building reactions entry id is not a stable snake_case id: %s" % building_id
-	if seen_ids.has(building_id):
-		return "Building reactions entry id is duplicated: %s" % building_id
-	for flag_field: String in ["place_flag", "effect_flag"]:
-		if entry.has(flag_field):
-			var flag_value: Variant = entry[flag_field]
-			if typeof(flag_value) != TYPE_STRING or not _is_stable_id(String(flag_value)):
-				return "Building reactions entry %s %s must be a stable snake_case id." % [building_id, flag_field]
-	if entry.has("place_flag_powered") and typeof(entry["place_flag_powered"]) != TYPE_BOOL:
-		return "Building reactions entry %s place_flag_powered must be a boolean." % building_id
-	seen_ids[building_id] = true
-	return ""
+	return {}
 
 
 static func _react_event_completed(payload: Dictionary) -> AppResult:
