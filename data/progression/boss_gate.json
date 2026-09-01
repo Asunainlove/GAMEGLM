@@ -1,0 +1,7 @@
+[
+  {
+    "requires_all": ["encounter_first_drift_won", "encounter_husk_ambush_won"],
+    "requires_any_prefix": "policy_",
+    "set_flag": "encounter_leviathan_due"
+  }
+]

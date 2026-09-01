@@ -33,9 +33,24 @@ extends RefCounted
 ## 不是空真）。station_mode_* 前缀守卫保留在本模块（链前缀词汇表规范来源）；
 ## 新增结局门条件 = 改 JSON，不改本文件。防漂移同步测试
 ## tests/unit/test_progression_ending_gate.gd 锁定门旗标 ⊆ 遭遇 on_victory_flag。
+## S2：Boss 门控链数据化——react 的 encounter_won/policy_chosen 反应门外置到
+## data/progression/boss_gate.json（schema schemas/boss-gate.schema.json，与
+## event_chain/ending_gate 同一 bootstrap 模式）。门语义泛化为数组：每条门各带
+## requires_all / requires_any_prefix / set_flag，现文件 1 条（迁移现值 =
+## 旧 _react_leviathan_gate 的"双胜 + 任一 policy_* → encounter_leviathan_due"，
+## 行为逐字节等价，冻结矩阵见 tests/unit/test_progression_boss_gate.gd 与
+## ops/evidence/S2-BOSS-GATE.md）；结构支持 N 条（DLC 新遭遇进入 Boss 门 =
+## 改 JSON，不改本文件）。缺失/坏文件 push_error 并回退空表 → react 失败安全
+## 恒跳过零写入（空表 = 永不触发，不是硬编码回退）。旗标/前缀常量仍是门数据
+## 所引词汇表的规范来源；防漂移同步测试
+## tests/unit/test_progression_boss_gate.gd 锁定 requires_all ⊆ 遭遇
+## on_victory_flag、set_flag ∈ 遭遇 trigger_flag。
 
 const EVENT_DONE_FLAG_FORMAT: String = "event_%s_done"
 const FIRST_MINING_FLAG: String = "first_mining_done"
+## S2 起 Boss 门行为权威移至 data/progression/boss_gate.json；下列旗标/前缀
+## 常量保留为门数据所引词汇表的规范来源（与链的 station_mode_/approach_ 同款
+## 先例），行为不再经它们判定。
 const LEVIATHAN_DUE_FLAG: String = "encounter_leviathan_due"
 const FIRST_DRIFT_WON_FLAG: String = "encounter_first_drift_won"
 const HUSK_AMBUSH_WON_FLAG: String = "encounter_husk_ambush_won"
@@ -52,6 +67,9 @@ const EVENT_CHAIN_PATH: String = "res://data/progression/event_chain.json"
 ## G7P-2 S1：结局门控旗标表路径（bootstrap 缺省加载；测试可经
 ## load_ending_gate_from 注入临时门表）。
 const ENDING_GATE_PATH: String = "res://data/progression/ending_gate.json"
+## S2：Boss 门控链表路径（bootstrap 缺省加载；测试可经 load_boss_gate_from
+## 注入临时门表）。
+const BOSS_GATE_PATH: String = "res://data/progression/boss_gate.json"
 
 ## DLX-2 链缓存：bootstrap 一次性加载；失败同样记为已引导（tick 每帧调用
 ## due_event，不得逐帧重读坏文件），显式 load_chain_from 可重新加载修复。
@@ -65,6 +83,14 @@ static var _chain_last_load: AppResult = null
 static var _ending_gate: Dictionary = {}
 static var _ending_gate_bootstrapped: bool = false
 static var _ending_gate_last_load: AppResult = null
+
+## S2 Boss 门表缓存：归一化条目数组（每条 {requires_all: Array[String],
+## requires_any_prefix: String|null, set_flag: String}）。加载语义与链缓存
+## 一致：失败记为已引导，空表 = 永不触发；load_boss_gate_from 可重新加载
+## 修复（测试注入临时表）。
+static var _boss_gate: Array[Dictionary] = []
+static var _boss_gate_bootstrapped: bool = false
+static var _boss_gate_last_load: AppResult = null
 
 
 ## 按契约 §7 事件顺序返回应触发的事件 id：第一个未 done 且前置满足者；
@@ -105,9 +131,9 @@ static func react(
 		"event_completed":
 			return _react_event_completed(payload)
 		"encounter_won":
-			return _react_leviathan_gate(state, payload, "encounter_id", "encounter_won", store)
+			return _react_boss_gate(state, payload, "encounter_id", "encounter_won", store)
 		"policy_chosen":
-			return _react_leviathan_gate(state, payload, "policy_id", "policy_chosen", store)
+			return _react_boss_gate(state, payload, "policy_id", "policy_chosen", store)
 		_:
 			return AppResult.failure("unknown_signal", "Unknown progression signal: %s" % signal_name)
 
@@ -210,6 +236,105 @@ static func _read_and_validate_ending_gate(path: String) -> AppResult:
 	return AppResult.success({"requires_all": flags} as Dictionary)
 
 
+# ---------------------------------------------------------------- Boss 门（S2）
+
+
+## Boss 门表只读访问器：未引导时惰性 bootstrap 兜底（生产由 GameSession bootstrap
+## 显式引导；直调 react 的既有测试路径经此触发加载）。返回归一化条目数组
+## [{requires_all: Array[String], requires_any_prefix: String|null,
+## set_flag: String}]；坏文件/缺失文件时为空数组（react 失败安全恒跳过）。
+static func _boss_gate_entries() -> Array[Dictionary]:
+	if not _boss_gate_bootstrapped:
+		bootstrap()
+	return _boss_gate
+
+
+## S2：加载并校验 Boss 门表（一次性引导入口的一部分，幂等——重复调用返回
+## 上次加载结果，不重复读盘）。测试经本方法注入临时门表。
+static func load_boss_gate_from(path: String) -> AppResult:
+	var result: AppResult = _read_and_validate_boss_gate(path)
+	_boss_gate_bootstrapped = true
+	_boss_gate_last_load = result
+	if result.is_ok:
+		_boss_gate = result.value
+	else:
+		_boss_gate = []
+		push_error("Progression: boss gate rejected (%s): %s" % [path, result.message])
+	return result
+
+
+## Boss 门表最小语义校验：数组形态、至少 1 条、每条 requires_all/set_flag 为
+## 稳定 snake_case 旗标 id、requires_any_prefix 非空字符串或 null、set_flag
+## 不重复（门的产出旗标即门身份，重复即数据笔误）。
+static func _read_and_validate_boss_gate(path: String) -> AppResult:
+	if not FileAccess.file_exists(path):
+		return AppResult.failure("missing_boss_gate_file", "Boss gate file not found: %s" % path)
+	var text: String = FileAccess.get_file_as_string(path)
+	# 与 EventRunner/链装载同风格：用返回的 Error 码报告解析失败，坏 fixture 不刷引擎报错。
+	var json := JSON.new()
+	var parse_error: Error = json.parse(text)
+	if parse_error != OK:
+		return AppResult.failure(
+			"invalid_boss_gate_file",
+			"Boss gate file is not valid JSON at line %d." % json.get_error_line()
+		)
+	var parsed: Variant = json.get_data()
+	if typeof(parsed) != TYPE_ARRAY:
+		return AppResult.failure("invalid_boss_gate_file", "Boss gate file must contain a JSON array.")
+	if (parsed as Array).is_empty():
+		return AppResult.failure(
+			"invalid_boss_gate_file", "Boss gate file must contain at least one gate entry."
+		)
+	var seen_set_flags: Dictionary = {}
+	var entries: Array[Dictionary] = []
+	var index := 0
+	for entry_variant: Variant in parsed:
+		var problem: String = _boss_gate_entry_error(entry_variant, index, seen_set_flags)
+		if not problem.is_empty():
+			return AppResult.failure("invalid_boss_gate_file", problem)
+		entries.append(_normalize_boss_gate_entry(entry_variant))
+		index += 1
+	return AppResult.success(entries)
+
+
+static func _boss_gate_entry_error(entry_value: Variant, index: int, seen_set_flags: Dictionary) -> String:
+	if typeof(entry_value) != TYPE_DICTIONARY:
+		return "Boss gate entry %d is not an object." % index
+	var entry: Dictionary = entry_value
+	var requires_all: Variant = entry.get("requires_all")
+	if typeof(requires_all) != TYPE_ARRAY:
+		return "Boss gate entry %d requires_all must be an array." % index
+	for flag_variant: Variant in requires_all:
+		if typeof(flag_variant) != TYPE_STRING or not _is_stable_id(String(flag_variant)):
+			return "Boss gate entry %d requires_all entries must be stable snake_case flag ids." % index
+	var prefix: Variant = entry.get("requires_any_prefix")
+	if prefix != null and (typeof(prefix) != TYPE_STRING or String(prefix).is_empty()):
+		return "Boss gate entry %d requires_any_prefix must be a non-empty string or null." % index
+	var set_flag_value: Variant = entry.get("set_flag")
+	if typeof(set_flag_value) != TYPE_STRING or not _is_stable_id(String(set_flag_value)):
+		return "Boss gate entry %d set_flag must be a stable snake_case flag id." % index
+	var set_flag := String(set_flag_value)
+	if seen_set_flags.has(set_flag):
+		return "Boss gate entry set_flag is duplicated: %s" % set_flag
+	seen_set_flags[set_flag] = true
+	return ""
+
+
+## 归一化条目：显式三字段，requires_all 转为 String 数组，与门判定解耦
+## JSON 原始形态。
+static func _normalize_boss_gate_entry(entry_value: Variant) -> Dictionary:
+	var entry: Dictionary = entry_value
+	var requires_all: Array[String] = []
+	for flag_variant: Variant in entry["requires_all"]:
+		requires_all.append(String(flag_variant))
+	var prefix: Variant = entry.get("requires_any_prefix")
+	return {
+		"requires_all": requires_all,
+		"requires_any_prefix": String(prefix) if prefix != null else null,
+		"set_flag": String(entry["set_flag"]),
+	}
+
+
 ## EventRunner deferred_ops 消费桥：把 {"op": "set_relationship", "char_id",
 ## "dim", "value"} 逐条映射到 patch.set_relationship（值钳制由 GameState 提交时
 ## 统一执行）。非字典条目跳过，保持与 EventRunner 相同的防御风格。
@@ -239,8 +364,9 @@ static func _event_chain() -> Array[Dictionary]:
 
 
 ## DLX-2：加载并校验外置事件链（一次性引导入口，幂等——重复调用返回上次
-## 加载结果，不重复读盘）。G7P-2 S1 起 bootstrap 同时装载结局门表：链或门表
-## 任一失败即返回该失败结果（先链后门表），两者皆成功返回门表结果。
+## 加载结果，不重复读盘）。G7P-2 S1 起 bootstrap 同时装载结局门表；S2 起再
+## 装载 Boss 门表：链/结局门/Boss 门任一失败即返回该失败结果（按此顺序），
+## 三者皆成功返回 Boss 门表结果。
 static func bootstrap() -> AppResult:
 	var chain_result: AppResult = (
 		_chain_last_load if _chain_bootstrapped else load_chain_from(EVENT_CHAIN_PATH)
@@ -250,9 +376,16 @@ static func bootstrap() -> AppResult:
 		if _ending_gate_bootstrapped
 		else load_ending_gate_from(ENDING_GATE_PATH)
 	)
+	var boss_result: AppResult = (
+		_boss_gate_last_load
+		if _boss_gate_bootstrapped
+		else load_boss_gate_from(BOSS_GATE_PATH)
+	)
 	if not chain_result.is_ok:
 		return chain_result
-	return gate_result
+	if not gate_result.is_ok:
+		return gate_result
+	return boss_result
 
 
 ## 加载指定路径的链文件：成功时缓存归一化条目；缺失/坏文件 push_error 并把
@@ -416,7 +549,17 @@ static func _react_event_completed(payload: Dictionary) -> AppResult:
 	return AppResult.success({"operations": [] as Array[Dictionary], "skipped": true, "event_id": event_id})
 
 
-static func _react_leviathan_gate(
+## S2 Boss 门反应（替代旧 _react_leviathan_gate 硬编码）：门条目来自
+## data/progression/boss_gate.json（bootstrap 缓存，数组支持 N 条门）。
+## 逐条评估（同一 patch 内合并所有到期条目，一次提交）：
+## - set_flag 已置 → 该条跳过（幂等语义保留）；
+## - requires_all 未全置 / requires_any_prefix（非 null 时）无命中 → 该条不置；
+## - 其余到期条目按数组顺序逐条 set_flag。
+## 全部条目均未产生操作时：任一条 set_flag 已置 → "already_set"；否则
+## "conditions_unmet"（与旧单门消息逐字节一致，冻结矩阵见
+## tests/unit/test_progression_boss_gate.gd）。空门表（缺失/坏文件兜底）
+## 失败安全恒 conditions_unmet 零写入——空表 = 永不触发，不是硬编码回退。
+static func _react_boss_gate(
 		state: Dictionary,
 		payload: Dictionary,
 		id_key: String,
@@ -429,19 +572,32 @@ static func _react_leviathan_gate(
 			"invalid_%s" % id_key,
 			"%s payload requires a stable snake_case %s, got %s." % [signal_name, id_key, subject_id]
 		)
-	if _flag_enabled(state, LEVIATHAN_DUE_FLAG):
-		return AppResult.success({"operations": [] as Array[Dictionary], "skipped": true}, "already_set")
-	if not _flag_enabled(state, FIRST_DRIFT_WON_FLAG) or not _flag_enabled(state, HUSK_AMBUSH_WON_FLAG):
-		return AppResult.success(
-			{"operations": [] as Array[Dictionary], "skipped": true},
-			"conditions_unmet"
-		)
-	if not _has_any_enabled_flag_with_prefix(state, POLICY_PREFIX):
-		return AppResult.success(
-			{"operations": [] as Array[Dictionary], "skipped": true},
-			"conditions_unmet"
-		)
-	return _commit_operations(state, signal_name, [_flag_operation(LEVIATHAN_DUE_FLAG)], store)
+	var operations: Array[Dictionary] = []
+	var any_already_set := false
+	for gate: Dictionary in _boss_gate_entries():
+		var set_flag := String(gate["set_flag"])
+		if _flag_enabled(state, set_flag):
+			any_already_set = true
+			continue
+		if not _boss_gate_conditions_met(state, gate):
+			continue
+		operations.append(_flag_operation(set_flag))
+	if operations.is_empty():
+		var skip_code := "already_set" if any_already_set else "conditions_unmet"
+		return AppResult.success({"operations": operations, "skipped": true}, skip_code)
+	return _commit_operations(state, signal_name, operations, store)
+
+
+## Boss 门单条守卫判定（与链守卫同款语义，无 ending_ready 维度）：
+## requires_all 全真；requires_any_prefix 非 null 时任一同前缀 flag 置位。
+static func _boss_gate_conditions_met(state: Dictionary, gate: Dictionary) -> bool:
+	for flag_variant: Variant in gate.get("requires_all", []):
+		if not _flag_enabled(state, String(flag_variant)):
+			return false
+	var prefix: Variant = gate.get("requires_any_prefix")
+	if prefix != null and not _has_any_enabled_flag_with_prefix(state, String(prefix)):
+		return false
+	return true
 
 
 # ---------------------------------------------------------------- 工具与提交

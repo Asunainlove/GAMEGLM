@@ -44,6 +44,7 @@ SCHEMA_TARGETS = {
     "world/world_config.json": "world-config",
     "progression/event_chain.json": "progression-chain",
     "progression/ending_gate.json": "ending-gate",
+    "progression/boss_gate.json": "boss-gate",
     "progression/objectives.json": "objectives",
     "progression/hints.json": "hints",
 }

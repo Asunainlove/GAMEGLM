@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/boss-gate.schema.json",
+  "title": "Starsoil boss gate",
+  "description": "S2 Boss 门控链：Progression.react 的 encounter_won/policy_chosen 信号反应门表，逐条声明式条目（数组，支持 N 条门）。每条语义：set_flag 已置则该条跳过（幂等）；requires_all 全部置位且 requires_any_prefix（非 null 时）任一同前缀 flag 置位，则该条到期——同一 patch 内按条目顺序逐条 set_flag。文件缺失/坏文件 push_error 并回退空表 = 永不触发（失败安全，不是硬编码回退）。运行时由 Progression.load_boss_gate_from 做最小校验（数组形态、至少 1 条、requires_all/set_flag 为稳定 snake_case 旗标 id、requires_any_prefix 非空字符串或 null、set_flag 不重复）。新增 Boss 门（如 DLC 新遭遇进入 Boss 门）= 改 JSON，不改 progression.gd。",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["requires_all", "requires_any_prefix", "set_flag"],
+    "additionalProperties": false,
+    "properties": {
+      "requires_all": {
+        "type": "array",
+        "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+      },
+      "requires_any_prefix": {
+        "type": ["string", "null"],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "set_flag": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+    }
+  }
+}
