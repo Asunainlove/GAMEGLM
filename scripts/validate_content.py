@@ -9,6 +9,7 @@ Validates the WP12 content pack against the frozen schemas in schemas/:
     data/content/combat_actions.json -> schemas/combat-action.schema.json
     data/events/*.json               -> schemas/event.schema.json
     data/encounters/encounters.json  -> schemas/encounter.schema.json
+    data/world/world_config.json     -> schemas/world-config.schema.json (DLX-5)
 
 Each target file must contain either a single definition object or an array of
 definition objects (the same shapes ContentDB.bootstrap accepts). Duplicate ids
@@ -38,6 +39,7 @@ SCHEMA_TARGETS = {
     "content/combat_units.json": "combat-unit",
     "content/combat_actions.json": "combat-action",
     "encounters/encounters.json": "encounter",
+    "world/world_config.json": "world-config",
 }
 GLOB_TARGETS = {
     "events/*.json": "event",

@@ -19,7 +19,8 @@ const SOIL_COLOR := Color(0.16, 0.17, 0.19)
 const ORE_DUST_COLOR := Color(0.33, 0.44, 0.58)
 const ORE_SHARD_COLOR := Color(0.29, 0.57, 0.6)
 const ORE_CORE_COLOR := Color(0.47, 0.36, 0.58)
-const ROCK_WALL_COLOR := Color(0.24, 0.2, 0.16)
+## DLX-5：岩壁色外置于 world_config.json（mine_rock_wall_color），经 WorldConfig
+## 读取（文件缺失/坏文件回退同值兜底色，WorldConfig.FALLBACK_ROCK_WALL_COLOR）。
 
 const TYPE_SOURCES: Dictionary = {
 	"soil": SOURCE_SOIL,
@@ -43,7 +44,7 @@ func build_tile_set() -> TileSet:
 	_add_monochrome_source(tile_set, SOURCE_ORE_DUST, ORE_DUST_COLOR)
 	_add_monochrome_source(tile_set, SOURCE_ORE_SHARD, ORE_SHARD_COLOR)
 	_add_monochrome_source(tile_set, SOURCE_ORE_CORE, ORE_CORE_COLOR)
-	_add_monochrome_source(tile_set, SOURCE_ROCK_WALL, ROCK_WALL_COLOR)
+	_add_monochrome_source(tile_set, SOURCE_ROCK_WALL, WorldConfig.rock_wall_color())
 	return tile_set
 
 
