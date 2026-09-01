@@ -38,8 +38,12 @@ SCHEMA_TARGETS = {
     "content/buildings.json": "building-recipe",
     "content/combat_units.json": "combat-unit",
     "content/combat_actions.json": "combat-action",
+    "content/endings.json": "endings",
     "encounters/encounters.json": "encounter",
     "world/world_config.json": "world-config",
+    "progression/event_chain.json": "progression-chain",
+    "progression/objectives.json": "objectives",
+    "progression/hints.json": "hints",
 }
 GLOB_TARGETS = {
     "events/*.json": "event",
@@ -103,7 +107,12 @@ def validate_file(path: Path, schema: dict, validator_type: object, errors: list
     if parsed is None:
         return 0
     validator = validator_type(schema)
-    entries = definition_entries(path, parsed, errors)
+    # Array-typed schemas describe the whole document (e.g. hints.json); validating
+    # elements against the root shape would misreport every entry.
+    if schema.get("type") == "array":
+        entries = [parsed]
+    else:
+        entries = definition_entries(path, parsed, errors)
     checked = 0
     seen_ids: dict[str, int] = {}
     for index, entry in enumerate(entries):

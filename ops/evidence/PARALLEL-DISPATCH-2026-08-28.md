@@ -43,3 +43,10 @@
 - Flake resolved: W003-A2 cleaned 4,957 stale user:// test save roots (shared across worktree suites); root-cause documented, per-suite isolation logged as hardening recommendation.
 - Governance: state.json -> G6 art_production_ready; gap report disposition table appended.
 - Next: G6 asset production per docs/art/ contracts (provenance + human approval per AGENTS.md), then G7 human gates.
+
+# DLX wave complete + PM verdict (2026-08-31)
+
+- Deep audit (PM three questions) -> DLC readiness plan -> 6 packets DLX-1..6 all SUBMITTED, merged, VERIFIED: data-driven endings, declarative event chain, generic build reactions, objectives/hints externalization, world layout externalization, save content policy.
+- Final: 631/631 tests, all gates exit 0, 11-schema offline validation PASS (array-document fix + 4 schema registrations).
+- Re-audit: six scenarios 0 GDScript diff; discipline all PASS; PM re-eval Q1 4/5, Q2 4/5, Q3 4.5/5 (from 3.5/4/3).
+- Project state: G6 art/audio production (contracts ready, human approval gate) -> G7 human gates. Remaining S/M follow-ups logged in re-audit report.

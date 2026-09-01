@@ -38,3 +38,15 @@ Gathering、InventoryModel、PowerGrid、CraftingService（完全通用）；Com
 ## 完成定义（本计划级）
 
 六包全部 VERIFIED 合并 + 复审走查"六场景新增内容步骤数"全部 ≤ 1 个 JSON 文件（无 GDScript diff）+ 全量门禁绿 + PM 三问复评（目标：可复用性 3/5 → 4.5/5）。随后项目状态回到 G6 资产生产（人工审批门）与 G7 真人门禁。
+
+---
+
+## 复审裁决（2026-08-31，波次完成后）
+
+**计划完成定义达成。** 复审（只读走查 + 现场复跑 validate_content.py）确认：
+
+- 六场景"新增内容步骤数"全部 **0 GDScript diff**：材料+建筑（2 JSON）、事件+选择（2 JSON）、单位/遭遇（3-4 JSON）、结局（1 JSON）、手工地区（1-2 JSON）、目标/提示（1 JSON）。严格按文件数场景 2/3 超 1，按"一次声明式数据编辑、零代码"实质口径全部达标。
+- 架构纪律终核全 PASS：Autoload 恰 3、无事件总线、无表达式求值（门控均为声明式数组）、表现层零直改、save_version=1 且 payload 字段集不变、golden 同步、content_hash 覆盖三配置文件。
+- PM 三问复评：Q1 **4/5**（首轮 3.5：信任可见/世界富集/死内容激活落地）、Q2 **4/5**（锁定范围完成，G6/G7 为既定阶段）、Q3 **4.5/5**（首轮 3：六条管线数据化 + 存档政策，各有"纯数据扩展"测试锁定）。
+- 遗留（S 级 10 项 / M 级 3 项 / L 级 2 项已登记复审报告）：均为"新内容种类接入需 1 处小代码"的边缘耦合点，不阻塞数据包式 DLC；L 级 2 项（程序 chunk POI 填充、45-60min 校准）属 G6 后与 G7 真人门禁。
+- 离线校验加固：validate_content.py 注册 endings/progression-chain/objectives/hints 四 schema（含数组型文档校验修复），11 schema / 61 定义全 PASS。
