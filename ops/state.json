@@ -1,13 +1,14 @@
 {
   "goal_status": "active",
-  "milestone": "G6",
-  "window": "W004-DLX",
-  "window_status": "dlc_ready",
-  "last_verified_commit": "packet/dlx6-save-policy",
+  "milestone": "G7",
+  "window": "W004-DLX+G7P",
+  "window_status": "human_gates_only",
+  "last_verified_commit": "149ee28",
   "active_packet": null,
-  "resume_from": "g6_asset_production_human_approval",
+  "resume_from": "g6_asset_production_then_g7_human_gates",
   "next_packet_ids": [],
   "known_blockers": [
-    "G6 asset production needs provenance + human approval (AGENTS.md); G7 human playthrough gates"
+    "G6 asset production per docs/art contracts (126 art + 22 audio entries) requires provenance + human approval per AGENTS.md",
+    "G7 human gates: 45-60min pacing calibration across three routes, external playtest, originality final review"
   ]
 }
