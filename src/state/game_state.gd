@@ -107,6 +107,8 @@ func _apply_operation(working: Dictionary, operation: Dictionary) -> AppResult:
 			return _apply_record_battle_outcome(working, operation)
 		StatePatch.OP_SET_PLAYER_POSITION:
 			return _apply_set_player_position(working, operation)
+		StatePatch.OP_SET_CONTENT_HASH:
+			return _apply_set_content_hash(working, operation)
 		_:
 			return AppResult.failure("unsupported_operation", "Unsupported patch operation: %s" % operation_type)
 
@@ -255,6 +257,19 @@ func _apply_set_player_position(working: Dictionary, operation: Dictionary) -> A
 
 	var player: Dictionary = working["player"]
 	player["position"] = {"x": int(operation["cell_x"]), "y": int(operation["cell_y"])}
+	return AppResult.success()
+
+
+## DLX-6：content_hash 专用回写（读档内容政策的收敛动作，政策文本
+## docs/save-content-policy.md）。hash 串（64 位小写十六进制）不适用稳定 ID
+## 规则，做专门校验（SaveCodec.is_checksum_hex，与 envelope checksum 同形）。
+func _apply_set_content_hash(working: Dictionary, operation: Dictionary) -> AppResult:
+	if typeof(operation.get("content_hash")) != TYPE_STRING or not SaveCodec.is_checksum_hex(operation["content_hash"]):
+		return AppResult.failure(
+			"invalid_content_hash",
+			"Content hash must be 64 lowercase hexadecimal characters."
+		)
+	working["content_hash"] = operation["content_hash"]
 	return AppResult.success()
 
 

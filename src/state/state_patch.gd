@@ -11,6 +11,8 @@ const OP_ADJUST_IDEOLOGY: String = "adjust_ideology"
 const OP_COMPLETE_EVENT: String = "complete_event"
 const OP_RECORD_BATTLE_OUTCOME: String = "record_battle_outcome"
 const OP_SET_PLAYER_POSITION: String = "set_player_position"
+## DLX-6：读档内容政策的 content_hash 回写 op（docs/save-content-policy.md）。
+const OP_SET_CONTENT_HASH: String = "set_content_hash"
 
 var source_id: String
 var expected_revision: int
@@ -101,6 +103,14 @@ func record_battle_outcome(battle_id: String, result: String, turns: int) -> Sta
 
 func set_player_position(cell_x: int, cell_y: int) -> StatePatch:
 	_operations.append({"type": OP_SET_PLAYER_POSITION, "cell_x": cell_x, "cell_y": cell_y})
+	return self
+
+
+## DLX-6：读档内容政策的 content_hash 回写 op。hash 串（64 位小写十六进制）
+## 不是稳定 ID，不适用 stable id 校验——GameState 侧做专门校验
+## （SaveCodec.is_checksum_hex，与 envelope checksum 同形）。
+func set_content_hash(content_hash: String) -> StatePatch:
+	_operations.append({"type": OP_SET_CONTENT_HASH, "content_hash": content_hash})
 	return self
 
 

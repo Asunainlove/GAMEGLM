@@ -33,6 +33,7 @@ func before_all() -> void:
 		EFFECT_DELTA_BAD_ROOT,
 		FLAG_LINE_ROOT,
 		FLAG_LINE_BAD_ROOT,
+		FIXTURE_ROOT + "_hash_cfg",
 	]:
 		_remove_dir_recursive(tree)
 	_write_fixture_tree(FIXTURE_ROOT, "")
@@ -69,6 +70,7 @@ func after_all() -> void:
 		EFFECT_DELTA_BAD_ROOT,
 		FLAG_LINE_ROOT,
 		FLAG_LINE_BAD_ROOT,
+		FIXTURE_ROOT + "_hash_cfg",
 	]:
 		_remove_dir_recursive(tree)
 
@@ -353,6 +355,65 @@ func test_bootstrap_rejects_effect_step_relation_delta_with_unknown_dim() -> voi
 	assert_eq(result.code, "invalid_definition")
 	assert_true(result.message.contains("dim"), result.message)
 	assert_false(db.is_bootstrapped())
+
+
+# ---------------------------------------------------------------- DLX-6 存档内容政策
+
+
+func test_content_hash_includes_progression_config_files() -> void:
+	# DLX-6 哈希语义扩展：endings/event_chain/world_config 三个进度配置文件由
+	# 各模块自身装载不变，但其内容必须贡献 content_hash 总哈希——任一文件
+	# 内容变化（在不触碰六类定义的前提下）必须改变哈希。
+	var base_root := FIXTURE_ROOT + "_hash_cfg"
+	_remove_dir_recursive(base_root)
+	_write_text_file(base_root + "/content/alpha.json", '{"id": "starsoil_dust", "kind": "material", "name_zh": "星壤尘", "stack_limit": 99}')
+	_write_text_file(base_root + "/content/endings.json", '{"endings": []}')
+	_write_text_file(base_root + "/progression/event_chain.json", "[]")
+	_write_text_file(base_root + "/world/world_config.json", '{"grid_size": [4, 2]}')
+
+	var baseline: Node = _new_db()
+	if baseline == null:
+		return
+	assert_true(baseline.bootstrap(base_root).is_ok)
+	var hash_value: String = baseline.content_hash()
+	assert_ne(hash_value, "", "带定义的内容包哈希不得为空。")
+
+	_write_text_file(base_root + "/content/endings.json", '{"endings": [{"changed": true}]}')
+	var endings_mutated: Node = _new_db()
+	assert_true(endings_mutated.bootstrap(base_root).is_ok)
+	assert_ne(endings_mutated.content_hash(), hash_value, "endings.json 变化必须改变总哈希。")
+
+	_write_text_file(base_root + "/content/endings.json", '{"endings": []}')
+	_write_text_file(base_root + "/progression/event_chain.json", '[{"changed": true}]')
+	var chain_mutated: Node = _new_db()
+	assert_true(chain_mutated.bootstrap(base_root).is_ok)
+	assert_ne(chain_mutated.content_hash(), hash_value, "event_chain.json 变化必须改变总哈希。")
+
+	_write_text_file(base_root + "/progression/event_chain.json", "[]")
+	_write_text_file(base_root + "/world/world_config.json", '{"grid_size": [5, 2]}')
+	var world_mutated: Node = _new_db()
+	assert_true(world_mutated.bootstrap(base_root).is_ok)
+	assert_ne(world_mutated.content_hash(), hash_value, "world_config.json 变化必须改变总哈希。")
+
+
+func test_content_defs_snapshot_returns_defensive_items_events_encounters() -> void:
+	# DLX-6：sanitize 的 defs 参数供给——只读快照，类别齐全且为防御性深拷贝。
+	var db: Node = _new_db()
+	if db == null:
+		return
+	assert_true(db.bootstrap(FIXTURE_ROOT).is_ok)
+
+	var defs: Dictionary = db.content_defs_snapshot()
+	assert_true((defs["items"] as Dictionary).has("starsoil_dust"))
+	assert_true((defs["events"] as Dictionary).has("event_prologue_landing"))
+	assert_true((defs["encounters"] as Dictionary).has("encounter_first_drift"))
+
+	(defs["items"] as Dictionary).erase("starsoil_dust")
+	(defs["events"] as Dictionary).erase("event_prologue_landing")
+	(defs["encounters"] as Dictionary).erase("encounter_first_drift")
+	assert_false(db.get_item("starsoil_dust").is_empty(), "快照必须是防御性拷贝，不得穿透。")
+	assert_false(db.get_event("event_prologue_landing").is_empty())
+	assert_false(db.get_encounter("encounter_first_drift").is_empty())
 
 
 func _fixture_event_effect_delta() -> Dictionary:

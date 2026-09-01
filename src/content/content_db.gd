@@ -63,7 +63,20 @@ const ENEMY_FIELDS: Array[String] = ["unit_id", "track"]
 ## 其条目无 kind 字段，否则 ContentDB bootstrap 会整包失败）。
 const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json"]
 
+## DLX-6：content_hash 语义扩展——"六类定义 + 进度配置文件"的 canonical JSON
+## 总哈希（政策文本 docs/save-content-policy.md）。三文件由 Endings /
+## Progression / WorldConfig 各自装载与校验（装载路径与失败回退不变），本处
+## 只在计算哈希时读原文解析贡献；文件缺失/空/坏 JSON 记为 ""（缺省贡献，
+## 哈希保持确定性——与无这些文件的 fixture 树的哈希语义连续）。相对路径
+## 基于 bootstrap(content_dir)。
+const HASH_CONFIG_FILES: Dictionary = {
+	"endings": "content/endings.json",
+	"event_chain": "progression/event_chain.json",
+	"world_config": "world/world_config.json",
+}
+
 var _bootstrapped: bool = false
+var _content_dir: String = DEFAULT_CONTENT_DIR
 var _content_hash: String = ""
 var _items: Dictionary = {}
 var _buildings: Dictionary = {}
@@ -83,6 +96,7 @@ func bootstrap(content_dir: String = DEFAULT_CONTENT_DIR) -> AppResult:
 		)
 	var store: Dictionary = _empty_store()
 	var counters: Dictionary = {"files": 0, "definitions": 0}
+	_content_dir = content_dir
 
 	var content_result: AppResult = _load_tree(content_dir.path_join("content"), "", store, counters)
 	if not content_result.is_ok:
@@ -120,6 +134,19 @@ func is_bootstrapped() -> bool:
 
 func content_hash() -> String:
 	return _content_hash
+
+
+## DLX-6：读档内容政策（SaveCodec.sanitize_payload_against_content）的 defs
+## 参数供给——items/events/encounters 三类定义的只读深拷贝快照。世界网格
+## chunk 目录（defs.chunk_ids）由集成层按 WorldConfig 注入，save/content 两层
+## 不依赖世界模块。未引导时返回空类别（等价空白名单——调用方 GameSession
+## 仅在 bootstrap 成功后调用）。
+func content_defs_snapshot() -> Dictionary:
+	return {
+		CATEGORY_ITEMS: _items.duplicate(true),
+		CATEGORY_EVENTS: _events.duplicate(true),
+		CATEGORY_ENCOUNTERS: _encounters.duplicate(true),
+	}
 
 
 func get_item(id: String) -> Dictionary:
@@ -997,6 +1024,9 @@ func _compute_content_hash() -> String:
 	var total: int = _items.size() + _buildings.size() + _combat_units.size() + _combat_actions.size() + _events.size() + _encounters.size()
 	if total == 0:
 		return ""
+	var progression_configs: Dictionary = {}
+	for config_key: String in HASH_CONFIG_FILES:
+		progression_configs[config_key] = _hash_config_contribution(String(HASH_CONFIG_FILES[config_key]))
 	var organized: Dictionary = {
 		CATEGORY_ITEMS: _items,
 		CATEGORY_BUILDINGS: _buildings,
@@ -1004,8 +1034,24 @@ func _compute_content_hash() -> String:
 		CATEGORY_COMBAT_ACTIONS: _combat_actions,
 		CATEGORY_EVENTS: _events,
 		CATEGORY_ENCOUNTERS: _encounters,
+		"progression_configs": progression_configs,
 	}
 	return _canonical_json(organized).sha256_text()
+
+
+## DLX-6：单进度配置文件的哈希贡献（原文解析后的 JSON 值参与 canonical
+## 排序；缺失/空/坏 JSON 统一记为 "" 缺省贡献，语义见 HASH_CONFIG_FILES 注释）。
+func _hash_config_contribution(relative_path: String) -> Variant:
+	var path: String = _content_dir.path_join(relative_path)
+	if not FileAccess.file_exists(path):
+		return ""
+	var text: String = FileAccess.get_file_as_string(path)
+	if text.is_empty():
+		return ""
+	var parser: JSON = JSON.new()
+	if parser.parse(text) != OK:
+		return ""
+	return parser.data
 
 
 func _canonical_json(value: Variant) -> String:

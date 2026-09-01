@@ -264,3 +264,62 @@ func test_new_operations_round_trip_through_save_v1_codec() -> void:
 	var decoded: AppResult = SaveCodec.new().decode_text(encoded.value as String)
 	assert_true(decoded.is_ok, decoded.message)
 	assert_eq(_canonical(decoded.value), _canonical(snapshot))
+
+
+# ---------------------------------------------------------------- set_content_hash（DLX-6）
+
+
+func test_set_content_hash_writes_64_hex_hash() -> void:
+	var state: Node = _new_state()
+	var patch: StatePatch = state.begin_patch("dlx6_hash_write", 0)
+	patch.set_content_hash("a".repeat(64))
+
+	var result: AppResult = state.commit(patch)
+	var snapshot: Dictionary = state.snapshot()
+	assert_true(result.is_ok, result.message)
+	assert_eq(snapshot["content_hash"], "a".repeat(64))
+	assert_eq(int(snapshot["revision"]), 1)
+
+
+func test_set_content_hash_rejects_non_hex_uppercase_and_wrong_length() -> void:
+	var state: Node = _new_state()
+	var baseline: String = _canonical(state.snapshot())
+	var bad_hashes: Array[String] = [
+		"not-a-hash",
+		"A".repeat(64),   # 大写拒绝
+		"z".repeat(64),   # 非 hex 字符拒绝
+		"a".repeat(63),   # 短 1 位拒绝
+		"a".repeat(65),   # 长 1 位拒绝
+		"",               # 空串拒绝
+	]
+	for bad_hash: String in bad_hashes:
+		var patch: StatePatch = state.begin_patch("dlx6_hash_bad", 0)
+		patch.set_content_hash(bad_hash)
+		var result: AppResult = state.commit(patch)
+		assert_false(result.is_ok, "非法 hash 必须被拒绝：%s" % bad_hash)
+		assert_eq(result.code, "invalid_content_hash")
+		assert_eq(_canonical(state.snapshot()), baseline, "拒绝后状态必须零变化。")
+
+
+func test_set_content_hash_replay_is_idempotent_and_overwrite_allowed() -> void:
+	var state: Node = _new_state()
+	var first: StatePatch = state.begin_patch("dlx6_hash_refresh", 0)
+	first.set_content_hash("b".repeat(64))
+	assert_true(state.commit(first).is_ok)
+
+	# 同 source_id 重放：already_applied 幂等短路，hash 与 revision 都不变。
+	var replay: StatePatch = state.begin_patch("dlx6_hash_refresh", 1)
+	replay.set_content_hash("c".repeat(64))
+	var replay_result: AppResult = state.commit(replay)
+	assert_true(replay_result.is_ok, replay_result.message)
+	assert_eq(replay_result.code, "already_applied")
+	assert_eq(state.snapshot()["content_hash"], "b".repeat(64))
+	assert_eq(int(state.snapshot()["revision"]), 1)
+
+	# 新 source_id：允许覆盖为新的当前哈希（内容更新后收敛）。
+	var second: StatePatch = state.begin_patch("dlx6_hash_refresh_second", 1)
+	second.set_content_hash("c".repeat(64))
+	var second_result: AppResult = state.commit(second)
+	assert_true(second_result.is_ok, second_result.message)
+	assert_eq(state.snapshot()["content_hash"], "c".repeat(64))
+	assert_eq(int(state.snapshot()["revision"]), 2)

@@ -886,15 +886,95 @@ func _try_load_autosave() -> bool:
 	var loaded := SaveService.load_slot(save_slot)
 	if not loaded.is_ok:
 		return false
+	# DLX-6：读档内容政策（docs/save-content-policy.md）——restore 前比对存档
+	# content_hash 与当前内容总哈希，mismatch 时声明式孤儿降级清理并告警摘要；
+	# restore 成功后把当前 content_hash 经专用 patch op 回写（收敛）。
+	var policy_report: Dictionary = _apply_content_policy(loaded.value)
 	var target: Object = store
 	if target == null:
 		target = GameState
-	var restore_result: Variant = target.call("restore_snapshot", loaded.value)
+	var restore_result: Variant = target.call("restore_snapshot", policy_report["payload"])
 	if restore_result is AppResult:
 		if (restore_result as AppResult).is_ok:
-			_place_player_from_saved_snapshot(loaded.value)
+			_refresh_content_hash_after_load()
+			_place_player_from_saved_snapshot(policy_report["payload"])
 		return (restore_result as AppResult).is_ok
 	return false
+
+
+## DLX-6 读档内容政策入口：ContentDB 未引导时失败安全跳过（原样载入，不做
+## 政策判定）；否则执行三档 sanitize（hash_match 原样 / hash_superset 纯新增
+## 接受 / hash_divergent 孤儿降级清理），非 hash_match 输出摘要告警。
+func _apply_content_policy(loaded_snapshot: Dictionary) -> Dictionary:
+	if not ContentDB.is_bootstrapped():
+		return {
+			"policy": SaveCodec.POLICY_HASH_MATCH,
+			"hash_matches": false,
+			"changed": false,
+			"payload": loaded_snapshot,
+		}
+	var report: Dictionary = SaveCodec.sanitize_payload_against_content(
+		loaded_snapshot, ContentDB.content_hash(), _content_defs_for_policy()
+	)
+	var policy := str(report.get("policy", ""))
+	if policy != SaveCodec.POLICY_HASH_MATCH:
+		push_warning(
+			"GameSession: 存档内容政策 '%s'（存档 hash=%s / 当前 hash=%s）：%s" % [
+				policy,
+				str(loaded_snapshot.get("content_hash", "")),
+				ContentDB.content_hash(),
+				_policy_report_summary(report),
+			]
+		)
+	return report
+
+
+## sanitize defs 组装：ContentDB 三类定义快照 + 世界网格 chunk 目录
+## （WorldConfig 网格尺寸派生 chunk_X_Y 全集；SaveCodec 不依赖世界模块，
+## 由集成层注入）。
+func _content_defs_for_policy() -> Dictionary:
+	var defs := ContentDB.content_defs_snapshot()
+	var grid := WorldConfig.grid_size()
+	var chunk_ids: Array[String] = []
+	for grid_x: int in grid.x:
+		for grid_y: int in grid.y:
+			chunk_ids.append("chunk_%d_%d" % [grid_x, grid_y])
+	defs["chunk_ids"] = chunk_ids
+	return defs
+
+
+## 清理报告的日志摘要（只列非空类别）。
+static func _policy_report_summary(report: Dictionary) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	for key: String in ["removed_inventory", "removed_flags", "removed_chunk_deltas", "removed_battle_outcomes"]:
+		var removed := report.get(key, []) as Array
+		if removed.is_empty():
+			continue
+		var names: PackedStringArray = PackedStringArray()
+		for entry: Variant in removed:
+			names.append(str(entry))
+		parts.append("%s=[%s]" % [key, ", ".join(names)])
+	if parts.is_empty():
+		return "无孤儿（接受）"
+	return "清理 " + "; ".join(parts)
+
+
+## DLX-6：读档 restore 成功后的收敛动作——当前 content_hash 与持久状态不一致
+## 时经 set_content_hash 专用 op 回写（独立 integration patch，同 revision 同
+## source 重放由 already_applied 幂等短路）。一致（含 hash_match 收敛态）时
+## 零写入。新开局（无可读档）不触发本路径，初始存档的空 hash 在首次重载时
+## 按 superset 接受并收敛（政策文档"已知边界"）。
+func _refresh_content_hash_after_load() -> void:
+	if not ContentDB.is_bootstrapped():
+		return
+	var current_hash := ContentDB.content_hash()
+	if str(_snapshot().get("content_hash", "")) == current_hash:
+		return
+	var patch: Variant = _begin_integration_patch("content_hash_refresh")
+	if patch == null:
+		return
+	patch.set_content_hash(current_hash)
+	_commit_integration_patch(patch)
 
 
 ## 读档成功后（W002-GAP3）把 world 内玩家节点移到存档格。默认出生点 (0,0)
