@@ -5,9 +5,23 @@ extends SceneTree
 ##   godot --headless --path . --script res://tests/golden/generate_golden_v1.gd
 ## The printed line is the raw SaveCodec.encode_snapshot() output; it must be
 ## copied verbatim into tests/golden/save_v1_golden.json.
+## DLX-6: content_hash semantics now cover "ContentDB definitions + progression
+## config files (endings/event_chain/world_config)". The fixture therefore
+## records the real bootstrap("res://data") total hash, making it a hash_match
+## specimen under docs/save-content-policy.md. Maintenance contract: any change
+## to data/** definitions or the three config files requires rerunning this
+## generator and updating save_v1_golden.json.
 
 
 func _initialize() -> void:
+	var content_db: Node = load("res://src/content/content_db.gd").new()
+	var boot: AppResult = content_db.bootstrap("res://data")
+	if not boot.is_ok:
+		push_error("Golden content bootstrap failed: %s %s" % [boot.code, boot.message])
+		content_db.free()
+		quit(1)
+		return
+
 	var state: Node = load("res://src/state/game_state.gd").new()
 
 	var seed_patch: StatePatch = state.begin_patch("wp04_golden_seed", 0)
@@ -46,7 +60,10 @@ func _initialize() -> void:
 
 	var snapshot: Dictionary = state.snapshot()
 	snapshot["world_seed"] = 1337
-	snapshot["content_hash"] = "starsoil-content-v1-vertical-slice".sha256_text()
+	# DLX-6：content_hash = ContentDB 真实 bootstrap 的总哈希（六类定义 +
+	# endings/event_chain/world_config 三进度配置文件的 canonical JSON 总哈希）。
+	snapshot["content_hash"] = content_db.content_hash()
+	content_db.free()
 
 	var codec: SaveCodec = SaveCodec.new()
 	var encoded: AppResult = codec.encode_snapshot(snapshot)
