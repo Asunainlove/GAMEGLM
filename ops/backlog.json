@@ -320,6 +320,14 @@
       "depends_on": [
         "DLX-4"
       ]
+    },
+    {
+      "id": "DLX-6",
+      "title": "Save content policy (hash consumption + orphan sanitization)",
+      "status": "verified",
+      "depends_on": [
+        "DLX-5"
+      ]
     }
   ]
 }
