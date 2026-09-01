@@ -328,6 +328,14 @@
       "depends_on": [
         "DLX-5"
       ]
+    },
+    {
+      "id": "G7P-2",
+      "title": "S-level leftover cleanup (8 items datafied)",
+      "status": "verified",
+      "depends_on": [
+        "DLX-6"
+      ]
     }
   ]
 }
