@@ -75,13 +75,14 @@ const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json", "characters.json
 ## G7P-2 S5：characters.json（Relations 角色登记表）入哈希（endings 同类）。
 ## G7P-2 S10：objectives.json / hints.json（HUD 目标链与提示表）入哈希——
 ## 表内容改动影响运行行为，存档兼容性指纹必须覆盖；至此进度配置全家桶
-## （endings/characters/event_chain/ending_gate/world_config/objectives/hints）
+## （endings/characters/event_chain/ending_gate/boss_gate/world_config/objectives/hints）
 ## 全部进 canonical 总哈希。
 const HASH_CONFIG_FILES: Dictionary = {
 	"endings": "content/endings.json",
 	"characters": "content/characters.json",
 	"event_chain": "progression/event_chain.json",
 	"ending_gate": "progression/ending_gate.json",
+	"boss_gate": "progression/boss_gate.json",
 	"objectives": "progression/objectives.json",
 	"hints": "progression/hints.json",
 	"world_config": "world/world_config.json",

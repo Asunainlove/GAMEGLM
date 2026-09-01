@@ -234,3 +234,10 @@ s2_dlc_boss_due}`（零代码改动）：
 1. S2b（1 行 + golden 重生成）：boss_gate.json 入 `HASH_CONFIG_FILES`，见 §10。
 2. 复审遗留其余 S 项（S6-S8 等）按同法（数据化 + 冻结矩阵等价证明）逐项派发。
 3. G6 资产生产（人工审批门）与 G7 真人门禁按项目既定阶段推进。
+
+## S2b 交接项完成（协调者，2026-08-31）
+
+- `ContentDB.HASH_CONFIG_FILES` 注册 `boss_gate`（1 行，src/content/content_db.gd）；
+- golden fixture 重生成（新 content_hash 9b58467b98b2…，尾行换行已剥离对齐既有契约）；
+- validate_content.py PASS；全量套件两连 708/708 零失败（合并后首跑的 32 断言瞬态失败
+  复现了已知的首跑预热/隔离模式，两连全绿后关闭）。
