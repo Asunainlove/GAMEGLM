@@ -251,6 +251,30 @@ func validate_refs() -> AppResult:
 			_check_ref(_combat_units, enemy["unit_id"], "combat unit", "encounter '%s' enemies" % encounter_id, dangling)
 		if encounter.has("intro_event_id"):
 			_check_ref(_events, encounter["intro_event_id"], "event", "encounter '%s' intro_event_id" % encounter_id, dangling)
+	# G7P-2 S9：story_key 消费扫描——声明 story_key 的物品（DLX-4 死内容哨兵）
+	# 必须被至少一处声明式消费点引用：建筑 inputs 含它，或事件 effect 的
+	# grant_items 含它。否则记 dangling unreferenced_story_key（内容包离线校验
+	# 即红灯，防哨兵声明与实际内容漂移）。非 story_key 物品不参与本扫描。
+	var consumed_story_items: Dictionary = {}
+	for building_id: String in _buildings:
+		var building: Dictionary = _buildings[building_id]
+		for stack: Dictionary in building.get("inputs", []):
+			consumed_story_items[String(stack["item_id"])] = true
+	for event_id: String in _events:
+		var event: Dictionary = _events[event_id]
+		for step: Dictionary in event["steps"]:
+			if String(step.get("type", "")) != "effect":
+				continue
+			for grant: Dictionary in step.get("grant_items", []):
+				consumed_story_items[String(grant["item_id"])] = true
+	for item_id: String in _items:
+		var item: Dictionary = _items[item_id]
+		if not bool(item.get("story_key", false)):
+			continue
+		if not consumed_story_items.has(item_id):
+			dangling.append(
+				"unreferenced_story_key: story item '%s' is never consumed (no building inputs or event grant_items reference it)" % item_id
+			)
 	if not dangling.is_empty():
 		return AppResult.failure("dangling_ref", "; ".join(PackedStringArray(dangling)))
 	return AppResult.success()
