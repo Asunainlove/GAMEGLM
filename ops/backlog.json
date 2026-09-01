@@ -344,6 +344,15 @@
       "depends_on": [
         "DLX-5"
       ]
+    },
+    {
+      "id": "G7P-1",
+      "title": "Full-loop playthrough suite (3 routes + roundtrip, 2 P0 fixes)",
+      "status": "verified",
+      "depends_on": [
+        "DLX-6",
+        "G6P-1"
+      ]
     }
   ]
 }
