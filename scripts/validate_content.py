@@ -42,6 +42,7 @@ SCHEMA_TARGETS = {
     "encounters/encounters.json": "encounter",
     "world/world_config.json": "world-config",
     "progression/event_chain.json": "progression-chain",
+    "progression/ending_gate.json": "ending-gate",
     "progression/objectives.json": "objectives",
     "progression/hints.json": "hints",
 }

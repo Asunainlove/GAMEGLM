@@ -28,6 +28,12 @@ extends RefCounted
 ## （直接读 data/content/buildings.json 提取 place_flag/place_flag_powered/
 ## effect_flag，最小校验，缺失/坏文件 push_error 并回退空表 → built 恒 no_op
 ## 失败安全）。回退表与 ContentDB 同源同文件、只读，不改变内容不可变约定。
+## G7P-2 S1：ending_ready 的遭遇胜利旗标集外置到 data/progression/ending_gate.json
+## （schema schemas/ending-gate.schema.json，与 event_chain 同一 bootstrap 模式）：
+## 缺失/坏文件 push_error 并回退空表 → ending_ready 失败安全恒 false（永不满足，
+## 不是空真）。station_mode_* 前缀守卫保留在本模块（链前缀词汇表规范来源）；
+## 新增结局门条件 = 改 JSON，不改本文件。防漂移同步测试
+## tests/unit/test_progression_ending_gate.gd 锁定门旗标 ⊆ 遭遇 on_victory_flag。
 
 const EVENT_DONE_FLAG_FORMAT: String = "event_%s_done"
 const FIRST_MINING_FLAG: String = "first_mining_done"
@@ -44,6 +50,9 @@ const BOSS_ESCALATED_MULTIPLIER: float = 1.2
 ## DLX-2：外置事件链文件路径（bootstrap 缺省加载；测试可经 load_chain_from
 ## 注入临时链文件）。
 const EVENT_CHAIN_PATH: String = "res://data/progression/event_chain.json"
+## G7P-2 S1：结局门控旗标表路径（bootstrap 缺省加载；测试可经
+## load_ending_gate_from 注入临时门表）。
+const ENDING_GATE_PATH: String = "res://data/progression/ending_gate.json"
 ## DLX-3：建造反应回退表数据源（与 ContentDB 同一 buildings.json；仅当 built
 ## payload 未携带 building_def 时经此回退解析 place_flag/effect_flag）。
 const BUILDING_REACTIONS_PATH: String = "res://data/content/buildings.json"
@@ -53,6 +62,13 @@ const BUILDING_REACTIONS_PATH: String = "res://data/content/buildings.json"
 static var _chain: Array[Dictionary] = []
 static var _chain_bootstrapped: bool = false
 static var _chain_last_load: AppResult = null
+
+## G7P-2 S1 结局门表缓存：requires_all 旗标集（归一化 {"requires_all": [...]}）。
+## 加载语义与链缓存一致：失败记为已引导，空表 = 永不满足；
+## load_ending_gate_from 可重新加载修复（测试注入临时表）。
+static var _ending_gate: Dictionary = {}
+static var _ending_gate_bootstrapped: bool = false
+static var _ending_gate_last_load: AppResult = null
 
 ## DLX-3 建造反应表缓存：building_id → {place_flag, place_flag_powered,
 ## effect_flag}（仅提取反应字段）。惰性加载（未引导时首次 built 回退触发），
@@ -128,15 +144,82 @@ static func boss_hp_multiplier(state: Dictionary) -> float:
 	return BOSS_BASE_MULTIPLIER
 
 
-## 结局就绪：任一 station_mode_* 且三场遭遇胜利 flag 全置。
+## 结局就绪：任一 station_mode_* 且门表 requires_all 全置（G7P-2 S1 起旗标集
+## 来自 data/progression/ending_gate.json）。门表缺失/坏文件（空表）时失败安全
+## 恒 false——空表 = 永不满足，不是空真。
 static func ending_ready(state: Dictionary) -> bool:
 	if not _has_any_enabled_flag_with_prefix(state, STATION_MODE_PREFIX):
 		return false
-	return (
-		_flag_enabled(state, FIRST_DRIFT_WON_FLAG)
-		and _flag_enabled(state, HUSK_AMBUSH_WON_FLAG)
-		and _flag_enabled(state, LEVIATHAN_WON_FLAG)
-	)
+	var requires_all := _ending_gate_requires_all()
+	if requires_all.is_empty():
+		return false
+	for flag_id: String in requires_all:
+		if not _flag_enabled(state, flag_id):
+			return false
+	return true
+
+
+## 结局门旗标集只读访问器：未引导时惰性加载生产门表（生产由 GameSession bootstrap
+## 显式引导；直调 ending_ready 的既有测试路径经此触发加载）。
+static func _ending_gate_requires_all() -> Array[String]:
+	if not _ending_gate_bootstrapped:
+		load_ending_gate_from(ENDING_GATE_PATH)
+	var flags: Array[String] = []
+	for flag_value: Variant in _ending_gate.get("requires_all", []):
+		flags.append(String(flag_value))
+	return flags
+
+
+## 加载指定路径的结局门表：成功时缓存归一化 {"requires_all": Array[String]}；
+## 缺失/坏文件 push_error 并把门表回退为空（ending_ready 失败安全恒 false）。
+## 测试经本方法注入临时门表。
+static func load_ending_gate_from(path: String) -> AppResult:
+	var result: AppResult = _read_and_validate_ending_gate(path)
+	_ending_gate_bootstrapped = true
+	_ending_gate_last_load = result
+	if result.is_ok:
+		_ending_gate = result.value
+	else:
+		_ending_gate = {}
+		push_error("Progression: ending gate rejected (%s): %s" % [path, result.message])
+	return result
+
+
+static func _read_and_validate_ending_gate(path: String) -> AppResult:
+	if not FileAccess.file_exists(path):
+		return AppResult.failure(
+			"missing_ending_gate_file", "Ending gate file not found: %s" % path
+		)
+	var text: String = FileAccess.get_file_as_string(path)
+	var json := JSON.new()
+	var parse_error: Error = json.parse(text)
+	if parse_error != OK:
+		return AppResult.failure(
+			"invalid_ending_gate_file",
+			"Ending gate file is not valid JSON at line %d." % json.get_error_line()
+		)
+	var parsed: Variant = json.get_data()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return AppResult.failure("invalid_ending_gate_file", "Ending gate file must contain a JSON object.")
+	var gate: Dictionary = parsed
+	var requires_all: Variant = gate.get("requires_all")
+	if typeof(requires_all) != TYPE_ARRAY:
+		return AppResult.failure(
+			"invalid_ending_gate_file", "Ending gate requires_all must be an array."
+		)
+	if (requires_all as Array).is_empty():
+		return AppResult.failure(
+			"invalid_ending_gate_file", "Ending gate requires_all must not be empty."
+		)
+	var flags: Array[String] = []
+	for flag_value: Variant in requires_all:
+		if typeof(flag_value) != TYPE_STRING or not _is_stable_id(String(flag_value)):
+			return AppResult.failure(
+				"invalid_ending_gate_file",
+				"Ending gate requires_all entries must be stable snake_case flag ids."
+			)
+		flags.append(String(flag_value))
+	return AppResult.success({"requires_all": flags} as Dictionary)
 
 
 ## EventRunner deferred_ops 消费桥：把 {"op": "set_relationship", "char_id",
@@ -168,11 +251,20 @@ static func _event_chain() -> Array[Dictionary]:
 
 
 ## DLX-2：加载并校验外置事件链（一次性引导入口，幂等——重复调用返回上次
-## 加载结果，不重复读盘）。
+## 加载结果，不重复读盘）。G7P-2 S1 起 bootstrap 同时装载结局门表：链或门表
+## 任一失败即返回该失败结果（先链后门表），两者皆成功返回门表结果。
 static func bootstrap() -> AppResult:
-	if _chain_bootstrapped:
-		return _chain_last_load
-	return load_chain_from(EVENT_CHAIN_PATH)
+	var chain_result: AppResult = (
+		_chain_last_load if _chain_bootstrapped else load_chain_from(EVENT_CHAIN_PATH)
+	)
+	var gate_result: AppResult = (
+		_ending_gate_last_load
+		if _ending_gate_bootstrapped
+		else load_ending_gate_from(ENDING_GATE_PATH)
+	)
+	if not chain_result.is_ok:
+		return chain_result
+	return gate_result
 
 
 ## 加载指定路径的链文件：成功时缓存归一化条目；缺失/坏文件 push_error 并把

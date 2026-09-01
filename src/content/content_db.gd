@@ -64,14 +64,16 @@ const ENEMY_FIELDS: Array[String] = ["unit_id", "track"]
 const RESERVED_DATA_FILENAMES: Array[String] = ["endings.json"]
 
 ## DLX-6：content_hash 语义扩展——"六类定义 + 进度配置文件"的 canonical JSON
-## 总哈希（政策文本 docs/save-content-policy.md）。三文件由 Endings /
-## Progression / WorldConfig 各自装载与校验（装载路径与失败回退不变），本处
-## 只在计算哈希时读原文解析贡献；文件缺失/空/坏 JSON 记为 ""（缺省贡献，
-## 哈希保持确定性——与无这些文件的 fixture 树的哈希语义连续）。相对路径
-## 基于 bootstrap(content_dir)。
+## 总哈希（政策文本 docs/save-content-policy.md）。各文件由对应模块自身装载与
+## 校验（装载路径与失败回退不变），本处只在计算哈希时读原文解析贡献；文件
+## 缺失/空/坏 JSON 记为 ""（缺省贡献，哈希保持确定性——与无这些文件的
+## fixture 树的哈希语义连续）。相对路径基于 bootstrap(content_dir)。
+## G7P-2 S1：ending_gate.json（Progression 结局门旗标表）入哈希——门旗标改动
+## 影响存档兼容性语义，与 event_chain 同类。
 const HASH_CONFIG_FILES: Dictionary = {
 	"endings": "content/endings.json",
 	"event_chain": "progression/event_chain.json",
+	"ending_gate": "progression/ending_gate.json",
 	"world_config": "world/world_config.json",
 }
 

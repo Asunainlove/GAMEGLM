@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "starsoil:schemas/ending-gate.schema.json",
+  "title": "Starsoil ending gate",
+  "description": "G7P-2 S1 结局门控旗标集：Progression.ending_ready 的遭遇胜利旗标外置表。requires_all 全部置位（且任一 station_mode_* 前缀 flag 启用）时结局就绪。station_mode_* 前缀守卫保留在 Progression（链前缀词汇表规范来源），本表只承载旗标集；文件缺失/坏文件 push_error 并回退空表 = 永不满足。运行时由 Progression.load_ending_gate_from 做最小校验（对象形态、requires_all 非空稳定 ID 数组）。",
+  "type": "object",
+  "required": ["requires_all"],
+  "additionalProperties": false,
+  "properties": {
+    "requires_all": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+    }
+  }
+}
