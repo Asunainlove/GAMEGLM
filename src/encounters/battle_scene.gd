@@ -179,6 +179,10 @@ func _auto_target(battle: Dictionary, actor: Dictionary, action_id: String) -> S
 			return _first_living_key(battle, "enemy")
 		"single_ally":
 			return _lowest_hp_living_key(battle, "ally")
+		"self":
+			# G7P-1 修复：self 型行动（防护）的目标必须是行动者自身，
+			# 否则引擎判 invalid_target 且对局不再推进（防护按钮实际不可用）。
+			return str(actor.get("key", ""))
 		_:
 			return ""
 

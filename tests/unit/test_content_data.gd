@@ -481,8 +481,8 @@ func test_actions_match_contract_section7() -> void:
 		"resonate_pulse": {"kind": "destabilize", "targeting": "single_enemy", "power": 4, "stability_damage": 5},
 		"thread_bind": {"kind": "skill", "targeting": "single_enemy", "power": 3, "stability_damage": 3},
 		"shard_jolt": {"kind": "attack", "targeting": "single_enemy", "power": 5, "stability_damage": 3},
-		"vein_quake": {"kind": "attack", "targeting": "all_enemies", "power": 7, "stability_damage": 4},
-		"lumen_surge": {"kind": "attack", "targeting": "all_enemies", "power": 9, "stability_damage": 5},
+		"vein_quake": {"kind": "attack", "targeting": "all_enemies", "power": 5, "stability_damage": 4},
+		"lumen_surge": {"kind": "attack", "targeting": "all_enemies", "power": 6, "stability_damage": 5},
 	}
 	for id: String in expected_params:
 		var action := _assert_entry_present(_actions, id, "combat_actions.json")
@@ -573,11 +573,11 @@ func test_units_match_contract_section7() -> void:
 
 	var expected_units: Dictionary = {
 		"luoxian_fighter": {
-			"kind": "ally", "track": "front", "max_hp": 40, "stability_max": 10, "speed": 6,
+			"kind": "ally", "track": "front", "max_hp": 60, "stability_max": 10, "speed": 6,
 			"action_ids": ["strike", "guard", "resonate_pulse"],
 		},
 		"misa_weaver": {
-			"kind": "ally", "track": "mid", "max_hp": 30, "stability_max": 12, "speed": 5,
+			"kind": "ally", "track": "mid", "max_hp": 45, "stability_max": 12, "speed": 5,
 			"action_ids": ["thread_bind", "guard", "mist_calm", "trap_snap"],
 		},
 		"drift_swarmling": {

@@ -208,7 +208,7 @@ func test_begin_encounter_passes_hp_multiplier_through() -> void:
 	)
 	var battle: Dictionary = scene.call("battle_state")
 	var luoxian: Dictionary = _unit(battle, "a0|luoxian_fighter")
-	assert_eq(int(luoxian.get("max_hp", 0)), 80, "hp_multiplier 必须经 director.start 透传进引擎。")
+	assert_eq(int(luoxian.get("max_hp", 0)), 120, "hp_multiplier 必须经 director.start 透传进引擎（60 × 2.0，2026-08-31 平衡裁定）。")
 
 
 # --- 盟友行动 → 引擎自动结算敌方回合 ---------------------------------------------

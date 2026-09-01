@@ -3,21 +3,30 @@
     "id": "luoxian_fighter",
     "kind": "ally",
     "name_zh": "洛弦",
-    "max_hp": 40,
+    "max_hp": 60,
     "stability_max": 10,
     "track": "front",
     "speed": 6,
-    "action_ids": ["strike", "guard", "resonate_pulse"]
+    "action_ids": [
+      "strike",
+      "guard",
+      "resonate_pulse"
+    ]
   },
   {
     "id": "misa_weaver",
     "kind": "ally",
     "name_zh": "弥砂",
-    "max_hp": 30,
+    "max_hp": 45,
     "stability_max": 12,
     "track": "mid",
     "speed": 5,
-    "action_ids": ["thread_bind", "guard", "mist_calm", "trap_snap"]
+    "action_ids": [
+      "thread_bind",
+      "guard",
+      "mist_calm",
+      "trap_snap"
+    ]
   },
   {
     "id": "drift_swarmling",
@@ -27,9 +36,14 @@
     "stability_max": 6,
     "track": "front",
     "speed": 4,
-    "action_ids": ["strike"],
+    "action_ids": [
+      "strike"
+    ],
     "drops": [
-      {"item_id": "starsoil_dust", "amount": 2}
+      {
+        "item_id": "starsoil_dust",
+        "amount": 2
+      }
     ]
   },
   {
@@ -40,11 +54,23 @@
     "stability_max": 8,
     "track": "mid",
     "speed": 5,
-    "action_ids": ["strike", "shard_jolt"],
+    "action_ids": [
+      "strike",
+      "shard_jolt"
+    ],
     "drops": [
-      {"item_id": "starsoil_dust", "amount": 1},
-      {"item_id": "lumen_shard", "amount": 1},
-      {"item_id": "shock_trap", "amount": 1}
+      {
+        "item_id": "starsoil_dust",
+        "amount": 1
+      },
+      {
+        "item_id": "lumen_shard",
+        "amount": 1
+      },
+      {
+        "item_id": "shock_trap",
+        "amount": 1
+      }
     ]
   },
   {
@@ -55,9 +81,16 @@
     "stability_max": 10,
     "track": "mid",
     "speed": 6,
-    "action_ids": ["strike", "vein_quake", "guard"],
+    "action_ids": [
+      "strike",
+      "vein_quake",
+      "guard"
+    ],
     "drops": [
-      {"item_id": "lumen_shard", "amount": 2}
+      {
+        "item_id": "lumen_shard",
+        "amount": 2
+      }
     ]
   },
   {
@@ -68,17 +101,30 @@
     "stability_max": 12,
     "track": "front",
     "speed": 7,
-    "action_ids": ["strike", "vein_quake"],
+    "action_ids": [
+      "strike",
+      "vein_quake"
+    ],
     "phases": [
       {
         "id": "leviathan_p1",
         "at_hp_ratio": 0.5,
-        "action_ids": ["lumen_surge", "vein_quake", "strike"]
+        "action_ids": [
+          "lumen_surge",
+          "vein_quake",
+          "strike"
+        ]
       }
     ],
     "drops": [
-      {"item_id": "echo_seed", "amount": 1},
-      {"item_id": "resonant_core", "amount": 2}
+      {
+        "item_id": "echo_seed",
+        "amount": 1
+      },
+      {
+        "item_id": "resonant_core",
+        "amount": 2
+      }
     ]
   }
 ]
