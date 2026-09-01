@@ -24,6 +24,9 @@ extends Node2D
 const FALLBACK_GRID_SIZE := Vector2i(4, 2)
 ## 32 cells x 32 px = 1024 px per chunk edge.
 const CHUNK_PIXELS: int = ChunkData.CHUNK_SIZE * ChunkData.CELL_SIZE
+## G7P-2 M11：相机限界按配置网格运行时覆盖（world.tscn 静态值保留为 4x2
+## 缺省；网格改动时相机自动适配，场景文件不动）。世界从原点 (0,0) 向东南生长。
+const CAMERA_NODE_PATH: String = "Camera2D"
 const SNAPSHOT_POLL_SECONDS: float = 0.5
 const SNAPSHOT_POLL_TIMER_NAME: String = "SnapshotPollTimer"
 const DEFAULT_PLAYER_START_CELL: Vector2i = Vector2i(-1, -1)
@@ -72,6 +75,7 @@ func _ready() -> void:
 
 	_generate_chunks()
 	_render_all_chunks()
+	_apply_camera_limits()
 	refresh_from_snapshot()
 	_spawn_player()
 	_start_snapshot_polling()
@@ -80,6 +84,21 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_overlay") and _ore_overlay != null:
 		_ore_overlay.visible = not _ore_overlay.visible
+
+
+## G7P-2 M11：按配置网格尺寸运行时覆盖相机限界——limit_right = grid_x *
+## CHUNK_PIXELS、limit_bottom = grid_y * CHUNK_PIXELS、limit_left/top = 0。
+## 在世界构建后、玩家生成（相机 reparent）前调用；reparent 只改父节点，
+## limit 属性保持。world.tscn 静态值保留为 4x2 缺省，运行时覆盖使 grid 改
+## 非 4x2 时相机自动适配（grid = [4, 2] 时与静态值逐字节一致，行为等价）。
+func _apply_camera_limits() -> void:
+	var camera := get_node_or_null(CAMERA_NODE_PATH) as Camera2D
+	if camera == null:
+		return
+	camera.limit_left = 0
+	camera.limit_top = 0
+	camera.limit_right = _grid_size.x * CHUNK_PIXELS
+	camera.limit_bottom = _grid_size.y * CHUNK_PIXELS
 
 
 ## Gathering contract seam: resolves a cell to its frozen gathering definition.
