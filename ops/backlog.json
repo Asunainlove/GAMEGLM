@@ -312,6 +312,14 @@
       "depends_on": [
         "DLX-3"
       ]
+    },
+    {
+      "id": "DLX-5",
+      "title": "World layout externalization (authored regions data-driven)",
+      "status": "verified",
+      "depends_on": [
+        "DLX-4"
+      ]
     }
   ]
 }
