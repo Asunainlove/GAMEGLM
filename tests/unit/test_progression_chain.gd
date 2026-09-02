@@ -38,10 +38,11 @@ func test_bootstrap_loads_default_chain_and_is_idempotent() -> void:
 		return
 	var first: AppResult = _progression.bootstrap()
 	assert_true(first.is_ok, "默认链文件必须可加载：%s" % first.message)
-	assert_eq(_progression._event_chain().size(), 25, "外置链必须包含 24 个迁移条目 + 1 个并入的 envoy_trust。")
+	assert_true(_progression._event_chain().size() >= 25, "外置链必须包含 25 个基线条目并随内容包增长（2026-08-31 起含 symbiosis 终章，>=25 下限断言）。")
+	var first_chain_size: int = _progression._event_chain().size()
 	var second: AppResult = _progression.bootstrap()
 	assert_true(second.is_ok, "重复 bootstrap 必须幂等成功。")
-	assert_eq(_progression._event_chain().size(), 25, "重复 bootstrap 不得重复扩展链。")
+	assert_eq(_progression._event_chain().size(), first_chain_size, "重复 bootstrap 不得重复扩展链。")
 
 
 func test_chain_file_matches_pre_migration_entries_verbatim() -> void:
@@ -77,6 +78,7 @@ func test_chain_file_matches_pre_migration_entries_verbatim() -> void:
 		{"id": "event_ending_misa", "requires_all": [], "prefix": null, "ending": true},
 		{"id": "event_epilogue_exploited", "requires_all": ["station_mode_exploit", "world_response_exploited", "encounter_leviathan_won"], "prefix": null, "ending": false},
 		{"id": "event_epilogue_sealed", "requires_all": ["station_mode_seal", "echo_chamber_active", "encounter_leviathan_won"], "prefix": null, "ending": false},
+		{"id": "event_epilogue_symbiosis", "requires_all": ["station_mode_symbiosis", "echo_chamber_active", "encounter_leviathan_won"], "prefix": null, "ending": false},
 	]
 	var chain: Array[Dictionary] = _progression._event_chain()
 	assert_eq(chain.size(), expected.size(), "链长度必须与迁移快照一致。")

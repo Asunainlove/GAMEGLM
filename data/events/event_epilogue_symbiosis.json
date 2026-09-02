@@ -1,0 +1,13 @@
+{
+  "id": "event_epilogue_symbiosis",
+  "kind": "dialogue",
+  "requires_flag": "station_mode_symbiosis",
+  "once": true,
+  "steps": [
+    {"type": "line", "speaker": "弥砂", "text_zh": "共生协议生效的第一夜：矿脉在回响舱里哼了一段新的调子。不是威胁，也不是讨好——它学着我们的节拍。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "记录：稳压曲线不再对抗，开始共振。这可能是琉砂海第一次被当成'邻居'而不是'矿藏'。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "我们没赢它，也没放过它。我们把它请进了同一间屋子。"},
+    {"type": "line", "speaker": "洛弦", "text_zh": "账本术语换了：'开采配额'划掉，写上'互访周期'。谨慎起见，我们保留了随时关灯的能力——但今晚，灯先亮着。"},
+    {"type": "line", "speaker": "弥砂", "text_zh": "余辉之种在舱里发了芽。洛弦，你看——它朝着我们这边长的。"}
+  ]
+}
