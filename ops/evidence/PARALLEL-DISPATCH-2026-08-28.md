@@ -58,3 +58,10 @@
 - Balance ruling: allies 60/45 hp, boss surge 6 / quake 5 (boss was mathematically unwinnable at original values; verified by full-loop simulation both before and after).
 - Final main state: 700/700 tests, Verify-Toolchain exit 0, Verify-Slice exit 0 (GATE4 export PASS), validate_content PASS.
 - Code-side completion: G1-G5 charter scope + DLC-ready reusable architecture + automated three-route playthrough evidence. Remaining human gates: G6 asset production (docs/art contracts, provenance + approval), G7 human playthrough (45-60min pacing calibration, external playtest, originality final review).
+
+# Supplement checkpoint: epilogue_symbiosis + decision tooling (2026-08-31)
+
+- `event_epilogue_symbiosis` 终章事件加入链尾（requires_all: station_mode_symbiosis + echo_chamber_active + encounter_leviathan_won）——共生线终章感言对称性补齐（A1 注记遗留）。链快照与链长断言同步（>=25 下限 + 第 26 条目追加）；golden 重生成。
+- 终态核验：Run-Gut 708/708 零失败、Verify-Toolchain exit 0、Verify-Slice exit 0（GATE4 导出 PASS）、validate_content.py 14 schema/64 定义 PASS。
+- G6/G7 决策工具包已备：docs/art/prompts/plan-a-p0-batch-prompts.md（方案 A 即贴即用提示词）、ops/art-approval.md（审批登记模板含灰盒授权段）、docs/g6-g7-human-gates-guide.md（一页操作说明）、docs/rc-playthrough-record.md（可填写试玩/外部/原创性记录表 + 代码侧原创性预审计 C.1 实证）。
+- 项目状态：代理侧全部工作闭环，等待所有者 G6 方案决策（A/B）与 G7 真人门禁执行。
