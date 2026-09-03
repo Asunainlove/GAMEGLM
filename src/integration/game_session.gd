@@ -103,6 +103,13 @@ var autosave_enabled: bool = true
 ## 测试注入 spy 避免重载 GUT 测试场景。
 var scene_reloader: Callable = Callable()
 
+## 注入点（W003-A10）：AudioDirector 引用。由 App 装配后注入；缺席时全部
+## 音频调用静默跳过（灰盒零崩溃）。音频是纯表现，不进 GameState/SaveService。
+var audio_director: Node = null
+
+## 胜利后切回探索曲的延迟（秒），与 docs/art/audio-assets.md §6 一致。
+const VICTORY_EXPLORE_DELAY_SECONDS: float = 2.0
+
 ## 注入点（W002-GAP3）：位置检查点取玩家所在格（世界格坐标）。缺省从绑定的
 ## player 节点读 position / CELL_SIZE（玩家节点 position 即世界像素坐标）。
 var player_cell_provider: Callable = Callable()
@@ -131,6 +138,8 @@ var _active_choice_step: Dictionary = {}
 var _mining_progress: Dictionary = {}
 var _cached_encounters: Array = []
 var _last_save_msec: int = -1_000_000_000
+## sfx_power_unstable 幂等：已报过的断电建筑 id（会话内）。
+var _power_unstable_announced: Dictionary = {}
 
 ## W003-A3 开局总提示延迟计时器（one_shot，仅注入 HUD 时创建）。
 var _move_hint_timer: Timer = null
@@ -288,6 +297,45 @@ func _is_in_region_chunk(cell: Vector2i, chunk_id: String) -> bool:
 
 ## 一次采集请求：解析 chunk → Gathering.apply_mining（带暂态硬度进度）→
 ## 耗尽时 Progression.react(mined)。
+
+# ---------------------------------------------------------------- 音频薄转发（W003-A10）
+
+
+func _play_bgm(track_id: String, fade_seconds: float = 1.0) -> void:
+	if audio_director == null or not audio_director.has_method("play_bgm"):
+		return
+	if audio_director.get_method_argument_count("play_bgm") >= 2:
+		audio_director.call("play_bgm", track_id, fade_seconds)
+	else:
+		audio_director.call("play_bgm", track_id)
+
+
+func _play_sfx(sfx_id: String, volume_offset_db: float = 0.0) -> void:
+	if audio_director == null or not audio_director.has_method("play_sfx"):
+		return
+	if audio_director.get_method_argument_count("play_sfx") >= 2:
+		audio_director.call("play_sfx", sfx_id, volume_offset_db)
+	else:
+		audio_director.call("play_sfx", sfx_id)
+
+
+func _stop_audio() -> void:
+	if audio_director == null or not audio_director.has_method("stop_all"):
+		return
+	audio_director.call("stop_all")
+
+
+## App 在装配 AudioDirector 后调用：写入本节点并下发给已解析的 HUD/对话/战斗。
+func bind_audio_director(director: Node) -> void:
+	audio_director = director
+	if hud != null and "audio_director" in hud:
+		hud.set("audio_director", director)
+	if dialogue_box != null and "audio_director" in dialogue_box:
+		dialogue_box.set("audio_director", director)
+	if battle != null and "audio_director" in battle:
+		battle.set("audio_director", director)
+
+
 func request_mine(cell: Vector2i) -> AppResult:
 	var chunk_id := _resolve_chunk_id(cell)
 	var cell_def := _cell_def_for(chunk_id, cell)
@@ -311,9 +359,11 @@ func request_mine(cell: Vector2i) -> AppResult:
 		var react_result := Progression.react(_snapshot(), "mined", {}, store)
 		if not react_result.is_ok:
 			push_warning("GameSession: Progression.react(mined) failed: %s" % react_result.message)
+		_play_sfx("sfx_mine_depleted")
 		_schedule_autosave()
 	else:
 		_mining_progress[progress_key] = int(strike.get("hardness_left", 0))
+		_play_sfx("sfx_mine_hit")
 	return result
 
 
@@ -333,6 +383,7 @@ func request_place(cell: Vector2i) -> AppResult:
 	# W002-GAP2：手工矿井岩壁不可建（BuildingRules 地形缝只认 destroyed 标记，
 	# rock_wall 的不可建语义在 app 层落刀——零修改失败，不产生任何持久变化）。
 	if _is_rock_wall_cell(chunk_id, cell):
+		_play_sfx("sfx_build_denied", -3.0)
 		return AppResult.failure(
 			"rock_wall_cell",
 			"Cell (%d, %d) in %s is authored rock_wall and cannot host buildings."
@@ -344,6 +395,7 @@ func request_place(cell: Vector2i) -> AppResult:
 		# DLX-3：触发条件与文案读提示表（craft_failed 触发点）。
 		if result.code == "insufficient_item":
 			_show_hints_for_trigger(_snapshot(), "craft_failed")
+		_play_sfx("sfx_build_denied", -3.0)
 		return result
 	var react_result := Progression.react(
 		_snapshot(), "built",
@@ -358,6 +410,7 @@ func request_place(cell: Vector2i) -> AppResult:
 	if not react_result.is_ok:
 		push_warning("GameSession: Progression.react(built) failed: %s" % react_result.message)
 	_reconcile_effect_flags()
+	_play_sfx("sfx_build_place")
 	_schedule_autosave()
 	return result
 
@@ -440,6 +493,9 @@ func _reconcile_effect_flags() -> void:
 			var powered_count := powered_ids.count(building_id)
 			if powered_count < int(entry_totals.get(building_id, 0)):
 				unpowered_effect_flags.append(building_id)
+				if not _power_unstable_announced.has(building_id):
+					_power_unstable_announced[building_id] = true
+					_play_sfx("sfx_power_unstable")
 
 
 ## 选择待放置建筑；定义不存在时保持原选择并返回 false。
@@ -491,6 +547,7 @@ func _on_craft_requested(building_id: String, recipe: Dictionary) -> void:
 	if not result.is_ok:
 		push_warning("GameSession: craft rejected: %s" % result.message)
 		return
+	_play_sfx("sfx_craft_success")
 	_schedule_autosave()
 
 
@@ -595,6 +652,7 @@ func _on_save_requested() -> void:
 	if not result.is_ok:
 		push_warning("GameSession: manual save failed: %s" % result.message)
 		return
+	_play_sfx("sfx_save_notice", -3.0)
 	if hud != null:
 		hud.flash_notice(SAVE_NOTICE_TEXT, SAVE_NOTICE_SECONDS)
 
@@ -606,6 +664,7 @@ func _on_save_requested() -> void:
 ##    SaveService._slot_paths 同一私有路径构造，消除 P05 的镜像命名逻辑。
 ## 重启后无档，GameSession._ready 的读档逻辑天然兼容（读档失败即初始状态）。
 func _on_restart_requested() -> void:
+	_stop_audio()
 	_reset_persistent_state()
 	_delete_save_slots()
 	_reload_current_scene()
@@ -787,6 +846,9 @@ func _finish_active_event() -> void:
 	if not react_result.is_ok:
 		push_warning("GameSession: Progression.react(event_completed) failed: %s" % react_result.message)
 	_checkpoint_player_position("event_complete")
+	# 序章落地完成后切入探索曲（§6）；其他事件不强制切 BGM。
+	if event_id == "event_prologue_landing":
+		_play_bgm("bgm_explore", 2.0)
 	_schedule_autosave()
 
 
@@ -807,10 +869,16 @@ func _start_encounter(encounter_id: String) -> void:
 		push_warning("GameSession: battle scene '%s' did not instantiate a BattleScene." % battle_scene_path)
 		return
 	battle_node.store = store
+	if "audio_director" in battle_node:
+		battle_node.set("audio_director", audio_director)
 	battle = battle_node
 	battle_node.encounter_finished.connect(_on_encounter_finished)
 	_modal_host().add_child(battle_node)
 	encounter_started.emit(encounter_id)
+	if encounter_id == "encounter_leviathan":
+		_play_bgm("bgm_boss", 0.5)
+	else:
+		_play_bgm("bgm_battle", 0.5)
 	battle_node.begin_encounter(encounter_def, _battle_content())
 	_checkpoint_player_position("battle_start")
 
@@ -842,12 +910,26 @@ func _on_encounter_finished(encounter_id: String, outcome: Dictionary) -> void:
 	if battle != null:
 		battle.queue_free()
 		battle = null
-	if String(outcome.get("result", "")) == "victory":
+	var result_id := String(outcome.get("result", ""))
+	if result_id == "victory":
 		var react_result := Progression.react(_snapshot(), "encounter_won", {"encounter_id": encounter_id}, store)
 		if not react_result.is_ok:
 			push_warning("GameSession: Progression.react(encounter_won) failed: %s" % react_result.message)
+		_play_sfx("sfx_victory")
+		_schedule_explore_bgm_after_victory()
+	elif result_id == "defeat":
+		_play_sfx("sfx_defeat")
 	_checkpoint_player_position("battle_end")
 	_schedule_autosave()
+
+
+## 胜利 SFX 后延迟切回探索曲（§6：2 s 内；不阻塞卸载战斗场景）。
+func _schedule_explore_bgm_after_victory() -> void:
+	if get_tree() == null:
+		_play_bgm("bgm_explore", 2.0)
+		return
+	var timer := get_tree().create_timer(VICTORY_EXPLORE_DELAY_SECONDS)
+	timer.timeout.connect(func() -> void: _play_bgm("bgm_explore", 2.0))
 
 
 # ---------------------------------------------------------------- 结局链内部
@@ -864,6 +946,7 @@ func _show_ending() -> void:
 	ending = ending_node
 	ending_node.set("snapshot_provider", Callable(self, "_snapshot"))
 	_modal_host().add_child(ending_node)
+	_play_sfx("sfx_ending_bell")
 	ending_shown.emit()
 
 
@@ -1050,6 +1133,8 @@ func _resolve_nodes() -> void:
 	if world != null and not building_rules.cell_lookup.is_valid():
 		building_rules.cell_lookup = Callable(world, "cell_def_at")
 	if dialogue_box != null:
+		if "audio_director" in dialogue_box:
+			dialogue_box.set("audio_director", audio_director)
 		if not dialogue_box.finished.is_connected(_on_dialogue_finished):
 			dialogue_box.finished.connect(_on_dialogue_finished)
 		if not dialogue_box.option_chosen.is_connected(_on_option_chosen):
@@ -1072,6 +1157,8 @@ func _bind_hud() -> void:
 		hud = get_node_or_null("%Hud") as Hud
 	if hud == null:
 		return
+	if "audio_director" in hud:
+		hud.set("audio_director", audio_director)
 	if not hud.save_requested.is_connected(_on_save_requested):
 		hud.save_requested.connect(_on_save_requested)
 	if not hud.restart_requested.is_connected(_on_restart_requested):

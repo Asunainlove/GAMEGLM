@@ -127,6 +127,19 @@ var _hint_fade_tween: Tween = null
 var _hint_timer: Timer = null
 
 
+## W003-A10：可选 AudioDirector（GameSession.bind_audio_director 注入）。
+var audio_director: Node = null
+
+
+func _play_ui_sfx(sfx_id: String, volume_offset_db: float = 0.0) -> void:
+	if audio_director == null or not audio_director.has_method("play_sfx"):
+		return
+	if audio_director.get_method_argument_count("play_sfx") >= 2:
+		audio_director.call("play_sfx", sfx_id, volume_offset_db)
+	else:
+		audio_director.call("play_sfx", sfx_id)
+
+
 func _ready() -> void:
 	if not snapshot_provider.is_valid():
 		if not snapshot_provider.is_null():
@@ -153,9 +166,11 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu"):
 		_set_menu_open(not _menu_panel.visible)
+		_play_ui_sfx("sfx_ui_toggle")
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("toggle_inventory"):
 		_set_inventory_open(not _inventory_panel.visible)
+		_play_ui_sfx("sfx_ui_toggle")
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("toggle_overlay"):
 		# W003-A3：首次 O 覆盖层的提示触发点在 HUD 内。刻意不 set_input_as_handled——
@@ -784,6 +799,7 @@ func _make_unpowered_dot() -> ColorRect:
 
 
 func _on_build_slot_pressed(building_id: String) -> void:
+	_play_ui_sfx("sfx_ui_click", -3.0)
 	build_selected.emit(building_id)
 	# 选中变化不经 revision（不提交 patch），延迟一帧重建以立即移动高亮，
 	# 且避免在信号发射过程中释放发射按钮本身。
@@ -846,6 +862,7 @@ func _recipe_inputs_text(recipe: Dictionary) -> String:
 
 
 func _on_craft_pressed(building_id: String, recipe: Dictionary) -> void:
+	_play_ui_sfx("sfx_ui_click", -3.0)
 	craft_requested.emit(building_id, recipe)
 	# 合成提交由集成层同步完成；延迟一帧重渲染行区与背包（避免释放发射按钮）。
 	_refresh_after_craft.call_deferred()
@@ -907,20 +924,24 @@ func _set_inventory_open(open: bool) -> void:
 
 
 func _on_resume_pressed() -> void:
+	_play_ui_sfx("sfx_ui_click", -3.0)
 	_set_menu_open(false)
 	menu_resumed.emit()
 
 
 func _on_save_pressed() -> void:
+	_play_ui_sfx("sfx_ui_click", -3.0)
 	# 表现层只发意图信号；落账由集成层经 SaveService 完成。
 	save_requested.emit()
 
 
 func _on_restart_pressed() -> void:
+	_play_ui_sfx("sfx_ui_click", -3.0)
 	restart_requested.emit()
 
 
 func _on_help_pressed() -> void:
+	_play_ui_sfx("sfx_ui_click", -3.0)
 	_menu_help_panel.visible = not _menu_help_panel.visible
 
 

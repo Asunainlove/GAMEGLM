@@ -20,6 +20,9 @@ const TRUST_LOCKED_SUFFIX: String = "（信任不足）"
 ## autoload；测试可注入独立实例的 snapshot）。只读快照，绝不写入持久状态。
 var snapshot_provider: Callable = Callable()
 
+## W003-A10：可选 AudioDirector（GameSession 注入）。
+var audio_director: Node = null
+
 var _lines: Array[Dictionary] = []
 var _line_index: int = 0
 var _advancing: bool = false
@@ -27,6 +30,16 @@ var _advancing: bool = false
 @onready var _name_label: Label = $Panel/NameLabel
 @onready var _text_label: Label = $Panel/TextLabel
 @onready var _options_box: VBoxContainer = $Panel/OptionsBox
+
+
+
+func _play_sfx(sfx_id: String, volume_offset_db: float = 0.0) -> void:
+	if audio_director == null or not audio_director.has_method("play_sfx"):
+		return
+	if audio_director.get_method_argument_count("play_sfx") >= 2:
+		audio_director.call("play_sfx", sfx_id, volume_offset_db)
+	else:
+		audio_director.call("play_sfx", sfx_id)
 
 
 func _ready() -> void:
@@ -92,6 +105,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _advance() -> void:
 	if not _advancing:
 		return
+	_play_sfx("sfx_dialogue_page", -6.0)
 	_line_index += 1
 	if _line_index >= _lines.size():
 		_advancing = false
@@ -108,6 +122,7 @@ func _show_current_line() -> void:
 
 
 func _on_option_pressed(option_id: String) -> void:
+	_play_sfx("sfx_dialogue_choice")
 	_clear_options()
 	option_chosen.emit(option_id)
 
