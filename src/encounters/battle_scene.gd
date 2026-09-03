@@ -441,7 +441,7 @@ func _refresh_turn_label() -> void:
 	var ui: CanvasLayer = get_node_or_null("UI") as CanvasLayer
 	if ui == null:
 		return
-	var label: Label = ui.get_node_or_null("TurnLabel") as Label
+	var label: Label = ui.get_node_or_null("TurnPanel/TurnLabel") as Label
 	if label == null:
 		return
 	label.text = "第 %d 回合" % int(_battle.get("turn", 0))
@@ -451,7 +451,7 @@ func _refresh_actions() -> void:
 	var ui: CanvasLayer = get_node_or_null("UI") as CanvasLayer
 	if ui == null:
 		return
-	var actions_box: VBoxContainer = ui.get_node_or_null("ActionsBox") as VBoxContainer
+	var actions_box: VBoxContainer = ui.get_node_or_null("ActionsPanel/ActionsBox") as VBoxContainer
 	if actions_box == null:
 		return
 	_clear_children(actions_box)
@@ -547,7 +547,7 @@ func _show_finish_banner(result: String) -> void:
 	label.text = VICTORY_TEXT if victory else DEFEAT_TEXT
 	label.add_theme_color_override("font_color", VICTORY_COLOR if victory else DEFEAT_COLOR)
 	label.visible = true
-	var overlay: ColorRect = ui.get_node_or_null("FinishBanner") as ColorRect
+	var overlay: Control = ui.get_node_or_null("FinishBanner") as Control
 	if overlay != null:
 		overlay.visible = true
 
@@ -560,7 +560,7 @@ func _refresh_report() -> void:
 	var ui: CanvasLayer = _ui_layer()
 	if ui == null:
 		return
-	var panel: VBoxContainer = ui.get_node_or_null("ReportPanel") as VBoxContainer
+	var panel: VBoxContainer = ui.get_node_or_null("ReportChrome/ReportPanel") as VBoxContainer
 	if panel == null:
 		return
 	_clear_children(panel)

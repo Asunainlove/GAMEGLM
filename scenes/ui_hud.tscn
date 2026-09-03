@@ -81,8 +81,21 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 theme_override_constants/separation = 10
 
+[node name="Dimmer" type="ColorRect" parent="."]
+visible = false
+z_index = 19
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.03, 0.06, 0.55)
+
 [node name="InventoryPanel" type="PanelContainer" parent="."]
 visible = false
+z_index = 20
 layout_mode = 3
 anchors_preset = 8
 anchor_left = 0.5
@@ -160,6 +173,7 @@ vertical_alignment = 1
 
 [node name="MenuPanel" type="PanelContainer" parent="."]
 visible = false
+z_index = 21
 layout_mode = 3
 anchors_preset = 8
 anchor_left = 0.5

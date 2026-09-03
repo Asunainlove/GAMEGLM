@@ -103,6 +103,7 @@ var hint_seen_callback: Callable = Callable()
 @onready var _relations_panel: HBoxContainer = $RelationsPanel
 @onready var _inventory_panel: PanelContainer = $InventoryPanel
 @onready var _menu_panel: PanelContainer = $MenuPanel
+@onready var _dimmer: ColorRect = get_node_or_null("Dimmer") as ColorRect
 @onready var _inventory_items_box: VBoxContainer = $InventoryPanel/Content/ItemsBox
 @onready var _recipes_box: VBoxContainer = $InventoryPanel/Content/RecipesBox
 @onready var _build_bar: HBoxContainer = $BuildBar
@@ -915,12 +916,22 @@ func _default_name_resolver(item_id: String) -> String:
 func _set_menu_open(open: bool) -> void:
 	_menu_panel.visible = open
 	get_tree().paused = open
+	_sync_modal_dimmer()
 
 
 func _set_inventory_open(open: bool) -> void:
 	_inventory_panel.visible = open
 	if open:
 		refresh()
+	_sync_modal_dimmer()
+
+
+func _sync_modal_dimmer() -> void:
+	if _dimmer == null:
+		return
+	var show := _menu_panel.visible or _inventory_panel.visible
+	_dimmer.visible = show
+	_dimmer.mouse_filter = Control.MOUSE_FILTER_STOP if show else Control.MOUSE_FILTER_IGNORE
 
 
 func _on_resume_pressed() -> void:
