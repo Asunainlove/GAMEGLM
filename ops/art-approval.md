@@ -8,6 +8,14 @@
 |---|---|---|---|---|---|---|---|---|---|
 | （示例行，正式登记时替换） | env | <工具名> | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1-1 | YYYY-MM-DD | <生成者> | <审批人> | YYYY-MM-DD | pending | assets/art/world/tiles/env_world_soil_base.png |
 
+| env_world_soil_base | 1-env | Cursor GenerateImage | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1 | 2026-09-03 | 幕僚长/GenerateImage | Asunainlove | 2026-09-03 | approved | assets/art/world/tiles/env_world_soil_base.png |
+| env_ore_dust_set | 1-env | Cursor GenerateImage | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1 | 2026-09-03 | 幕僚长/GenerateImage | Asunainlove | 2026-09-03 | approved | assets/art/world/tiles/env_ore_dust_set.png |
+| env_ore_shard_set | 1-env | Cursor GenerateImage | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1 | 2026-09-03 | 幕僚长/GenerateImage | Asunainlove | 2026-09-03 | approved | assets/art/world/tiles/env_ore_shard_set.png |
+| env_ore_core_set | 1-env | Cursor GenerateImage | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1 | 2026-09-03 | 幕僚长/GenerateImage | Asunainlove | 2026-09-03 | approved | assets/art/world/tiles/env_ore_core_set.png |
+| env_mine_wall_atlas | 1-env | Cursor GenerateImage | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1 | 2026-09-03 | 幕僚长/GenerateImage | Asunainlove | 2026-09-03 | approved | assets/art/world/tiles/env_mine_wall_atlas.png |
+| env_boss_sigil_dormant | 1-env | Cursor GenerateImage | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1 | 2026-09-03 | 幕僚长/GenerateImage | Asunainlove | 2026-09-03 | approved | assets/art/world/decals/env_boss_sigil_dormant.png |
+| env_boss_sigil_active | 1-env | Cursor GenerateImage | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1 | 2026-09-03 | 幕僚长/GenerateImage | Asunainlove | 2026-09-03 | approved | assets/art/world/decals/env_boss_sigil_active.png |
+
 ## 灰盒交付授权记录（方案 B 专用，待所有者明示后填写）
 
 - 授权语句：（由项目所有者提供，例："授权保持灰盒交付为 G6 交付形态"）
