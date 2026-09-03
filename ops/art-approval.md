@@ -151,3 +151,33 @@
 > Note (2026-09-03): `font_noto_sans_sc_regular` auto-approved by 幕僚长 standing auth; OFL + PROVENANCE under `assets/fonts/`.
 
 > Note (2026-09-03): batch4 audio 23 clips auto-approved by 幕僚长 standing auth after ffprobe gate; explore trimmed to 120s, ending_bell to 1.8s.
+
+
+> Note (2026-09-03): v2-polish style gate — env soil + panel_dialog + btn_normal approved/drop-in by 幕僚长; unit idle samples style_pass (pending full frame sets before drop-in). Constraints: luoxian keep blade+cloak silhouette per battle-assets; misa keep thread/spool language; swarmling body ≤64×64 center.
+| env_world_soil_base_v2 | v2-polish | Cursor GenerateImage | docs/art/environment-assets.md#ENV-01 | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/world/tiles/env_world_soil_base.png |
+| luoxian_fighter_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-03 | 美术 | 幕僚长-style_pass | 2026-09-03 | pending | assets/art/battle/units/luoxian_fighter/luoxian_fighter_idle_00.png |
+| misa_weaver_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-03 | 美术 | 幕僚长-style_pass | 2026-09-03 | pending | assets/art/battle/units/misa_weaver/misa_weaver_idle_00.png |
+| drift_swarmling_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-03 | 美术 | 幕僚长-style_pass | 2026-09-03 | pending | assets/art/battle/units/drift_swarmling/drift_swarmling_idle_00.png |
+| shard_husk_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-03 | 美术 | 幕僚长-style_pass | 2026-09-03 | pending | assets/art/battle/units/shard_husk/shard_husk_idle_00.png |
+| veinwarden_echo_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-03 | 美术 | 幕僚长-style_pass | 2026-09-03 | pending | assets/art/battle/units/veinwarden_echo/veinwarden_echo_idle_00.png |
+| lumen_leviathan_phase1_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-03 | 美术 | 幕僚长-style_pass | 2026-09-03 | pending | assets/art/battle/units/lumen_leviathan/phase1/lumen_leviathan_idle_00.png |
+| panel_dialog_v2 | v2-polish | Cursor GenerateImage | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/panels/panel_dialog.png |
+| btn_normal_v2 | v2-polish | Cursor GenerateImage | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/buttons/btn_normal.png |
+
+| lumen_leviathan_phase2_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-03 | 美术 | 幕僚长-style_pass | 2026-09-03 | pending | assets/art/battle/units/lumen_leviathan/phase2/lumen_leviathan_idle_00.png |
+
+
+> Note (2026-09-03): env contract pack — approved soil_base/crack/rock_wall + ui_panel_frame→panel_dialog; **rejected** env_mine_wall_atlas_v2 (black gutters at cols 96/224/352 destroy 32px TileSet cells). Redo atlas as contiguous 12×32 without separators.
+| env_world_soil_crack_v2 | v2-polish | env_v2 draft resize | docs/art/environment-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/world/decals/env_world_soil_crack.png |
+| env_world_rock_wall_v2 | v2-polish | env_v2 draft resize | docs/art/environment-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/world/tiles/env_world_rock_wall.png |
+| env_mine_wall_atlas_v2 | v2-polish | env_v2 draft + flip variants | docs/art/prompts/plan-a-p0-batch-prompts.md#批次1 | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | rejected | assets/art/world/tiles/env_mine_wall_atlas.png |
+| ui_panel_frame_v2 | v2-polish | env_v2 draft resize | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/panels/panel_dialog.png |
+
+| btn_hover_v2 | v2-polish | Cursor GenerateImage / env_v2 | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/buttons/btn_hover.png |
+| btn_pressed_v2 | v2-polish | Cursor GenerateImage / env_v2 | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/buttons/btn_pressed.png |
+| btn_disabled_v2 | v2-polish | Cursor GenerateImage / env_v2 | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/buttons/btn_disabled.png |
+| panel_inventory_v2 | v2-polish | Cursor GenerateImage / env_v2 | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/panels/panel_inventory.png |
+| panel_menu_v2 | v2-polish | Cursor GenerateImage / env_v2 | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/panels/panel_menu.png |
+| panel_help_v2 | v2-polish | Cursor GenerateImage / env_v2 | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/panels/panel_help.png |
+
+> Note (2026-09-03): UI button states + panel_inventory/menu/help approved/drop-in (panel trio identical chrome OK for theme continuity; help contract still allows inset variant later).
