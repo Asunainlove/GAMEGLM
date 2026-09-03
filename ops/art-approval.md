@@ -100,6 +100,19 @@
 
 > Note (2026-09-03): batch2 remaining units (`drift_swarmling`, `shard_husk`, `veinwarden_echo`, `lumen_leviathan` phase1+phase2) + batch3 UI (panels/buttons/icons 32+64) auto-approved by 幕僚长 standing auth 2026-09-03 and dropped into `assets/art/`.
 
+| ui_item_lumen_shard | 3-ui | alias of ui_item_ore_shard (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/ui_item_lumen_shard.png |
+| ui_item_lumen_shard_64 | 3-ui | alias of ui_item_ore_shard (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/64/ui_item_lumen_shard.png |
+| ui_item_resonant_core | 3-ui | alias of ui_item_ore_core (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/ui_item_resonant_core.png |
+| ui_item_resonant_core_64 | 3-ui | alias of ui_item_ore_core (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/64/ui_item_resonant_core.png |
+| ui_item_echo_seed | 3-ui | alias of ui_item_warm_seed (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/ui_item_echo_seed.png |
+| ui_item_echo_seed_64 | 3-ui | alias of ui_item_warm_seed (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/64/ui_item_echo_seed.png |
+| ui_item_sedative_mist | 3-ui | alias of ui_item_cyan_mist_vial (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/ui_item_sedative_mist.png |
+| ui_item_sedative_mist_64 | 3-ui | alias of ui_item_cyan_mist_vial (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/64/ui_item_sedative_mist.png |
+| ui_item_shock_trap | 3-ui | alias of ui_item_toothed_trap (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/ui_item_shock_trap.png |
+| ui_item_shock_trap_64 | 3-ui | alias of ui_item_toothed_trap (contract item id) | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 幕僚长 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/art/ui/icons/64/ui_item_shock_trap.png |
+
+> Note: contract-id icon aliases added for AssetAdapter `ui_item_<item_id>` wiring.
+
 ## 灰盒交付授权记录（方案 B 专用，待所有者明示后填写）
 
 - 授权语句：（由项目所有者提供，例："授权保持灰盒交付为 G6 交付形态"）
