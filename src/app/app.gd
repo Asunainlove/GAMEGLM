@@ -25,9 +25,8 @@ extends Node
 ##
 ## A9 AudioDirector 接线：以 ResourceLoader.exists 守卫动态装配
 ## res://src/audio/audio_director.gd（class_name AudioDirector：play_bgm/
-## play_sfx/set_master_muted）；A9 未合入时优雅跳过，合并后自动生效。测试可
-## 预先注入 audio_director 替身。play_bgm 的 resolver 未注入静默跳过是 A9
-## 类自身语义，app 层只负责调用。
+## play_sfx/set_master_muted）；合并后注入 AudioCatalog 解析
+## res://assets/audio/{bgm,sfx}/<id>.ogg。测试可预先注入 audio_director 替身。
 
 const STARTUP_FADE_SECONDS: float = 2.0
 const TITLE_FADE_SECONDS: float = 0.8
@@ -209,8 +208,8 @@ func finish_startup_fade() -> void:
 # ---------------------------------------------------------------- AudioDirector 接线（A9）
 
 
-## A9 守卫式装配：脚本缺席时优雅跳过（并行合并后无需改动即自动生效）；
-## 已注入替身（测试）时跳过。
+## A9 守卫式装配：脚本缺席时优雅跳过；已注入替身（测试）时跳过。
+## 真实 Director 装配后注入 AudioCatalog，解析 assets/audio 正式 OGG。
 func _resolve_audio_director() -> void:
 	if audio_director != null:
 		return
@@ -223,10 +222,18 @@ func _resolve_audio_director() -> void:
 			audio_director = candidate
 			audio_director.name = "AudioDirector"
 			add_child(audio_director)
+			_bind_audio_catalog_resolvers(audio_director)
+
+
+func _bind_audio_catalog_resolvers(director: Node) -> void:
+	if director == null:
+		return
+	director.set("track_resolver", Callable(AudioCatalog, "resolve_track"))
+	director.set("sfx_resolver", Callable(AudioCatalog, "resolve_sfx"))
 
 
 ## 请求 BGM（"bgm_title" → "bgm_explore"）。AudioDirector 缺席、无 play_bgm
-## 方法，或（A9 自身语义）resolver 未注入时静默跳过。
+## 方法，或（A9 自身语义）resolver 未注入 / 流缺失时静默跳过。
 func _play_bgm(track_id: String) -> void:
 	if audio_director == null or not audio_director.has_method("play_bgm"):
 		return
