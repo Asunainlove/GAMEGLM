@@ -1,6 +1,6 @@
 name: ci
 
-# 注：仓库当前无 remote；配置远程后 push/PR 会自动触发本工作流。
+# 推送到 GitHub 后，push / PR 会触发本工作流。
 # 本地等效门禁为 scripts/Verify-Toolchain.ps1。
 
 on:
