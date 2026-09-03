@@ -5,22 +5,20 @@
   "window_status": "g6_plan_a_production",
   "project_team_status": "active",
   "last_verified_commit": "416581a",
-  "active_packet": "G6A-P0-BATCH3-UI",
-  "resume_from": "g6_plan_a_p0_batch2_luoxian_misa_done_continue_remaining_units_ui_audio",
+  "active_packet": "G6A-P0-BATCH4-AUDIO",
+  "resume_from": "g6_plan_a_p0_batch2_all_units_done_batch3_ui_done_continue_batch4_audio_then_g7",
   "g6a_batch_status": {
     "batch1_env": "done",
-    "batch2_units": "partial_luoxian_misa_done",
-    "batch3_ui": "in_progress",
-    "batch4_audio": "in_progress"
+    "batch2_units": "done",
+    "batch3_ui": "done",
+    "batch4_audio": "open"
   },
   "next_packet_ids": [
-    "G6A-P0-BATCH2-UNITS-REMAINING",
-    "G6A-P0-BATCH3-UI",
     "G6A-P0-BATCH4-AUDIO",
     "G7-HUMAN"
   ],
   "known_blockers": [
-    "G6 Plan A: batch1 env DONE; batch2 units partial (luoxian_fighter+misa_weaver dropped); still missing drift_swarmling/shard_husk/veinwarden_echo/lumen_leviathan; batch3 UI / batch4 audio P0 pending",
+    "G6 Plan A: batch1 env DONE; batch2 units DONE (all 6 units dropped); batch3 UI DONE (panels/buttons/icons); batch4 audio P0 still open (5 BGM + 17 SFX)",
     "G7 human gates still open: fill docs/rc-playthrough-record.md (45-60min x3 routes, external playtest >=3, originality C.2) — do not fabricate results"
   ]
 }
