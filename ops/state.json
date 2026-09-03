@@ -6,7 +6,7 @@
   "project_team_status": "active",
   "last_verified_commit": "ea2bf5e",
   "active_packet": "G6A-P0-BATCH4-AUDIO",
-  "resume_from": "g6_plan_a_p0_batch2_all_units_done_batch3_ui_done_continue_batch4_audio_then_g7",
+  "resume_from": "g6_plan_a_batch4_audio_and_g7_human",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
