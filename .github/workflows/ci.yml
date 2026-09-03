@@ -12,6 +12,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Cache Godot 4.7.2
         id: godot-cache
@@ -45,15 +47,4 @@ jobs:
       - name: Install jsonschema
         run: pip install jsonschema==4.25.1
       - name: Validate content data against schemas
-        run: |
-          if [ -f scripts/validate_content.py ]; then
-            python scripts/validate_content.py
-          else
-            echo "validate_content.py not present yet (WP01 pending); schema files checked for syntax only."
-            python - <<'PY'
-            import json, pathlib
-            for p in pathlib.Path("schemas").glob("*.schema.json"):
-                json.loads(p.read_text(encoding="utf-8"))
-                print("ok", p)
-            PY
-          fi
+        run: python scripts/validate_content.py
