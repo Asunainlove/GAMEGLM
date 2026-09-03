@@ -26,3 +26,7 @@ Shipped on branch `feat/ci-toolchain-fix` (same content as PR #6 `fix/gut-isolat
 
 ## Status
 Pending merge of this branch / PR #6 equivalent; expect 708/708 once merged to main.
+
+## Follow-up (batch2 unit drop-in)
+After merging greybox world isolation, batch2 `luoxian_fighter`/`misa_weaver` drop-in caused **707/708**:
+`test_encounters_battle_scene.gd::test_begin_encounter_renders_graybox_units_and_ui` still required `ColorRect Box` on every unit. Allies with formal frames use `AnimatedSprite2D` (`Sprite`) instead. Fix: assert Box **or** Sprite; Label still required.

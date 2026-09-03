@@ -162,7 +162,10 @@ func test_begin_encounter_renders_graybox_units_and_ui() -> void:
 	var unit_nodes: Array = get_tree().get_nodes_in_group("battle_unit")
 	assert_eq(unit_nodes.size(), 4, "每个战斗单位必须有一个灰盒节点。")
 	for unit_node: Node in unit_nodes:
-		assert_not_null(unit_node.get_node_or_null("Box"), "单位节点必须含 ColorRect Box。")
+		# G6 Plan A drop-in：有正式帧时 Box 被 Sprite 替换；缺资产仍灰盒 ColorRect。
+		var has_box := unit_node.get_node_or_null("Box") != null
+		var has_sprite := unit_node.get_node_or_null("Sprite") != null
+		assert_true(has_box or has_sprite, "单位节点必须含灰盒 Box 或正式 Sprite。")
 		assert_not_null(unit_node.get_node_or_null("Label"), "单位节点必须含 Label。")
 
 	# 按 front/mid/rear 行排：front = 洛弦 + 2 幼群，mid = 弥砂。
