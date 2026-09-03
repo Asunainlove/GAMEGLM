@@ -5,20 +5,20 @@
   "window_status": "g6_plan_a_production",
   "project_team_status": "active",
   "last_verified_commit": "ea2bf5e",
-  "active_packet": "G6A-P0-BATCH4-AUDIO",
-  "resume_from": "g6_plan_a_batch4_audio_and_g7_human",
+  "active_packet": "G7-HUMAN",
+  "resume_from": "g7_human_gates_owner_playtest",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
     "batch3_ui": "done",
-    "batch4_audio": "open"
+    "batch4_audio": "done"
   },
   "next_packet_ids": [
     "G6A-P0-BATCH4-AUDIO",
     "G7-HUMAN"
   ],
   "known_blockers": [
-    "G6 Plan A: batch1 env DONE; batch2 units DONE (all 6 units dropped); batch3 UI DONE (panels/buttons/icons); batch4 audio P0 still open (5 BGM + 17 SFX)",
+    "G6 Plan A P0 art/audio/fonts drop-in DONE under 幕僚长 standing auth",
     "G7 human gates still open: fill docs/rc-playthrough-record.md (45-60min x3 routes, external playtest >=3, originality C.2) — do not fabricate results"
   ]
 }
