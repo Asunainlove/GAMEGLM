@@ -1,7 +1,43 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="1_hud"]
 [ext_resource type="Theme" path="res://themes/starsoil_theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_inventory.png" id="3_inv"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_menu.png" id="4_menu"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_help.png" id="5_help"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_inv"]
+content_margin_left = 18.0
+content_margin_top = 14.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+texture = ExtResource("3_inv")
+texture_margin_left = 28.0
+texture_margin_top = 24.0
+texture_margin_right = 28.0
+texture_margin_bottom = 28.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_menu"]
+content_margin_left = 18.0
+content_margin_top = 14.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+texture = ExtResource("4_menu")
+texture_margin_left = 28.0
+texture_margin_top = 24.0
+texture_margin_right = 28.0
+texture_margin_bottom = 28.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_help"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+texture = ExtResource("5_help")
+texture_margin_left = 24.0
+texture_margin_top = 20.0
+texture_margin_right = 24.0
+texture_margin_bottom = 20.0
 
 [node name="Hud" type="CanvasLayer"]
 process_mode = 3
@@ -15,18 +51,20 @@ offset_top = 12.0
 offset_right = 16.0
 offset_bottom = 12.0
 theme = ExtResource("2_theme")
+theme_override_constants/separation = 8
 
 [node name="ObjectiveLabel" type="Label" parent="."]
 layout_mode = 3
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -516.0
+offset_left = -560.0
 offset_top = 12.0
 offset_right = -16.0
-offset_bottom = 44.0
+offset_bottom = 48.0
 grow_horizontal = 0
 theme = ExtResource("2_theme")
+theme_override_font_sizes/font_size = 15
 horizontal_alignment = 2
 
 [node name="RelationsPanel" type="HBoxContainer" parent="."]
@@ -34,13 +72,14 @@ layout_mode = 3
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -516.0
-offset_top = 48.0
+offset_left = -560.0
+offset_top = 52.0
 offset_right = -16.0
-offset_bottom = 80.0
+offset_bottom = 88.0
 grow_horizontal = 0
 grow_vertical = 2
 theme = ExtResource("2_theme")
+theme_override_constants/separation = 10
 
 [node name="InventoryPanel" type="PanelContainer" parent="."]
 visible = false
@@ -50,17 +89,18 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -240.0
-offset_top = -220.0
-offset_right = 240.0
-offset_bottom = 220.0
+offset_left = -260.0
+offset_top = -236.0
+offset_right = 260.0
+offset_bottom = 236.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
+theme_override_styles/panel = SubResource("StyleBoxTexture_inv")
 
 [node name="Content" type="VBoxContainer" parent="InventoryPanel"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="InventoryPanel/Content"]
 layout_mode = 2
@@ -69,7 +109,7 @@ text = "背包"
 
 [node name="ItemsBox" type="VBoxContainer" parent="InventoryPanel/Content"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
 
 [node name="RecipesTitle" type="Label" parent="InventoryPanel/Content"]
 layout_mode = 2
@@ -78,7 +118,7 @@ text = "配方"
 
 [node name="RecipesBox" type="VBoxContainer" parent="InventoryPanel/Content"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
 
 [node name="BuildBar" type="HBoxContainer" parent="."]
 layout_mode = 3
@@ -87,13 +127,14 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -400.0
-offset_top = -68.0
-offset_right = 400.0
+offset_left = -420.0
+offset_top = -72.0
+offset_right = 420.0
 offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
 theme = ExtResource("2_theme")
+theme_override_constants/separation = 8
 
 [node name="HintToast" type="PanelContainer" parent="."]
 visible = false
@@ -103,10 +144,10 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -320.0
-offset_top = -112.0
-offset_right = 320.0
-offset_bottom = -78.0
+offset_left = -340.0
+offset_top = -120.0
+offset_right = 340.0
+offset_bottom = -80.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
@@ -125,17 +166,18 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -200.0
-offset_right = 180.0
-offset_bottom = 200.0
+offset_left = -190.0
+offset_top = -214.0
+offset_right = 190.0
+offset_bottom = 214.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
+theme_override_styles/panel = SubResource("StyleBoxTexture_menu")
 
 [node name="Content" type="VBoxContainer" parent="MenuPanel"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 alignment = 1
 
 [node name="Title" type="Label" parent="MenuPanel/Content"]
@@ -166,17 +208,14 @@ text = "重新开始"
 
 [node name="HelpPanel" type="PanelContainer" parent="MenuPanel/Content"]
 visible = false
-custom_minimum_size = Vector2(0, 132)
+custom_minimum_size = Vector2(0, 148)
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
+theme_override_styles/panel = SubResource("StyleBoxTexture_help")
 
 [node name="HelpText" type="Label" parent="MenuPanel/Content/HelpPanel"]
 layout_mode = 2
 autowrap_mode = 3
-text = "操作说明（灰盒）
+text = "操作说明
 移动：WASD 或方向键
 采集：鼠标左键 或 空格键
 选择建筑：数字键 1-6 或点击底部建造栏
@@ -187,4 +226,4 @@ text = "操作说明（灰盒）
 矿脉覆盖层：O 键
 菜单：Esc 键
 
-当前为灰盒垂直切片，正式美术尚未接入。"
+星壤 · 余辉纪元垂直切片 — 原创深空余辉审美。"
