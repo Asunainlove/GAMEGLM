@@ -7,8 +7,8 @@ extends GutTest
 ## - 资产存在 → 按 docs/art 合同目录与命名优先探测，任务书平铺路径兜底；
 ## - res:// 走导入系统（编辑器/导出一致），非 res://（user:// 测试注入）走
 ##   原生 PNG 读取；两层统一由 texture_at 收口。
-## 测试经 base_dir 参数注入 user:// 临时目录（生产 base_dir 恒为 res://assets/art，
-## 该目录本包不创建——未 approved 资产不得入库，适配层只负责加载）。
+## 测试经 base_dir 参数注入 user:// 临时目录（生产 base_dir 恒为 res://assets/art）。
+## 灰盒「缺资产」断言必须与生产树是否已落位正式美术隔离，避免 batch1+ 假红。
 
 const ADAPTER: Script = preload("res://src/assets/asset_adapter.gd")
 const GUT_GREEN_PNG: String = "res://addons/gut/images/green.png"
@@ -81,8 +81,9 @@ func test_default_base_dir_is_contract_root() -> void:
 
 
 func test_texture_returns_null_for_missing_asset() -> void:
-	# 生产基态：res://assets/art 尚不存在（未 approved 资产不入库）。
-	assert_null(ADAPTER.texture("env_world_soil_base"), "生产基态必须返回 null（灰盒回退）。")
+	# 灰盒契约：缺资产一律 null。正式美术落位后不得依赖「生产树为空」；
+	# 用已知不存在的 id + 空注入目录验证，避免 batch1 落位后假红。
+	assert_null(ADAPTER.texture("env_world_missing_asset_xyz"), "未知 id 在生产树必须返回 null。")
 	assert_null(ADAPTER.texture("env_world_soil_base", _temp_dir), "注入空目录必须返回 null。")
 	assert_null(ADAPTER.texture("", _temp_dir), "空 id 必须安全返回 null。")
 
@@ -258,4 +259,6 @@ func test_probe_reports_directory_existence() -> void:
 	assert_true(ADAPTER.probe(_temp_dir), "存在的 user:// 目录必须返回 true。")
 	assert_false(ADAPTER.probe("user://g6p1_adapter_missing_dir"), "缺失目录必须返回 false。")
 	assert_true(ADAPTER.probe("res://tests/unit"), "res:// 项目目录必须可探测。")
-	assert_false(ADAPTER.probe("res://assets/art"), "生产基态 assets/art 不存在（未入库资产）。")
+	# batch1 已落位 assets/art；探测存在性而非「生产树必须空」。
+	assert_true(ADAPTER.probe("res://assets/art"), "batch1 落位后 assets/art 必须可探测。")
+	assert_false(ADAPTER.probe("res://assets/art/__missing_probe_dir__"), "缺失子目录必须返回 false。")
