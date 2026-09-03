@@ -1,14 +1,19 @@
 {
   "goal_status": "active",
   "milestone": "G7",
-  "window": "W004-DLX+G7P",
-  "window_status": "human_gates_only",
-  "last_verified_commit": "149ee28",
-  "active_packet": null,
-  "resume_from": "await_g6_decision_then_g7_human_gates",
-  "next_packet_ids": [],
+  "window": "W004-G6A+G7P",
+  "window_status": "g6_plan_a_production",
+  "last_verified_commit": "b73cb6c",
+  "active_packet": "G6A-P0-BATCH1-ENV",
+  "resume_from": "g6_plan_a_p0_batch1_env_then_approval",
+  "next_packet_ids": [
+    "G6A-P0-BATCH2-UNITS",
+    "G6A-P0-BATCH3-UI",
+    "G6A-P0-BATCH4-AUDIO",
+    "G7-HUMAN"
+  ],
   "known_blockers": [
-    "G6 gate decision pending from owner: Plan A (produce assets per docs/art/prompts/plan-a-p0-batch-prompts.md + ops/art-approval.md) OR Plan B (reply with authorization statement to fill ops/art-approval.md greybox record)",
-    "G7 human gates: fill docs/rc-playthrough-record.md during real playthrough (45-60min x3 routes, external playtest, originality C.2 section)"
+    "G6 Plan A: produce and owner-approve P0 asset batches (env/units/ui/audio) before drop-in to assets/",
+    "G7 human gates: fill docs/rc-playthrough-record.md (45-60min x3 routes, external playtest, originality C.2)"
   ]
 }
