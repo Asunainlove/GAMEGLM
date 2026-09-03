@@ -35,3 +35,15 @@ Standing auth: 幕僚长 — layout/theme/env probe polish; merge if gates OK. *
 ## Do not (honored)
 
 - No unit battle frame swaps; no gameplay/values/events; no invented binary art.
+
+
+## Gates (local, 2026-09-03 UTC+8 ~20:20)
+
+| Check | Result |
+|---|---|
+| `python3 scripts/validate_content.py` | **PASS** (40 files / 65 defs / 14 schemas) |
+| Godot `--headless --import` | **PASS** |
+| Subset GUT (theme/hud/battle/world_renderer/bootstrap) | **72/72 PASS** |
+| Full unit suite `-gdir=res://tests/unit` | **715/715 PASS** |
+
+Logs: `/workspace/gut-logs/gut-visual-followup-subset2.log`, `gut-visual-followup-full5.log`, `validate-visual-followup.log`
