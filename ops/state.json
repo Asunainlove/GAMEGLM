@@ -4,8 +4,8 @@
   "window": "W004-G6A+G7P",
   "window_status": "g6_plan_a_production",
   "last_verified_commit": "b73cb6c",
-  "active_packet": "G6A-P0-BATCH1-ENV",
-  "resume_from": "g6_plan_a_p0_batch1_env_then_approval",
+  "active_packet": "G6A-P0-BATCH2-UNITS",
+  "resume_from": "g6_plan_a_p0_batch2_units_production",
   "next_packet_ids": [
     "G6A-P0-BATCH2-UNITS",
     "G6A-P0-BATCH3-UI",
@@ -13,7 +13,7 @@
     "G7-HUMAN"
   ],
   "known_blockers": [
-    "G6 Plan A: produce and owner-approve P0 asset batches (env/units/ui/audio) before drop-in to assets/",
+    "G6 Plan A: batch1 env approved+drop-in; continue units/ui/audio P0 then remaining contracts",
     "G7 human gates: fill docs/rc-playthrough-record.md (45-60min x3 routes, external playtest, originality C.2)"
   ]
 }
