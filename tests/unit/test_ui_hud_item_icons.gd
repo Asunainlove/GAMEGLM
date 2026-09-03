@@ -129,7 +129,7 @@ func test_missing_icons_render_labels_only() -> void:
 		return
 	hud.asset_base_dir = _temp_dir
 	hud.refresh()
-	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
+	var bar: HBoxContainer = hud.get_node("%InventoryBar") as HBoxContainer
 	var texts: Array[String] = _label_texts(bar)
 	assert_eq(texts, ["辉砂晶片 ×2", "星壤尘 ×5"] as Array[String], "槽文本保持基线。")
 	for child: Node in bar.get_children():
@@ -145,7 +145,7 @@ func test_injected_icon_shows_at_contract_path() -> void:
 		return
 	hud.asset_base_dir = _temp_dir
 	hud.refresh()
-	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
+	var bar: HBoxContainer = hud.get_node("%InventoryBar") as HBoxContainer
 	# 排序：lumen_shard 无图标（纯 Label）在前，starsoil_dust 图标 + Label 在后。
 	assert_eq(bar.get_child_count(), 3, "一个图标 + 两个文本 = 3 个节点。")
 	var icon: TextureRect = bar.get_child(1) as TextureRect
@@ -173,7 +173,7 @@ func test_injected_icon_accepts_flat_fallback_path() -> void:
 		return
 	hud.asset_base_dir = _temp_dir
 	hud.refresh()
-	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
+	var bar: HBoxContainer = hud.get_node("%InventoryBar") as HBoxContainer
 	assert_eq(bar.get_child_count(), 3, "一个图标 + 两个文本 = 3 个节点。")
 	var icon: TextureRect = bar.get_child(0) as TextureRect
 	assert_not_null(icon, "平铺落位兜底必须生效。")

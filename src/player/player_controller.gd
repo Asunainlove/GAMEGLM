@@ -1,5 +1,8 @@
 extends CharacterBody2D
 ## Player controller (WP02). Presentation-only node: it converts input into
+## TODO(ART-019): scenes/player.tscn Sprite remains ColorRect greybox — no approved
+## luoxian_action_set frames under assets/art/characters/ yet (character-assets.md §6).
+
 ## movement and emits intent signals. It never mutates persistent state; the
 ## world/interaction layer subscribes to the signals and goes through
 ## GameState + StatePatch (contract module-contracts.md section 0/4).

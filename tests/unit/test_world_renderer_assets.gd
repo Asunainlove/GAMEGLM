@@ -205,6 +205,30 @@ func test_build_tile_set_accepts_ore_atlas_strip() -> void:
 		assert_true(dust.has_tile(Vector2i.ZERO))
 
 
+func test_cell_asset_probes_list_rock_wall_and_optional_soil_crack_todo() -> void:
+	var probes: Array = WorldRenderer.CELL_ASSET_PROBES[WorldRenderer.SOURCE_ROCK_WALL]
+	assert_eq(str(probes[0]), "world/tiles/env_world_rock_wall.png", "rock_wall must prefer env_world_rock_wall.")
+	assert_true(
+		probes.has("world/tiles/env_mine_wall_atlas.png"),
+		"mine_wall atlas must remain as fallback (file itself untouched)."
+	)
+
+
+func test_build_tile_set_prefers_env_world_rock_wall_over_atlas() -> void:
+	_write_png("world/tiles", "env_world_rock_wall.png", Vector2i(32, 32), Color(0, 1, 0))
+	_write_atlas_strip(
+		"world/tiles", "env_mine_wall_atlas.png", 12,
+		[Color(1, 0, 0), Color(0, 0, 1)])
+	var renderer: WorldRenderer = WORLD_RENDERER_SCRIPT.new()
+	add_child_autofree(renderer)
+	var tile_set: TileSet = renderer.build_tile_set(_temp_dir)
+	var wall: TileSetAtlasSource = tile_set.get_source(WorldRenderer.SOURCE_ROCK_WALL) as TileSetAtlasSource
+	assert_not_null(wall)
+	if wall != null:
+		assert_eq(wall.texture.get_size(), Vector2(32, 32), "prefer single-cell rock_wall texture.")
+		_assert_pixel_close(wall.texture, Color(0, 1, 0), "env_world_rock_wall must win over atlas.")
+
+
 func test_build_tile_set_accepts_rock_wall_atlas_strip() -> void:
 	_write_atlas_strip(
 		"world/tiles", "env_mine_wall_atlas.png", 12,

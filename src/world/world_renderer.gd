@@ -41,7 +41,14 @@ const CELL_ASSET_PROBES: Dictionary = {
 	SOURCE_ORE_DUST: ["world/tiles/env_ore_dust_set.png", "world/tilesets/ore_dust.png"],
 	SOURCE_ORE_SHARD: ["world/tiles/env_ore_shard_set.png", "world/tilesets/ore_shard.png"],
 	SOURCE_ORE_CORE: ["world/tiles/env_ore_core_set.png", "world/tilesets/ore_core.png"],
-	SOURCE_ROCK_WALL: ["world/tiles/env_mine_wall_atlas.png", "world/tilesets/rock_wall.png"],
+	## Prefer env_world_rock_wall (32x32); mine_wall atlas remains fallback (file untouched).
+	## TODO(ART-ENV-DECAL): env_world_soil_crack.png ships under world/decals/ but no DecalLayer
+	## exists in world.tscn yet — do not probe at runtime until a decorative overlay is added.
+	SOURCE_ROCK_WALL: [
+		"world/tiles/env_world_rock_wall.png",
+		"world/tiles/env_mine_wall_atlas.png",
+		"world/tilesets/rock_wall.png",
+	],
 }
 
 ## 默认探测根（与 AssetAdapter.DEFAULT_BASE_DIR 同值；跨类常量默认参受限就地

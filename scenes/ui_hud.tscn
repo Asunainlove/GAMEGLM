@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="1_hud"]
 [ext_resource type="Theme" path="res://themes/starsoil_theme.tres" id="2_theme"]
@@ -39,47 +39,68 @@ texture_margin_top = 20.0
 texture_margin_right = 24.0
 texture_margin_bottom = 20.0
 
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_chrome"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+texture = ExtResource("4_menu")
+texture_margin_left = 28.0
+texture_margin_top = 24.0
+texture_margin_right = 28.0
+texture_margin_bottom = 28.0
+
 [node name="Hud" type="CanvasLayer"]
+layer = 20
 process_mode = 3
 script = ExtResource("1_hud")
 
-[node name="InventoryBar" type="HBoxContainer" parent="."]
+[node name="InventoryBarChrome" type="PanelContainer" parent="."]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 16.0
-offset_top = 12.0
-offset_right = 16.0
-offset_bottom = 12.0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 12.0
+offset_bottom = 10.0
+theme = ExtResource("2_theme")
+theme_override_styles/panel = SubResource("StyleBoxTexture_chrome")
+
+[node name="InventoryBar" type="HBoxContainer" parent="InventoryBarChrome"]
+unique_name_in_owner = true
+layout_mode = 2
 theme = ExtResource("2_theme")
 theme_override_constants/separation = 8
 
-[node name="ObjectiveLabel" type="Label" parent="."]
+[node name="TopHudChrome" type="PanelContainer" parent="."]
 layout_mode = 3
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -560.0
-offset_top = 12.0
-offset_right = -16.0
-offset_bottom = 48.0
+offset_left = -520.0
+offset_top = 10.0
+offset_right = -12.0
+offset_bottom = 110.0
 grow_horizontal = 0
+theme = ExtResource("2_theme")
+theme_override_styles/panel = SubResource("StyleBoxTexture_chrome")
+
+[node name="TopHudColumn" type="VBoxContainer" parent="TopHudChrome"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ObjectiveLabel" type="Label" parent="TopHudChrome/TopHudColumn"]
+unique_name_in_owner = true
+layout_mode = 2
 theme = ExtResource("2_theme")
 theme_override_font_sizes/font_size = 15
 horizontal_alignment = 2
 
-[node name="RelationsPanel" type="HBoxContainer" parent="."]
-layout_mode = 3
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -560.0
-offset_top = 52.0
-offset_right = -16.0
-offset_bottom = 88.0
-grow_horizontal = 0
-grow_vertical = 2
+[node name="RelationsPanel" type="HBoxContainer" parent="TopHudChrome/TopHudColumn"]
+unique_name_in_owner = true
+layout_mode = 2
 theme = ExtResource("2_theme")
 theme_override_constants/separation = 10
+alignment = 2
 
 [node name="InventoryPanel" type="PanelContainer" parent="."]
 visible = false
@@ -120,21 +141,28 @@ text = "配方"
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="BuildBar" type="HBoxContainer" parent="."]
+[node name="BuildBarChrome" type="PanelContainer" parent="."]
 layout_mode = 3
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -420.0
-offset_top = -72.0
-offset_right = 420.0
-offset_bottom = -16.0
+offset_left = -440.0
+offset_top = -96.0
+offset_right = 440.0
+offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 0
 theme = ExtResource("2_theme")
+theme_override_styles/panel = SubResource("StyleBoxTexture_chrome")
+
+[node name="BuildBar" type="HBoxContainer" parent="BuildBarChrome"]
+unique_name_in_owner = true
+layout_mode = 2
+theme = ExtResource("2_theme")
 theme_override_constants/separation = 8
+alignment = 1
 
 [node name="HintToast" type="PanelContainer" parent="."]
 visible = false
@@ -145,9 +173,9 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -340.0
-offset_top = -120.0
+offset_top = -150.0
 offset_right = 340.0
-offset_bottom = -80.0
+offset_bottom = -110.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2

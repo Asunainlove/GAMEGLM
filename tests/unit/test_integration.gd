@@ -813,7 +813,7 @@ func test_manual_save_request_persists_manual_slot_and_flashes_notice() -> void:
 	var loaded: AppResult = SaveService.load_slot("manual")
 	assert_true(loaded.is_ok, "save_requested 必须经 SaveService 写入 manual 槽。")
 	assert_eq(int((loaded.value["inventory"] as Dictionary).get("starsoil_dust", 0)), 5)
-	var objective: Label = hud.get_node("ObjectiveLabel") as Label
+	var objective: Label = hud.get_node("%ObjectiveLabel") as Label
 	assert_eq(objective.text, "已保存", "手动保存后 ObjectiveLabel 必须闪现'已保存'。")
 	hud.clear_notice()
 	assert_eq(objective.text, Hud.objective_for(store.snapshot()), "提示结束后必须恢复目标文案。")

@@ -156,6 +156,7 @@ func test_hud_scene_matches_contract() -> void:
 
 	assert_eq(hud.name, "Hud")
 	assert_true(hud is CanvasLayer, "Hud root must be a CanvasLayer.")
+	assert_eq(hud.layer, 20, "Hud must draw on UILayer above world sprites.")
 	var script: Script = hud.get_script()
 	assert_not_null(script)
 	if script != null:
@@ -163,15 +164,15 @@ func test_hud_scene_matches_contract() -> void:
 	assert_eq(hud.process_mode, Node.PROCESS_MODE_ALWAYS, "Hud must keep processing while paused.")
 	assert_true(hud.has_signal("menu_resumed"), "Hud must declare menu_resumed signal.")
 
-	assert_true(hud.get_node("InventoryBar") is HBoxContainer, "InventoryBar must be an HBoxContainer.")
-	assert_true(hud.get_node("ObjectiveLabel") is Label, "ObjectiveLabel must be a Label.")
+	assert_true(hud.get_node("%InventoryBar") is HBoxContainer, "InventoryBar must be an HBoxContainer.")
+	assert_true(hud.get_node("%ObjectiveLabel") is Label, "ObjectiveLabel must be a Label.")
 	assert_true(hud.get_node("InventoryPanel") is PanelContainer, "InventoryPanel must be a PanelContainer.")
 	assert_true(hud.get_node("MenuPanel") is PanelContainer, "MenuPanel must be a PanelContainer.")
 
 	assert_false((hud.get_node("InventoryPanel") as Control).visible, "InventoryPanel starts hidden.")
 	assert_false((hud.get_node("MenuPanel") as Control).visible, "MenuPanel starts hidden.")
-	assert_true((hud.get_node("InventoryBar") as Control).visible, "InventoryBar starts visible.")
-	assert_true((hud.get_node("ObjectiveLabel") as Control).visible, "ObjectiveLabel starts visible.")
+	assert_true((hud.get_node("%InventoryBar") as Control).visible, "InventoryBar starts visible.")
+	assert_true((hud.get_node("%ObjectiveLabel") as Control).visible, "ObjectiveLabel starts visible.")
 
 
 func test_hud_children_use_starsoil_theme() -> void:
@@ -181,7 +182,7 @@ func test_hud_children_use_starsoil_theme() -> void:
 	if theme == null:
 		return
 
-	for node_name: String in ["InventoryBar", "ObjectiveLabel", "InventoryPanel", "MenuPanel"]:
+	for node_name: String in ["%InventoryBar", "%ObjectiveLabel", "InventoryPanel", "MenuPanel"]:
 		var control: Control = hud.get_node(node_name) as Control
 		assert_not_null(control, node_name + " must exist.")
 		if control != null:
@@ -244,7 +245,7 @@ func test_save_and_restart_buttons_emit_signals_to_field_kept_listener() -> void
 
 func test_refresh_renders_inventory_bar_with_injected_names() -> void:
 	var hud: Hud = _make_hud(_basic_payload())
-	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
+	var bar: HBoxContainer = hud.get_node("%InventoryBar") as HBoxContainer
 	var texts: Array[String] = _label_texts(bar)
 	var expected: Array[String] = ["辉砂晶片 ×2", "星壤尘 ×5"]
 	assert_eq(texts, expected, "InventoryBar slots must use injected Chinese names, sorted by item id.")
@@ -253,7 +254,7 @@ func test_refresh_renders_inventory_bar_with_injected_names() -> void:
 
 func test_refresh_sets_non_empty_objective_label() -> void:
 	var hud: Hud = _make_hud(_basic_payload())
-	var label: Label = hud.get_node("ObjectiveLabel") as Label
+	var label: Label = hud.get_node("%ObjectiveLabel") as Label
 	assert_ne(label.text, "", "ObjectiveLabel must render a non-empty objective.")
 	assert_eq(label.text, Hud.objective_for(_fake.payload), "ObjectiveLabel must render objective_for(snapshot).")
 
@@ -265,7 +266,7 @@ func test_inventory_bar_summarizes_overflow_as_plus_n() -> void:
 	var payload: Dictionary = {"revision": 3, "inventory": inventory, "flags": {}, "placed_buildings": []}
 	var hud: Hud = _make_hud(payload)
 
-	var texts: Array[String] = _label_texts(hud.get_node("InventoryBar"))
+	var texts: Array[String] = _label_texts(hud.get_node("%InventoryBar"))
 	assert_eq(texts.size(), 9, "InventoryBar must show 8 slots plus one overflow summary.")
 	if texts.size() == 9:
 		assert_eq(texts[0], "item_01 ×1")
@@ -291,14 +292,14 @@ func test_refresh_always_rerenders_ignoring_revision_cache() -> void:
 	var hud: Hud = _make_hud(_basic_payload())
 	_fake.payload["inventory"] = {"starsoil_dust": 7}
 	hud.refresh()
-	var texts: Array[String] = _label_texts(hud.get_node("InventoryBar"))
+	var texts: Array[String] = _label_texts(hud.get_node("%InventoryBar"))
 	var expected: Array[String] = ["星壤尘 ×7"]
 	assert_eq(texts, expected, "refresh() must re-render even when the revision is unchanged.")
 
 
 func test_poll_renders_only_when_revision_changes() -> void:
 	var hud: Hud = _make_hud(_basic_payload())
-	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
+	var bar: HBoxContainer = hud.get_node("%InventoryBar") as HBoxContainer
 	var timer: Timer = hud.get_node("PollTimer") as Timer
 	timer.stop()
 
@@ -403,7 +404,7 @@ func test_help_button_toggles_help_panel_with_operation_text() -> void:
 
 func test_flash_notice_overrides_and_restores_objective_label() -> void:
 	var hud: Hud = _make_hud(_basic_payload())
-	var objective: Label = hud.get_node("ObjectiveLabel") as Label
+	var objective: Label = hud.get_node("%ObjectiveLabel") as Label
 	var baseline: String = objective.text
 	assert_ne(baseline, "")
 

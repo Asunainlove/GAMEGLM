@@ -292,5 +292,5 @@ func test_hud_objective_label_renders_table_objective() -> void:
 		"前置：默认目标表可加载。"
 	)
 	var hud: Hud = _make_hud(_snap({"event_event_prologue_landing_done": true}, []))
-	var label: Label = hud.get_node("ObjectiveLabel") as Label
+	var label: Label = hud.get_node("%ObjectiveLabel") as Label
 	assert_eq(label.text, "勘探琉砂海，采集星壤尘", "ObjectiveLabel 必须渲染表驱动目标句。")

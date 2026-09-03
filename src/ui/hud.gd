@@ -98,14 +98,14 @@ var recipe_provider: Callable = Callable()
 ## 表现层不写状态：由集成层注入的回调经 patch 把 hint_<id>_seen 置位。
 var hint_seen_callback: Callable = Callable()
 
-@onready var _inventory_bar: HBoxContainer = $InventoryBar
-@onready var _objective_label: Label = $ObjectiveLabel
-@onready var _relations_panel: HBoxContainer = $RelationsPanel
+@onready var _inventory_bar: HBoxContainer = %InventoryBar
+@onready var _objective_label: Label = %ObjectiveLabel
+@onready var _relations_panel: HBoxContainer = %RelationsPanel
 @onready var _inventory_panel: PanelContainer = $InventoryPanel
 @onready var _menu_panel: PanelContainer = $MenuPanel
 @onready var _inventory_items_box: VBoxContainer = $InventoryPanel/Content/ItemsBox
 @onready var _recipes_box: VBoxContainer = $InventoryPanel/Content/RecipesBox
-@onready var _build_bar: HBoxContainer = $BuildBar
+@onready var _build_bar: HBoxContainer = %BuildBar
 @onready var _hint_toast: PanelContainer = $HintToast
 @onready var _hint_label: Label = $HintToast/HintLabel
 @onready var _menu_help_panel: PanelContainer = $MenuPanel/Content/HelpPanel

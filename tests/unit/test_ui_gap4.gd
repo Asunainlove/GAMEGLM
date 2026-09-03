@@ -125,7 +125,7 @@ func _default_catalog() -> Array:
 
 func _build_buttons(hud: Hud) -> Array[Button]:
 	var buttons: Array[Button] = []
-	var bar: HBoxContainer = hud.get_node("BuildBar") as HBoxContainer
+	var bar: HBoxContainer = hud.get_node("%BuildBar") as HBoxContainer
 	for child: Node in bar.get_children():
 		if child is Button:
 			buttons.append(child)
@@ -150,7 +150,7 @@ func test_hud_declares_build_and_craft_signals() -> void:
 
 func test_build_bar_is_bottom_hbox_in_scene() -> void:
 	var hud: Hud = _make_hud()
-	var bar: Control = hud.get_node("BuildBar") as Control
+	var bar: Control = hud.get_node("%BuildBar") as Control
 	assert_not_null(bar, "BuildBar must exist in ui_hud.tscn.")
 	if bar != null:
 		assert_true(bar is HBoxContainer, "BuildBar must be an HBoxContainer.")

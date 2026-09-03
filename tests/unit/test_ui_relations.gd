@@ -152,8 +152,8 @@ func _remove_dir_recursive(tree: String) -> void:
 
 func test_scene_has_relations_panel_contract() -> void:
 	var hud: Hud = _make_hud(_payload({}, {}))
-	assert_not_null(hud.get_node_or_null("RelationsPanel"), "ui_hud.tscn 必须提供 RelationsPanel 节点。")
-	var panel: Control = hud.get_node("RelationsPanel") as Control
+	assert_not_null(hud.get_node_or_null("%RelationsPanel"), "ui_hud.tscn 必须提供 RelationsPanel 节点。")
+	var panel: Control = hud.get_node("%RelationsPanel") as Control
 	assert_true(panel is HBoxContainer, "RelationsPanel 必须是 HBoxContainer。")
 	assert_true(panel.visible, "RelationsPanel 初始必须可见（P0 信任进度常驻展示）。")
 	var theme: Theme = load(THEME_PATH) as Theme
@@ -171,7 +171,7 @@ func test_relation_rows_render_trust_and_affection_with_progress_bars() -> void:
 		},
 		{}
 	))
-	var panel: Control = hud.get_node("RelationsPanel")
+	var panel: Control = hud.get_node("%RelationsPanel")
 	var texts: Array[String] = _label_texts(panel)
 	assert_true(texts.has("洛弦 信任 55/100 ♥3"), "洛弦行必须渲染 trust/affection 数值，实际：%s" % [texts])
 	assert_true(texts.has("弥砂 信任 30/100 ♥0"), "弥砂行必须渲染 trust/affection 数值，实际：%s" % [texts])
@@ -187,7 +187,7 @@ func test_relation_rows_render_trust_and_affection_with_progress_bars() -> void:
 
 func test_relation_rows_default_to_zero_when_relationships_missing() -> void:
 	var hud: Hud = _make_hud(_payload({}, {}))
-	var texts: Array[String] = _label_texts(hud.get_node("RelationsPanel"))
+	var texts: Array[String] = _label_texts(hud.get_node("%RelationsPanel"))
 	assert_true(texts.has("洛弦 信任 0/100 ♥0"), "缺失关系记录时洛弦行必须按 0 渲染。")
 	assert_true(texts.has("弥砂 信任 0/100 ♥0"), "缺失关系记录时弥砂行必须按 0 渲染。")
 
@@ -197,7 +197,7 @@ func test_relation_rows_default_to_zero_when_relationships_missing() -> void:
 
 func test_sanctuary_gate_hint_shows_below_threshold_with_data_number() -> void:
 	var hud: Hud = _make_hud(_payload({"luoxian": {"trust": 10, "affection": 0}}, {}))
-	var lines: Array[String] = _lines_containing(hud.get_node("RelationsPanel"), "尚未赢得洛弦的信任")
+	var lines: Array[String] = _lines_containing(hud.get_node("%RelationsPanel"), "尚未赢得洛弦的信任")
 	assert_eq(lines.size(), 1, "trust 低于政策门时必须出现一条政策门提示。")
 	if lines.size() == 1:
 		assert_true(
@@ -212,7 +212,7 @@ func test_sanctuary_gate_hint_disappears_when_policy_flag_set() -> void:
 		{"policy_sanctuary": true}
 	))
 	assert_true(
-		_lines_containing(hud.get_node("RelationsPanel"), "尚未赢得洛弦的信任").is_empty(),
+		_lines_containing(hud.get_node("%RelationsPanel"), "尚未赢得洛弦的信任").is_empty(),
 		"政策 flag 置位后政策门提示必须消失。"
 	)
 
@@ -220,14 +220,14 @@ func test_sanctuary_gate_hint_disappears_when_policy_flag_set() -> void:
 func test_sanctuary_gate_hint_boundary_at_threshold() -> void:
 	var at_gate: Hud = _make_hud(_payload({"luoxian": {"trust": 40, "affection": 0}}, {}))
 	assert_true(
-		_lines_containing(at_gate.get_node("RelationsPanel"), "尚未赢得洛弦的信任").is_empty(),
+		_lines_containing(at_gate.get_node("%RelationsPanel"), "尚未赢得洛弦的信任").is_empty(),
 		"trust 恰好达到门阈值时提示必须消失。"
 	)
 	at_gate.free()
 	_hud = null
 	var below_gate: Hud = _make_hud(_payload({"luoxian": {"trust": 39, "affection": 0}}, {}))
 	assert_eq(
-		_lines_containing(below_gate.get_node("RelationsPanel"), "尚未赢得洛弦的信任").size(), 1,
+		_lines_containing(below_gate.get_node("%RelationsPanel"), "尚未赢得洛弦的信任").size(), 1,
 		"trust 恰好低于门阈值时提示必须存在。"
 	)
 
@@ -240,7 +240,7 @@ func test_symbiosis_gate_hint_shows_after_mode_choice_below_threshold() -> void:
 		{"luoxian": {"trust": 58, "affection": 0}},
 		{"station_mode_symbiosis": true}
 	))
-	var lines: Array[String] = _lines_containing(hud.get_node("RelationsPanel"), "距离共生还需")
+	var lines: Array[String] = _lines_containing(hud.get_node("%RelationsPanel"), "距离共生还需")
 	assert_eq(lines.size(), 1, "共生路线选择后 trust 低于结局门必须出现共生门提示。")
 	if lines.size() == 1:
 		assert_true(
@@ -255,14 +255,14 @@ func test_symbiosis_gate_hint_disappears_at_threshold_and_without_flag() -> void
 		{"station_mode_symbiosis": true}
 	))
 	assert_true(
-		_lines_containing(at_gate.get_node("RelationsPanel"), "距离共生还需").is_empty(),
+		_lines_containing(at_gate.get_node("%RelationsPanel"), "距离共生还需").is_empty(),
 		"trust 达到共生门后提示必须消失。"
 	)
 	at_gate.free()
 	_hud = null
 	var no_flag: Hud = _make_hud(_payload({"luoxian": {"trust": 58, "affection": 0}}, {}))
 	assert_true(
-		_lines_containing(no_flag.get_node("RelationsPanel"), "距离共生还需").is_empty(),
+		_lines_containing(no_flag.get_node("%RelationsPanel"), "距离共生还需").is_empty(),
 		"未选择共生路线时不得出现共生门提示。"
 	)
 
@@ -325,7 +325,7 @@ func test_gate_data_is_injectable_and_value_driven() -> void:
 	assert_true(Hud.load_relation_gates_from(policy_path.get_base_dir(), endings_path).is_ok, "临时门数据必须可装载。")
 
 	var locked: Hud = _make_hud(_payload({"misa": {"trust": 10, "affection": 0}}, {}))
-	var locked_lines: Array[String] = _lines_containing(locked.get_node("RelationsPanel"), "尚未赢得弥砂的信任")
+	var locked_lines: Array[String] = _lines_containing(locked.get_node("%RelationsPanel"), "尚未赢得弥砂的信任")
 	assert_eq(locked_lines.size(), 1, "注入数据：misa trust 10 低于 25 必须出现政策门提示。")
 	if locked_lines.size() == 1:
 		assert_true(locked_lines[0].contains("25"), "提示数值必须来自注入数据，实际：%s" % locked_lines[0])
@@ -337,7 +337,7 @@ func test_gate_data_is_injectable_and_value_driven() -> void:
 		{"misa": {"trust": 50, "affection": 0}},
 		{"station_mode_symbiosis": true}
 	))
-	var symbiotic_lines: Array[String] = _lines_containing(symbiotic.get_node("RelationsPanel"), "距离共生还需")
+	var symbiotic_lines: Array[String] = _lines_containing(symbiotic.get_node("%RelationsPanel"), "距离共生还需")
 	assert_eq(symbiotic_lines.size(), 1, "注入数据：共生 flag 置位且 trust 50 低于 65 必须出现共生门提示。")
 	if symbiotic_lines.size() == 1:
 		assert_true(symbiotic_lines[0].contains("15"), "剩余点数必须按注入阈值推导（65 - 50），实际：%s" % symbiotic_lines[0])
@@ -389,10 +389,10 @@ func test_bad_gate_files_fail_safe_without_breaking_rows() -> void:
 	assert_push_error("Hud: relation gate data rejected")
 	var hud: Hud = _make_hud(_payload({"luoxian": {"trust": 10, "affection": 0}}, {}))
 	assert_true(
-		_lines_containing(hud.get_node("RelationsPanel"), "尚未赢得").is_empty(),
+		_lines_containing(hud.get_node("%RelationsPanel"), "尚未赢得").is_empty(),
 		"坏表必须失败安全：不渲染任何门提示行。"
 	)
-	var texts: Array[String] = _label_texts(hud.get_node("RelationsPanel"))
+	var texts: Array[String] = _label_texts(hud.get_node("%RelationsPanel"))
 	assert_true(texts.has("洛弦 信任 10/100 ♥0"), "坏表不得影响关系数值行渲染。")
 
 

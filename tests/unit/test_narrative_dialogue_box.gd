@@ -40,6 +40,7 @@ func test_dialogue_box_scene_matches_canvas_layer_contract() -> void:
 		return
 	assert_eq(box.name, "DialogueBox", "Root node must be named DialogueBox.")
 	assert_true(box is CanvasLayer, "DialogueBox root must be a CanvasLayer.")
+	assert_eq(box.layer, 50, "DialogueBox must draw above world/HUD (ModalLayer).")
 	assert_false(box.visible, "DialogueBox must start hidden.")
 	assert_true(box.get_node_or_null("Panel") is Control, "Panel must be a Control under the root.")
 	assert_true(box.get_node_or_null("Panel/NameLabel") is Label, "Panel/NameLabel must be a Label.")

@@ -11,6 +11,9 @@ radius = 40.0
 [node name="Player" type="CharacterBody2D" groups=["player"]]
 script = ExtResource("1_player")
 
+; TODO(ART-019): no approved overworld action set under assets/art/characters/** yet.
+; Keep ColorRect greybox until luoxian_action_set (docs/art/character-assets.md §6) is approved + drop-in.
+; Do not invent broken TextureRect/AnimatedSprite2D refs.
 [node name="Sprite" type="ColorRect" parent="."]
 offset_left = -12.0
 offset_top = -12.0
