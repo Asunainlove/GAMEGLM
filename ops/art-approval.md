@@ -181,3 +181,9 @@
 | panel_help_v2 | v2-polish | Cursor GenerateImage / env_v2 | docs/art/ui-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/panels/panel_help.png |
 
 > Note (2026-09-03): UI button states + panel_inventory/menu/help approved/drop-in (panel trio identical chrome OK for theme continuity; help contract still allows inset variant later).
+| luoxian_action_idle_00 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/characters/luoxian/actions/luoxian_action_idle_00.png |
+| luoxian_action_walk_00 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/characters/luoxian/actions/luoxian_action_walk_00.png |
+| luoxian_action_walk_01 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/characters/luoxian/actions/luoxian_action_walk_01.png |
+| bg_title_v2 | v2-polish | Cursor GenerateImage | docs/art/ui-assets.md#7.3-UIA-TTL-BG | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/ui/title/bg_title.png |
+
+> Note (2026-09-03): Approved interim explore player set (idle+walk 48×48) — **partial ART-019** (full 12-frame gather/place/talk still owed). Title bg 1920×1080 approved (contract prefers 2560×1440; ≤2.5MB OK). Frame palette drift idle↔walk noted for next pass.
