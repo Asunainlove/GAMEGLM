@@ -116,6 +116,31 @@
 
 | font_noto_sans_sc_regular | 3-ui | notofonts/noto-cjk Sans2.004 + pyftsubset | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/fonts/NotoSansSC-Regular.subset.otf |
 
+
+| bgm_title | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/bgm/bgm_title.ogg |
+| bgm_explore | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/bgm/bgm_explore.ogg |
+| bgm_build | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/bgm/bgm_build.ogg |
+| bgm_battle | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/bgm/bgm_battle.ogg |
+| bgm_boss | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/bgm/bgm_boss.ogg |
+| bgm_boss_final | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/bgm/bgm_boss_final.ogg |
+| sfx_mine_hit | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_mine_hit.ogg |
+| sfx_mine_depleted | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_mine_depleted.ogg |
+| sfx_build_place | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_build_place.ogg |
+| sfx_build_denied | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_build_denied.ogg |
+| sfx_craft_success | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_craft_success.ogg |
+| sfx_ui_click | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_ui_click.ogg |
+| sfx_ui_toggle | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_ui_toggle.ogg |
+| sfx_dialogue_page | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_dialogue_page.ogg |
+| sfx_dialogue_choice | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_dialogue_choice.ogg |
+| sfx_battle_action | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_battle_action.ogg |
+| sfx_battle_hit | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_battle_hit.ogg |
+| sfx_power_unstable | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_power_unstable.ogg |
+| sfx_boss_phase | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_boss_phase.ogg |
+| sfx_victory | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_victory.ogg |
+| sfx_defeat | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_defeat.ogg |
+| sfx_save_notice | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_save_notice.ogg |
+| sfx_ending_bell | 4-audio | ffmpeg lavfi procedural | docs/art/prompts/plan-a-p0-batch-prompts.md#批次4 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/audio/sfx/sfx_ending_bell.ogg |
+
 ## 灰盒交付授权记录（方案 B 专用，待所有者明示后填写）
 
 - 授权语句：（由项目所有者提供，例："授权保持灰盒交付为 G6 交付形态"）
@@ -124,3 +149,5 @@
 - 协调者处置：G6 标记 `accepted_greybox`，直接进入 G7 真人门禁（docs/g6-g7-human-gates-guide.md §2）。
 
 > Note (2026-09-03): `font_noto_sans_sc_regular` auto-approved by 幕僚长 standing auth; OFL + PROVENANCE under `assets/fonts/`.
+
+> Note (2026-09-03): batch4 audio 23 clips auto-approved by 幕僚长 standing auth after ffprobe gate; explore trimmed to 120s, ending_bell to 1.8s.
