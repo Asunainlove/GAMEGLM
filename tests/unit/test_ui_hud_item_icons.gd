@@ -3,7 +3,7 @@ extends GutTest
 ## G6P-1 任务 4：HUD 物品槽图标适配契约测试（TDD：先于实现编写）。
 ##
 ## 契约：
-## - 资产缺失（生产基态）→ 物品槽渲染与基线逐字节一致（纯 Label 文本行，
+## - 资产缺失（注入空目录）→ 物品槽渲染与基线逐字节一致（纯 Label 文本行，
 ##   无图标节点，布局不塌，零告警）；
 ## - 注入图标资产（A7 §9 合同落位 assets/art/ui/icons/uia_ico_<item_id>.png
 ##   优先，任务书平铺 ui_item_<item_id>.png 兜底）→ 槽文本左侧出现 24×24
@@ -11,12 +11,13 @@ extends GutTest
 ## - 混合态（部分物品命中、部分缺失）→ 一次性汇总告警（纯函数断言 + 实例
 ##   一次性标记）。
 ## 测试经 asset_base_dir 注入 user:// 临时目录（生产恒为 res://assets/art）。
+## 灰盒「缺图标」断言必须与 batch3 正式图标落位隔离，避免假红。
 
 const HUD_SCENE_PATH: String = "res://scenes/ui_hud.tscn"
 
 const ITEM_ICON_SIZE: Vector2 = Vector2(24.0, 24.0)
 
-## Godot 4 教训：Callable 只持 ObjectID，替身必须保存在测试实例字段中保活。
+## Godot 4 教训：Callable 只持对象ID，替身必须保存在测试实例字段中保活。
 var _fake: FakeSnapshotProvider = null
 
 var _temp_dir: String = ""
@@ -122,10 +123,12 @@ func _label_texts(node: Node) -> Array[String]:
 
 
 func test_missing_icons_render_labels_only() -> void:
-	# 生产基态（默认 res://assets/art 缺失）：槽渲染与基线逐字节一致。
+	# 注入空目录强制缺图标灰盒；不得依赖「生产树无正式图标」（batch3 已落位）。
 	var hud: Hud = _make_hud()
 	if hud == null:
 		return
+	hud.asset_base_dir = _temp_dir
+	hud.refresh()
 	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
 	var texts: Array[String] = _label_texts(bar)
 	assert_eq(texts, ["辉砂晶片 ×2", "星壤尘 ×5"] as Array[String], "槽文本保持基线。")
