@@ -44,4 +44,4 @@ func test_app_starts_with_simplified_chinese_greybox_ui() -> void:
 	if title != null:
 		assert_eq(title.text, "星壤：余辉纪元")
 	if status != null:
-		assert_eq(status.text, "灰盒垂直切片 · 系统启动中")
+		assert_eq(status.text, "琉砂海 · 余辉纪元垂直切片")

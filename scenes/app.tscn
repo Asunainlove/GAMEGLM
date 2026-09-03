@@ -74,7 +74,7 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(0.74, 0.8, 0.82, 1)
 theme_override_font_sizes/font_size = 22
-text = "灰盒垂直切片 · 系统启动中"
+text = "琉砂海 · 余辉纪元垂直切片"
 horizontal_alignment = 1
 
 [node name="Rule" type="ColorRect" parent="UILayer/StartupScreen/Layout"]
@@ -87,7 +87,7 @@ color = Color(0.42, 0.79, 0.72, 0.72)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.52, 0.59, 0.62, 1)
 theme_override_font_sizes/font_size = 16
-text = "占位界面 · 正式美术尚未接入"
+text = "星壤 · 余辉纪元 — 原创深空余辉审美"
 horizontal_alignment = 1
 
 [node name="World" parent="WorldHost" instance=ExtResource("2_world")]

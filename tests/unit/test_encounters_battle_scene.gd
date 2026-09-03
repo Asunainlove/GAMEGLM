@@ -126,12 +126,12 @@ func _unit(battle: Dictionary, unit_key: String) -> Dictionary:
 
 func _actions_box(scene: Node2D) -> VBoxContainer:
 	var ui: CanvasLayer = scene.get_node("UI") as CanvasLayer
-	return ui.get_node("ActionsBox") as VBoxContainer
+	return ui.get_node("ActionsPanel/ActionsBox") as VBoxContainer
 
 
 func _turn_label(scene: Node2D) -> Label:
 	var ui: CanvasLayer = scene.get_node("UI") as CanvasLayer
-	return ui.get_node("TurnLabel") as Label
+	return ui.get_node("TurnPanel/TurnLabel") as Label
 
 
 # --- 场景契约（§4）---------------------------------------------------------------
