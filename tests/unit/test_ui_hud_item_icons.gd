@@ -122,10 +122,14 @@ func _label_texts(node: Node) -> Array[String]:
 
 
 func test_missing_icons_render_labels_only() -> void:
-	# 生产基态（默认 res://assets/art 缺失）：槽渲染与基线逐字节一致。
+	# 灰盒契约：缺资产 = 纯 Label。正式 icons 落位后不得依赖生产树为空；
+	# 注入空 asset_base_dir 强制缺图标路径。
 	var hud: Hud = _make_hud()
 	if hud == null:
 		return
+	DirAccess.make_dir_recursive_absolute(_temp_dir)
+	hud.asset_base_dir = _temp_dir
+	hud.refresh()
 	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
 	var texts: Array[String] = _label_texts(bar)
 	assert_eq(texts, ["辉砂晶片 ×2", "星壤尘 ×5"] as Array[String], "槽文本保持基线。")
