@@ -113,9 +113,14 @@
 
 > Note: contract-id icon aliases added for AssetAdapter `ui_item_<item_id>` wiring.
 
+
+| font_noto_sans_sc_regular | 3-ui | notofonts/noto-cjk Sans2.004 + pyftsubset | docs/art/prompts/plan-a-p0-batch-prompts.md#批次3 | 2026-09-03 | 美术 | 幕僚长 (standing auth / auto-approve) | 2026-09-03 | approved | assets/fonts/NotoSansSC-Regular.subset.otf |
+
 ## 灰盒交付授权记录（方案 B 专用，待所有者明示后填写）
 
 - 授权语句：（由项目所有者提供，例："授权保持灰盒交付为 G6 交付形态"）
 - 授权日期：
 - 授权人：
 - 协调者处置：G6 标记 `accepted_greybox`，直接进入 G7 真人门禁（docs/g6-g7-human-gates-guide.md §2）。
+
+> Note (2026-09-03): `font_noto_sans_sc_regular` auto-approved by 幕僚长 standing auth; OFL + PROVENANCE under `assets/fonts/`.
