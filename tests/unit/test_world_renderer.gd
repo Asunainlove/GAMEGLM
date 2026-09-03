@@ -41,8 +41,12 @@ func _soil_cell(cells: Dictionary) -> Vector2i:
 
 
 func test_build_tile_set_creates_five_32px_monochrome_sources() -> void:
+	# 注入空目录强制灰盒单色回退，隔离于 batch1 正式美术
+	# （否则 atlas 纹理尺寸会破 32×32 断言）。
+	var empty_dir := "user://gut_greybox_tileset_%d" % Time.get_ticks_usec()
+	DirAccess.make_dir_recursive_absolute(empty_dir)
 	var renderer: WorldRenderer = _make_renderer()
-	var tile_set: TileSet = renderer.build_tile_set()
+	var tile_set: TileSet = renderer.build_tile_set(empty_dir)
 	assert_not_null(tile_set, "WorldRenderer must build a TileSet at runtime.")
 	assert_eq(tile_set.tile_size, Vector2i(32, 32))
 	# W002-GAP2 合法断言更新：新增 rock_wall 专用 source（手工矿井岩壁），
@@ -61,6 +65,7 @@ func test_build_tile_set_creates_five_32px_monochrome_sources() -> void:
 			assert_eq(source.texture_region_size, Vector2i(32, 32))
 			assert_eq(source.texture.get_size(), Vector2(32, 32))
 			assert_true(source.has_tile(Vector2i.ZERO), "Source %d must expose tile (0,0)." % source_id)
+	DirAccess.remove_absolute(empty_dir)
 
 
 func test_render_fills_ground_layer_and_ore_overlay() -> void:
