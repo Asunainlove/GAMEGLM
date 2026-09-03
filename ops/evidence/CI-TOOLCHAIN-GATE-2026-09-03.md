@@ -30,3 +30,7 @@ Pending merge of this branch / PR #6 equivalent; expect 708/708 once merged to m
 ## Follow-up (batch2 unit drop-in)
 After merging greybox world isolation, batch2 `luoxian_fighter`/`misa_weaver` drop-in caused **707/708**:
 `test_encounters_battle_scene.gd::test_begin_encounter_renders_graybox_units_and_ui` still required `ColorRect Box` on every unit. Allies with formal frames use `AnimatedSprite2D` (`Sprite`) instead. Fix: assert Box **or** Sprite; Label still required.
+
+## Follow-up (batch3 UI icons)
+After batch3 icon drop-in, **707/708**: `test_ui_hud_item_icons.gd::test_missing_icons_render_labels_only`
+assumed production `assets/art` had no icons. Fix: inject empty `asset_base_dir` + `refresh()` so the greybox path is forced.
