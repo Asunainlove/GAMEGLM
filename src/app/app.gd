@@ -23,16 +23,17 @@ extends Node
 ## mouse_filter 均 IGNORE 不阻塞输入；淡出完成入口 finish_startup_fade 公开，
 ## 测试可手动调用完成（跳过真实补间等待）。
 ##
-## A9 AudioDirector 接线：以 ResourceLoader.exists 守卫动态装配
-## res://src/audio/audio_director.gd（class_name AudioDirector：play_bgm/
-## play_sfx/set_master_muted）；合并后注入 AudioCatalog 解析
-## res://assets/audio/{bgm,sfx}/<id>.ogg。测试可预先注入 audio_director 替身。
+## A9/A10 AudioDirector 接线：以 ResourceLoader.exists 守卫动态装配
+## res://src/audio/audio_director.gd；装配后注入 AudioCatalog track/sfx
+## resolver（res://assets/audio/bgm|sfx/<id>.ogg），并把引用交给 GameSession。
+## 测试可预先注入 audio_director 替身（无 resolver 属性则跳过注入）。
 
 const STARTUP_FADE_SECONDS: float = 2.0
 const TITLE_FADE_SECONDS: float = 0.8
 const DEFAULT_SAVE_SLOT: String = "auto"
 const MANUAL_SAVE_SLOT: String = "manual"
 const AUDIO_DIRECTOR_SCRIPT_PATH: String = "res://src/audio/audio_director.gd"
+const AUDIO_CATALOG_SCRIPT: Script = preload("res://src/audio/audio_catalog.gd")
 const TITLE_BGM_ID: String = "bgm_title"
 const EXPLORE_BGM_ID: String = "bgm_explore"
 
@@ -136,7 +137,7 @@ func _on_title_game_start(fresh: bool) -> void:
 		_begin_fresh_boot()
 		return
 	_unlock_game_input()
-	_play_bgm(EXPLORE_BGM_ID)
+	_play_bgm(EXPLORE_BGM_ID, 2.0)
 	_begin_title_fade_out()
 
 
@@ -166,7 +167,7 @@ func _enter_game_after_fresh_reload() -> void:
 	if title_screen != null:
 		title_screen.visible = false
 	_unlock_game_input()
-	_play_bgm(EXPLORE_BGM_ID)
+	_play_bgm(EXPLORE_BGM_ID, 2.0)
 	_begin_startup_fade()
 
 
@@ -208,33 +209,63 @@ func finish_startup_fade() -> void:
 # ---------------------------------------------------------------- AudioDirector 接线（A9）
 
 
-## A9 守卫式装配：脚本缺席时优雅跳过；已注入替身（测试）时跳过。
-## 真实 Director 装配后注入 AudioCatalog，解析 assets/audio 正式 OGG。
+## A9 守卫式装配：脚本缺席时优雅跳过；已注入替身（测试）时保留替身。
+## A10：装配后注入 AudioCatalog resolver，并把引用交给 GameSession。
 func _resolve_audio_director() -> void:
-	if audio_director != null:
+	if audio_director == null:
+		if not ResourceLoader.exists(AUDIO_DIRECTOR_SCRIPT_PATH):
+			return
+		var script: Variant = load(AUDIO_DIRECTOR_SCRIPT_PATH)
+		if script is Script:
+			var candidate: Variant = (script as Script).new()
+			if candidate is Node:
+				audio_director = candidate
+				audio_director.name = "AudioDirector"
+				add_child(audio_director)
+	if audio_director == null:
 		return
-	if not ResourceLoader.exists(AUDIO_DIRECTOR_SCRIPT_PATH):
-		return
-	var script: Variant = load(AUDIO_DIRECTOR_SCRIPT_PATH)
-	if script is Script:
-		var candidate: Variant = (script as Script).new()
-		if candidate is Node:
-			audio_director = candidate
-			audio_director.name = "AudioDirector"
-			add_child(audio_director)
-			_bind_audio_catalog_resolvers(audio_director)
+	_inject_audio_resolvers(audio_director)
+	_bind_audio_to_session()
 
 
-func _bind_audio_catalog_resolvers(director: Node) -> void:
+## 向真实 AudioDirector 注入 id→OGG 解析器；测试替身无 track_resolver 属性时跳过。
+func _inject_audio_resolvers(director: Node) -> void:
 	if director == null:
 		return
-	director.set("track_resolver", Callable(AudioCatalog, "resolve_track"))
-	director.set("sfx_resolver", Callable(AudioCatalog, "resolve_sfx"))
+	if not ("track_resolver" in director):
+		return
+	director.set("track_resolver", Callable(AUDIO_CATALOG_SCRIPT, "resolve_track"))
+	director.set("sfx_resolver", Callable(AUDIO_CATALOG_SCRIPT, "resolve_sfx"))
 
 
-## 请求 BGM（"bgm_title" → "bgm_explore"）。AudioDirector 缺席、无 play_bgm
-## 方法，或（A9 自身语义）resolver 未注入 / 流缺失时静默跳过。
-func _play_bgm(track_id: String) -> void:
+## 把 AudioDirector 引用交给 GameSession（集成层用同一节点播 mine/build/battle 等）。
+func _bind_audio_to_session() -> void:
+	if game_session == null:
+		game_session = get_node_or_null("GameSession")
+	if game_session == null:
+		return
+	if game_session.has_method("bind_audio_director"):
+		game_session.call("bind_audio_director", audio_director)
+	elif "audio_director" in game_session:
+		game_session.set("audio_director", audio_director)
+
+
+## 请求 BGM。AudioDirector 缺席或无 play_bgm 时静默跳过；resolver 未注入时
+## 由 A9 自身告警忽略。fade_seconds 传给真实 Director（替身可忽略第二参）。
+func _play_bgm(track_id: String, fade_seconds: float = 1.0) -> void:
 	if audio_director == null or not audio_director.has_method("play_bgm"):
 		return
-	audio_director.call("play_bgm", track_id)
+	if audio_director.get_method_argument_count("play_bgm") >= 2:
+		audio_director.call("play_bgm", track_id, fade_seconds)
+	else:
+		audio_director.call("play_bgm", track_id)
+
+
+## 请求 SFX（app 层薄转发；主要调用方在 GameSession）。
+func _play_sfx(sfx_id: String, volume_offset_db: float = 0.0) -> void:
+	if audio_director == null or not audio_director.has_method("play_sfx"):
+		return
+	if audio_director.get_method_argument_count("play_sfx") >= 2:
+		audio_director.call("play_sfx", sfx_id, volume_offset_db)
+	else:
+		audio_director.call("play_sfx", sfx_id)

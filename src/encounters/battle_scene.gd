@@ -84,6 +84,9 @@ var asset_base_dir: String = DEFAULT_ASSET_BASE_DIR
 ## create_battle/submit_action/is_finished/active_unit/outcome）；默认真实引擎。
 var engine_script: Script = COMBAT_ENGINE_SCRIPT
 
+## W003-A10：可选 AudioDirector（由 GameSession 注入）。缺席时战斗 SFX 静默跳过。
+var audio_director: Node = null
+
 ## W003-A4 表现层时序（可注入；默认＝任务书 2s/1s/2s）。
 var phase_banner_seconds: float = 2.0
 var round_banner_seconds: float = 1.0
@@ -112,6 +115,24 @@ var _asset_warning_emitted: bool = false
 
 ## 开局：director.start 组装 config → 引擎 create_battle → 灰盒渲染 + UI；
 ## 若先手为敌方单位（如 Boss 速度更高），自动结算敌方回合直到轮到盟友或结束。
+func _play_sfx(sfx_id: String, volume_offset_db: float = 0.0) -> void:
+	if audio_director == null or not audio_director.has_method("play_sfx"):
+		return
+	if audio_director.get_method_argument_count("play_sfx") >= 2:
+		audio_director.call("play_sfx", sfx_id, volume_offset_db)
+	else:
+		audio_director.call("play_sfx", sfx_id)
+
+
+func _play_bgm(track_id: String, fade_seconds: float = 1.0) -> void:
+	if audio_director == null or not audio_director.has_method("play_bgm"):
+		return
+	if audio_director.get_method_argument_count("play_bgm") >= 2:
+		audio_director.call("play_bgm", track_id, fade_seconds)
+	else:
+		audio_director.call("play_bgm", track_id)
+
+
 func begin_encounter(encounter_def: Dictionary, content: Dictionary) -> void:
 	_encounter_def = encounter_def.duplicate(true)
 	_config = DIRECTOR_SCRIPT.start(_encounter_def, content)
@@ -144,6 +165,7 @@ func play_ally_action(action_id: String) -> void:
 		return
 	var action := str(action_id)
 	var target_key := _auto_target(_battle, active, action)
+	_play_sfx("sfx_battle_action")
 	_battle = engine_script.submit_action(_battle, str(active.get("key", "")), action, target_key)
 	_consume_log_events()
 	_resolve_enemy_turns()
@@ -160,6 +182,7 @@ func _resolve_enemy_turns() -> void:
 		var active: Dictionary = engine_script.active_unit(_battle)
 		if active.is_empty() or str(active.get("side", "")) != "enemy":
 			break
+		_play_sfx("sfx_battle_action", -3.0)
 		_battle = engine_script.submit_action(_battle, str(active.get("key", "")), "", "")
 		_consume_log_events()
 		guard += 1
@@ -463,7 +486,11 @@ func _consume_log_events() -> void:
 		_processed_log_count += 1
 		match str(entry.get("type", "")):
 			"phase_change":
+				_play_sfx("sfx_boss_phase")
+				_play_bgm("bgm_boss_final", 0.5)
 				_show_phase_banner(entry)
+			"damage":
+				_play_sfx("sfx_battle_hit")
 			"round_start":
 				_show_round_banner(int(entry.get("turn", 1)))
 	_refresh_report()

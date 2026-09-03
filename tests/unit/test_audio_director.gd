@@ -173,14 +173,10 @@ func test_buses_bind_to_bgm_and_sfx_when_bus_layout_exists() -> void:
 
 
 func test_buses_fall_back_to_master_when_bus_layout_missing() -> void:
-	var bgm_bus_exists := false
-	for index: int in AudioServer.get_bus_count():
-		if AudioServer.get_bus_name(index) == "BGM":
-			bgm_bus_exists = true
-	assert_false(
-		bgm_bus_exists,
-		"Precondition: this repo ships no default_bus_layout with BGM yet (A10 will add it)."
-	)
+	# A10 may ship default_bus_layout with BGM/SFX; remove them for this case so
+	# the director's missing-bus fallback path stays covered.
+	_remove_fake_bus("SFX")
+	_remove_fake_bus("BGM")
 	var director := _make_director()
 	if director == null:
 		return
