@@ -3,8 +3,8 @@ extends GutTest
 ## G6P-1 任务 4：HUD 物品槽图标适配契约测试（TDD：先于实现编写）。
 ##
 ## 契约：
-## - 资产缺失（生产基态）→ 物品槽渲染与基线逐字节一致（纯 Label 文本行，
-##   无图标节点，布局不塌，零告警）；
+## - 资产缺失（空 asset_base_dir 注入）→ 物品槽渲染与基线逐字节一致（纯 Label 文本行，
+##   无图标节点，布局不塌，零告警）；与生产 icons 落位隔离；
 ## - 注入图标资产（A7 §9 合同落位 assets/art/ui/icons/uia_ico_<item_id>.png
 ##   优先，任务书平铺 ui_item_<item_id>.png 兜底）→ 槽文本左侧出现 24×24
 ##   TextureRect 图标；文本内容与顺序不变；
@@ -82,7 +82,7 @@ func _remove_dir_recursive(path: String) -> void:
 	DirAccess.remove_absolute(path)
 
 
-func _make_hud() -> Hud:
+func _make_hud(p_asset_base_dir: String = "") -> Hud:
 	_fake = FakeSnapshotProvider.new()
 	_fake.payload = {
 		"revision": 1,
@@ -100,6 +100,9 @@ func _make_hud() -> Hud:
 		return null
 	hud.snapshot_provider = _fake.get_snapshot
 	hud.name_resolver = _resolve_fake_name
+	# 在 add_child/_ready 前注入，避免生产 assets/art/ui/icons 污染灰盒断言。
+	if not p_asset_base_dir.is_empty():
+		hud.asset_base_dir = p_asset_base_dir
 	add_child_autofree(hud)
 	return hud
 
@@ -123,13 +126,11 @@ func _label_texts(node: Node) -> Array[String]:
 
 func test_missing_icons_render_labels_only() -> void:
 	# 灰盒契约：缺资产 = 纯 Label。正式 icons 落位后不得依赖生产树为空；
-	# 注入空 asset_base_dir 强制缺图标路径。
-	var hud: Hud = _make_hud()
+	# 注入空 asset_base_dir（_ready 前）强制缺图标路径。
+	DirAccess.make_dir_recursive_absolute(_temp_dir)
+	var hud: Hud = _make_hud(_temp_dir)
 	if hud == null:
 		return
-	DirAccess.make_dir_recursive_absolute(_temp_dir)
-	hud.asset_base_dir = _temp_dir
-	hud.refresh()
 	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
 	var texts: Array[String] = _label_texts(bar)
 	assert_eq(texts, ["辉砂晶片 ×2", "星壤尘 ×5"] as Array[String], "槽文本保持基线。")
@@ -141,11 +142,9 @@ func test_missing_icons_render_labels_only() -> void:
 func test_injected_icon_shows_at_contract_path() -> void:
 	# A7 §9 合同落位：ui/icons/uia_ico_<item_id>.png。
 	_write_png("ui/icons", "uia_ico_starsoil_dust.png", Vector2i(32, 32), Color(1, 0, 0))
-	var hud: Hud = _make_hud()
+	var hud: Hud = _make_hud(_temp_dir)
 	if hud == null:
 		return
-	hud.asset_base_dir = _temp_dir
-	hud.refresh()
 	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
 	# 排序：lumen_shard 无图标（纯 Label）在前，starsoil_dust 图标 + Label 在后。
 	assert_eq(bar.get_child_count(), 3, "一个图标 + 两个文本 = 3 个节点。")
@@ -169,11 +168,9 @@ func test_injected_icon_shows_at_contract_path() -> void:
 func test_injected_icon_accepts_flat_fallback_path() -> void:
 	# 任务书平铺落位：ui/ui_item_<item_id>.png（仅 lumen_shard 命中）。
 	_write_png("ui", "ui_item_lumen_shard.png", Vector2i(32, 32), Color(0, 1, 0))
-	var hud: Hud = _make_hud()
+	var hud: Hud = _make_hud(_temp_dir)
 	if hud == null:
 		return
-	hud.asset_base_dir = _temp_dir
-	hud.refresh()
 	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
 	assert_eq(bar.get_child_count(), 3, "一个图标 + 两个文本 = 3 个节点。")
 	var icon: TextureRect = bar.get_child(0) as TextureRect
@@ -196,14 +193,15 @@ func test_partial_icon_warning_is_pure_function() -> void:
 
 
 func test_mixed_icons_raise_one_shot_warning_flag() -> void:
-	_write_png("ui/icons", "uia_ico_starsoil_dust.png", Vector2i(32, 32), Color(1, 0, 0))
-	var hud: Hud = _make_hud()
+	# 先以空注入目录启动，避免生产 ui_item_starsoil_dust 在 _ready 时提前置位。
+	DirAccess.make_dir_recursive_absolute(_temp_dir)
+	var hud: Hud = _make_hud(_temp_dir)
 	if hud == null:
 		return
-	hud.asset_base_dir = _temp_dir
 	assert_eq(
 		hud.get("_icon_asset_warning_emitted"), false,
 		"实例一次性标记初始为未发。")
+	_write_png("ui/icons", "uia_ico_starsoil_dust.png", Vector2i(32, 32), Color(1, 0, 0))
 	hud.refresh()
 	assert_eq(
 		hud.get("_icon_asset_warning_emitted"), true,
