@@ -4,7 +4,7 @@
   "window": "W004-G6A+G7P",
   "window_status": "g7_human_gates",
   "project_team_status": "active",
-  "last_verified_commit": "3d6cd1c",
+  "last_verified_commit": "aa83142",
   "active_packet": "G7-HUMAN",
   "resume_from": "g7_human_gates_owner_playtest",
   "g6a_batch_status": {
@@ -17,8 +17,6 @@
     "G7-HUMAN"
   ],
   "known_blockers": [
-    "G6 audio wiring DONE on main via PR #18 (3d6cd1c): AudioCatalog resolvers + P0 SFX/BGM hooks; local Linux GUT 715/715; remaining unwired: bgm_build focus, ending BGM-only fade, title click SFX",
-    "G6 Plan A P0 (env/units/UI/fonts/audio drop-in + audio wiring) DONE on main; CI greybox isolation at 8956434 (PR #11)",
-    "G7 human gates still open (owner only): fill docs/rc-playthrough-record.md — facilitator script docs/g7-playtest-facilitator.md ready; 45-60min x3 routes + external >=3 + originality C.2; do not fabricate results"
+    "G7 human gates still open (owner only): fill docs/rc-playthrough-record.md — facilitator docs/g7-playtest-facilitator.md ready; do not fabricate results"
   ]
 }
