@@ -2,9 +2,9 @@
   "goal_status": "active",
   "milestone": "G7",
   "window": "W004-G6A+G7P",
-  "window_status": "g6_plan_a_production",
+  "window_status": "g7_human_gates",
   "project_team_status": "active",
-  "last_verified_commit": "ea2bf5e",
+  "last_verified_commit": "8956434",
   "active_packet": "G7-HUMAN",
   "resume_from": "g7_human_gates_owner_playtest",
   "g6a_batch_status": {
@@ -14,11 +14,10 @@
     "batch4_audio": "done"
   },
   "next_packet_ids": [
-    "G6A-P0-BATCH4-AUDIO",
     "G7-HUMAN"
   ],
   "known_blockers": [
-    "G6 Plan A P0 art/audio/fonts drop-in DONE under 幕僚长 standing auth",
-    "G7 human gates still open: fill docs/rc-playthrough-record.md (45-60min x3 routes, external playtest >=3, originality C.2) — do not fabricate results"
+    "G6 Plan A P0 (env/units/UI/fonts/audio) drop-in DONE on main; CI greybox isolation at 8956434 (PR #11)",
+    "G7 human gates still open (owner only): fill docs/rc-playthrough-record.md — facilitator script docs/g7-playtest-facilitator.md ready; 45-60min x3 routes + external >=3 + originality C.2; do not fabricate results"
   ]
 }
