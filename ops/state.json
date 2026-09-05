@@ -4,7 +4,7 @@
   "window": "W004-G6A+G7P",
   "window_status": "g7_human_gates",
   "project_team_status": "active",
-  "last_verified_commit": "aa83142",
+  "last_verified_commit": "3f1a37c",
   "active_packet": "G7-HUMAN",
   "resume_from": "g7_human_gates_owner_playtest",
   "g6a_batch_status": {
@@ -18,5 +18,11 @@
   ],
   "known_blockers": [
     "G7 human gates still open (owner only): fill docs/rc-playthrough-record.md — facilitator docs/g7-playtest-facilitator.md ready; do not fabricate results"
+  ],
+  "visual_polish_packet": "closed",
+  "known_residuals": [
+    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite — single-run integration stays green; non-blocking",
+    "ART-019 place/talk extra frames still owed (non-blocking)",
+    "combat unit v2 full frames still owed (non-blocking)"
   ]
 }
