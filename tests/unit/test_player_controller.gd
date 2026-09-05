@@ -76,14 +76,27 @@ func test_player_scene_matches_contract_layout() -> void:
 		if anim.sprite_frames != null:
 			assert_true(anim.sprite_frames.has_animation(&"idle"), "SpriteFrames must include idle.")
 			assert_true(anim.sprite_frames.has_animation(&"walk"), "SpriteFrames must include walk.")
-			assert_eq(anim.sprite_frames.get_frame_count(&"idle"), 1)
+			assert_true(anim.sprite_frames.has_animation(&"mine"), "SpriteFrames must include mine.")
+			assert_true(anim.sprite_frames.has_animation(&"place"), "SpriteFrames must include place.")
+			assert_true(anim.sprite_frames.has_animation(&"talk"), "SpriteFrames must include talk.")
+			assert_eq(anim.sprite_frames.get_frame_count(&"idle"), 2)
 			assert_eq(anim.sprite_frames.get_frame_count(&"walk"), 2)
+			assert_eq(anim.sprite_frames.get_frame_count(&"mine"), 4)
+			assert_eq(anim.sprite_frames.get_frame_count(&"place"), 1)
+			assert_eq(anim.sprite_frames.get_frame_count(&"talk"), 1)
 			var idle_tex: Texture2D = anim.sprite_frames.get_frame_texture(&"idle", 0)
 			assert_not_null(idle_tex)
 			if idle_tex != null:
 				assert_eq(
 					idle_tex.resource_path,
 					"res://assets/art/characters/luoxian/actions/luoxian_action_idle_00.png"
+				)
+			var idle_tex_1: Texture2D = anim.sprite_frames.get_frame_texture(&"idle", 1)
+			assert_not_null(idle_tex_1)
+			if idle_tex_1 != null:
+				assert_eq(
+					idle_tex_1.resource_path,
+					"res://assets/art/characters/luoxian/actions/luoxian_action_idle_01.png"
 				)
 
 	var collision: Node = player.get_node_or_null("Collision")
@@ -189,3 +202,27 @@ func test_mine_action_without_injection_still_emits_a_target_cell() -> void:
 	player.mine_requested.connect(func(cell: Vector2i) -> void: captured.append(cell))
 	player._unhandled_input(_action_event("mine", true))
 	assert_eq(captured.size(), 1, "Default mouse resolver must emit exactly one target cell.")
+
+
+func test_mine_action_plays_mine_animation() -> void:
+	var player: Node = _spawn_player()
+	var sprite: AnimatedSprite2D = player.get_node("Sprite") as AnimatedSprite2D
+	assert_not_null(sprite)
+	player._unhandled_input(_action_event("mine", true))
+	assert_eq(sprite.animation, &"mine")
+	assert_true(bool(player.get("_action_playing")), "mine must lock action anim.")
+
+
+func test_place_action_plays_place_animation() -> void:
+	var player: Node = _spawn_player()
+	var sprite: AnimatedSprite2D = player.get_node("Sprite") as AnimatedSprite2D
+	player._unhandled_input(_action_event("place", true))
+	assert_eq(sprite.animation, &"place")
+
+
+func test_interact_action_plays_talk_animation() -> void:
+	var player: Node = _spawn_player()
+	var sprite: AnimatedSprite2D = player.get_node("Sprite") as AnimatedSprite2D
+	player._unhandled_input(_action_event("interact", true))
+	assert_eq(sprite.animation, &"talk")
+

@@ -79,10 +79,12 @@ func test_world_scene_matches_module_contract_section_4() -> void:
 	assert_eq(world.name, "World")
 	assert_true(world is Node2D, "World root must be a Node2D.")
 	var ground: TileMapLayer = world.get_node("Ground") as TileMapLayer
+	var decals: Node2D = world.get_node("Decals") as Node2D
 	var ore_overlay: TileMapLayer = world.get_node("OreOverlay") as TileMapLayer
 	var buildings: Node2D = world.get_node("Buildings") as Node2D
 	var player_spawn: Marker2D = world.get_node("PlayerSpawn") as Marker2D
 	assert_not_null(ground, "Ground must be a TileMapLayer.")
+	assert_not_null(decals, "Decals must be a Node2D (visual soil density).")
 	assert_not_null(ore_overlay, "OreOverlay must be a TileMapLayer.")
 	assert_not_null(buildings, "Buildings must be a Node2D.")
 	assert_not_null(player_spawn, "PlayerSpawn must be a Marker2D.")
@@ -257,3 +259,21 @@ func test_toggle_overlay_action_flips_ore_overlay_visibility() -> void:
 	unrelated.pressed = true
 	world._unhandled_input(unrelated)
 	assert_true(ore_overlay.visible, "Unrelated actions must not flip the overlay.")
+
+
+func test_world_places_sparse_soil_decals_when_art_present() -> void:
+	var world: Node2D = _instantiate_world()
+	if world == null:
+		return
+	var decals: Node2D = world.get_node("Decals") as Node2D
+	assert_not_null(decals)
+	# Art lands on main (#31); production base dir should yield sparse sprites.
+	assert_gt(decals.get_child_count(), 0, "Decals layer should receive sparse soil sprites.")
+	var renderer: Node = world.get_node_or_null("WorldRenderer")
+	assert_not_null(renderer)
+	if renderer != null:
+		var report: Dictionary = renderer.get("last_decal_report")
+		assert_gt(int(report.get("placed", 0)), 0)
+		var by_kind: Dictionary = report.get("by_kind", {})
+		assert_true(by_kind.has("damage") or by_kind.has("ore_fleck"), "Expected damage/fleck kinds.")
+

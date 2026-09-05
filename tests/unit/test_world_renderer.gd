@@ -234,3 +234,65 @@ func test_apply_delta_ignores_non_destroyed_delta() -> void:
 		renderer.ore_layer.get_cell_source_id(intact_cell), WorldRenderer.SOURCE_ORE_DUST,
 		"destroyed=false deltas must not erase anything."
 	)
+
+
+func test_decal_kind_for_is_deterministic() -> void:
+	var a: String = WORLD_RENDERER_SCRIPT.decal_kind_for("chunk_0_0", Vector2i(3, 5))
+	var b: String = WORLD_RENDERER_SCRIPT.decal_kind_for("chunk_0_0", Vector2i(3, 5))
+	assert_eq(a, b, "decal_kind_for must be deterministic.")
+	# Different cells should not all collide to the same kind bucket forever,
+	# but empty string is allowed for most cells.
+	var seen: Dictionary = {}
+	for y in range(32):
+		for x in range(32):
+			var kind: String = WORLD_RENDERER_SCRIPT.decal_kind_for("chunk_1_0", Vector2i(x, y))
+			if kind != "":
+				seen[kind] = true
+	assert_true(seen.has("damage"), "Sparse sampling must hit damage somewhere in a chunk.")
+	assert_true(seen.has("ore_fleck"), "Sparse sampling must hit ore_fleck somewhere in a chunk.")
+
+
+func test_render_places_decals_from_injected_textures() -> void:
+	var temp_dir := "user://gut_world_decals_%d" % Time.get_ticks_usec()
+	DirAccess.make_dir_recursive_absolute(temp_dir.path_join("world/decals"))
+	for file_name: String in [
+		"env_world_soil_damage.png",
+		"env_world_soil_ore_fleck.png",
+		"env_world_soil_crack.png",
+	]:
+		var image := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
+		image.fill(Color(1, 0, 0, 1))
+		assert_eq(image.save_png(temp_dir.path_join("world/decals").path_join(file_name)), OK)
+
+	var renderer: WorldRenderer = _make_renderer()
+	var decals := Node2D.new()
+	decals.name = "Decals"
+	add_child_autofree(decals)
+	renderer.decal_layer = decals
+
+	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate(RENDER_CHUNK_ID, RENDER_SEED)["cells"]
+	renderer.render({"chunk_id": RENDER_CHUNK_ID, "cells": cells}, Vector2i.ZERO, temp_dir)
+
+	assert_gt(decals.get_child_count(), 0, "Injected decal textures must spawn sprites.")
+	var report: Dictionary = renderer.last_decal_report
+	assert_eq(int(report.get("placed", -1)), decals.get_child_count())
+	renderer.clear_layers()
+	assert_eq(decals.get_child_count(), 0, "clear_layers must clear decals.")
+
+	# Cleanup temp pngs
+	for file_name: String in [
+		"env_world_soil_damage.png",
+		"env_world_soil_ore_fleck.png",
+		"env_world_soil_crack.png",
+	]:
+		DirAccess.remove_absolute(temp_dir.path_join("world/decals").path_join(file_name))
+	DirAccess.remove_absolute(temp_dir.path_join("world/decals"))
+	DirAccess.remove_absolute(temp_dir)
+
+
+func test_render_skips_decals_without_layer_or_textures() -> void:
+	var renderer: WorldRenderer = _make_renderer()
+	var cells: Dictionary = CHUNK_DATA_SCRIPT.generate(RENDER_CHUNK_ID, RENDER_SEED)["cells"]
+	renderer.render({"chunk_id": RENDER_CHUNK_ID, "cells": cells}, Vector2i.ZERO, "user://missing_decals_dir")
+	assert_eq(int(renderer.last_decal_report.get("placed", -1)), 0)
+
