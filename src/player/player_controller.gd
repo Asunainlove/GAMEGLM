@@ -3,6 +3,9 @@ extends CharacterBody2D
 ## movement and emits intent signals. It never mutates persistent state; the
 ## world/interaction layer subscribes to the signals and goes through
 ## GameState + StatePatch (contract module-contracts.md section 0/4).
+##
+## Visual: Player/Sprite is AnimatedSprite2D (idle + walk from ART-019 explore
+## frames). Controller API and flat node paths stay unchanged for tests.
 
 signal interact_requested
 signal mine_requested(cell: Vector2i)
@@ -10,6 +13,8 @@ signal place_requested(cell: Vector2i)
 
 const CELL_SIZE: int = 32
 const DEFAULT_FACING: Vector2 = Vector2.DOWN
+const ANIM_IDLE: StringName = &"idle"
+const ANIM_WALK: StringName = &"walk"
 
 @export var move_speed: int = 160
 
@@ -17,6 +22,8 @@ var facing: Vector2 = DEFAULT_FACING
 ## Injectable cell resolver; when unset, the target cell falls back to the
 ## mouse position snapped to the world grid.
 var cell_resolver: Callable = Callable()
+
+@onready var _sprite: AnimatedSprite2D = $Sprite
 
 
 static func compute_velocity(input_vec: Vector2, speed: int) -> Vector2:
@@ -29,6 +36,7 @@ func _physics_process(_delta: float) -> void:
 	var input_vec: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	velocity = compute_velocity(input_vec, move_speed)
 	set_facing_from_velocity(velocity)
+	_sync_sprite()
 	move_and_slide()
 
 
@@ -62,3 +70,15 @@ func resolve_target_cell() -> Vector2i:
 
 func default_target_cell() -> Vector2i:
 	return Vector2i((get_global_mouse_position() / CELL_SIZE).floor())
+
+
+## Idle when stopped; walk when moving. Horizontal facing flips the sprite
+## (ART-019: right-facing frames + flip_h for left).
+func _sync_sprite() -> void:
+	if _sprite == null:
+		return
+	var wanted: StringName = ANIM_WALK if velocity != Vector2.ZERO else ANIM_IDLE
+	if _sprite.animation != wanted:
+		_sprite.play(wanted)
+	if facing.x != 0.0:
+		_sprite.flip_h = facing.x < 0.0

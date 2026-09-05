@@ -1,6 +1,31 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/player/player_controller.gd" id="1_player"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_idle_00.png" id="2_idle"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_walk_00.png" id="3_walk0"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_walk_01.png" id="4_walk1"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_luoxian"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_idle")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_walk0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_walk1")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 6.0
+}]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(20, 20)
@@ -11,12 +36,11 @@ radius = 40.0
 [node name="Player" type="CharacterBody2D" groups=["player"]]
 script = ExtResource("1_player")
 
-[node name="Sprite" type="ColorRect" parent="."]
-offset_left = -12.0
-offset_top = -12.0
-offset_right = 12.0
-offset_bottom = 12.0
-color = Color(0.55, 0.58, 0.62, 1)
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -24)
+sprite_frames = SubResource("SpriteFrames_luoxian")
+animation = &"idle"
+autoplay = "idle"
 
 [node name="Collision" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_body")

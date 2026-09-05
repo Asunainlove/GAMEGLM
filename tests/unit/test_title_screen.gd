@@ -98,6 +98,13 @@ func test_title_scene_contract_layer_root_and_texts() -> void:
 	assert_not_null(subtitle, "标题必须有副题节点。")
 	if subtitle != null:
 		assert_eq(subtitle.text, SUBTITLE_TEXT)
+	var backdrop: Node = title.get_node_or_null("Root/Backdrop")
+	assert_true(backdrop is TextureRect, "Title Backdrop must be TextureRect wired to bg_title.")
+	if backdrop is TextureRect:
+		var tex: Texture2D = (backdrop as TextureRect).texture
+		assert_not_null(tex, "Title Backdrop must reference bg_title.png.")
+		if tex != null:
+			assert_eq(tex.resource_path, "res://assets/art/ui/title/bg_title.png")
 
 
 func test_title_buttons_and_default_no_save_state() -> void:

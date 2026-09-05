@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/ui/title_screen.gd" id="1_title"]
 [ext_resource type="Theme" path="res://themes/starsoil_theme.tres" id="2_theme"]
 [ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_help.png" id="3_help"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/title/bg_title.png" id="4_bg"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_help"]
 content_margin_left = 16.0
@@ -30,14 +31,17 @@ grow_vertical = 2
 mouse_filter = 0
 theme = ExtResource("2_theme")
 
-[node name="Backdrop" type="ColorRect" parent="Root"]
+[node name="Backdrop" type="TextureRect" parent="Root"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.043, 0.067, 0.11, 1)
+mouse_filter = 2
+texture = ExtResource("4_bg")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="Layout" type="VBoxContainer" parent="Root"]
 layout_mode = 1

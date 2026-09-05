@@ -69,9 +69,22 @@ func test_player_scene_matches_contract_layout() -> void:
 	assert_eq(attached_script.resource_path, PLAYER_SCRIPT_PATH)
 
 	var sprite: Node = player.get_node_or_null("Sprite")
-	assert_true(sprite is ColorRect, "Sprite must be a ColorRect gray box.")
-	if sprite is ColorRect:
-		assert_eq((sprite as ColorRect).size, Vector2(24, 24), "Sprite gray box must be 24x24.")
+	assert_true(sprite is AnimatedSprite2D, "Sprite must be AnimatedSprite2D (Luoxian idle/walk).")
+	if sprite is AnimatedSprite2D:
+		var anim: AnimatedSprite2D = sprite as AnimatedSprite2D
+		assert_not_null(anim.sprite_frames, "Sprite must have SpriteFrames.")
+		if anim.sprite_frames != null:
+			assert_true(anim.sprite_frames.has_animation(&"idle"), "SpriteFrames must include idle.")
+			assert_true(anim.sprite_frames.has_animation(&"walk"), "SpriteFrames must include walk.")
+			assert_eq(anim.sprite_frames.get_frame_count(&"idle"), 1)
+			assert_eq(anim.sprite_frames.get_frame_count(&"walk"), 2)
+			var idle_tex: Texture2D = anim.sprite_frames.get_frame_texture(&"idle", 0)
+			assert_not_null(idle_tex)
+			if idle_tex != null:
+				assert_eq(
+					idle_tex.resource_path,
+					"res://assets/art/characters/luoxian/actions/luoxian_action_idle_00.png"
+				)
 
 	var collision: Node = player.get_node_or_null("Collision")
 	assert_true(collision is CollisionShape2D, "Collision must be a CollisionShape2D.")
