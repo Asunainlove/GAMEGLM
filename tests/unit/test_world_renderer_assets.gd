@@ -275,3 +275,18 @@ func test_render_with_injected_assets_keeps_grid_semantics() -> void:
 	assert_eq(ore.get_used_cells().size(), cells.size())
 	var tile_set: TileSet = ground.tile_set
 	assert_eq(tile_set.get_source_count(), 5)
+
+
+func test_build_tile_set_prefers_rock_wall_over_mine_wall_atlas() -> void:
+	# PR #29 contract: env_world_rock_wall.png wins; mine wall atlas is fallback only.
+	_write_png("world/tiles", "env_world_rock_wall.png", Vector2i(32, 32), Color(0, 1, 0))
+	_write_atlas_strip("world/tiles", "env_mine_wall_atlas.png", 12, [Color(1, 0, 0)])
+	var renderer: WorldRenderer = WORLD_RENDERER_SCRIPT.new()
+	add_child_autofree(renderer)
+	var tile_set: TileSet = renderer.build_tile_set(_temp_dir)
+	var wall: TileSetAtlasSource = tile_set.get_source(WorldRenderer.SOURCE_ROCK_WALL) as TileSetAtlasSource
+	assert_not_null(wall)
+	if wall != null:
+		assert_eq(wall.texture.get_size(), Vector2(32, 32), "Prefer single rock_wall tile over atlas strip.")
+		_assert_pixel_close(wall.texture, Color(0, 1, 0), "env_world_rock_wall must win probe order.")
+

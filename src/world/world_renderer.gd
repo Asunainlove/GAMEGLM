@@ -7,6 +7,10 @@ extends Node2D
 ## never touches persistent state: destroyed cells arrive as plain coordinates.
 ## Chunk payloads are chunk-local; `render()` translates them by the chunk
 ## origin so all 8 world chunks accumulate on the shared layers.
+##
+## Presentation-only Decals layer (optional Node2D): sparse soil_damage /
+## soil_ore_fleck / soil_crack sprites from deterministic cell hashes. No
+## gameplay flags, mining logic, or content-schema contracts.
 
 const SOURCE_SOIL: int = 0
 const SOURCE_ORE_DUST: int = 1
@@ -48,6 +52,19 @@ const CELL_ASSET_PROBES: Dictionary = {
 	],
 }
 
+## Sparse visual-only soil decals (观感). Paths relative to asset base dir.
+const DECAL_ASSET_PROBES: Dictionary = {
+	"damage": ["world/decals/env_world_soil_damage.png"],
+	"ore_fleck": ["world/decals/env_world_soil_ore_fleck.png"],
+	"crack": ["world/decals/env_world_soil_crack.png"],
+}
+
+## hash(cell) % 1000 thresholds → sparse decorative density (~6.5% cells).
+## damage [0,22) · ore_fleck [22,55) · crack [55,65) · none otherwise.
+const DECAL_DAMAGE_MAX: int = 22
+const DECAL_FLECK_MAX: int = 55
+const DECAL_CRACK_MAX: int = 65
+
 ## 默认探测根（与 AssetAdapter.DEFAULT_BASE_DIR 同值；跨类常量默认参受限就地
 ## 镜像，测试断言两值一致）。
 const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
@@ -56,10 +73,17 @@ const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
 ## {loaded: int, missing: PackedStringArray}。
 var last_asset_report: Dictionary = {}
 
+## 最近一次 render 的贴花报告（测试观察缝）：{placed: int, by_kind: Dictionary}。
+var last_decal_report: Dictionary = {"placed": 0, "by_kind": {}}
+
 var ground_layer: TileMapLayer
 var ore_layer: TileMapLayer
+## Optional presentation Node2D for sparse soil decals (world.tscn → Decals).
+var decal_layer: Node2D
 
 var _tile_set: TileSet
+var _decal_textures: Dictionary = {}
+var _decal_textures_base: String = ""
 
 
 ## Builds a fresh TileSet with one atlas source per cell type. Each source first
@@ -88,8 +112,12 @@ func build_tile_set(base_dir: String = DEFAULT_ASSET_BASE_DIR) -> TileSet:
 ## cells by `chunk_origin` (the chunk's cell offset inside the world grid).
 ## Multiple chunks accumulate on the shared layers: call clear_layers() first
 ## for a full-world repaint. Ore cells are painted as a double layer: soil base
-## on the ground layer plus the ore color overlay.
-func render(chunk: Dictionary, chunk_origin: Vector2i = Vector2i.ZERO) -> void:
+## on the ground layer plus the ore color overlay. Sparse soil decals (if a
+## decal_layer is injected) are appended for visual density only.
+func render(
+		chunk: Dictionary,
+		chunk_origin: Vector2i = Vector2i.ZERO,
+		base_dir: String = DEFAULT_ASSET_BASE_DIR) -> void:
 	if ground_layer == null or ore_layer == null:
 		push_warning("WorldRenderer.render() skipped: ground/ore layers are not injected.")
 		return
@@ -114,6 +142,8 @@ func render(chunk: Dictionary, chunk_origin: Vector2i = Vector2i.ZERO) -> void:
 		else:
 			ore_layer.set_cell(cell + chunk_origin, source_id, Vector2i.ZERO)
 
+	_place_chunk_decals(chunk, chunk_origin, base_dir)
+
 
 ## Empties both layers; full-world repaint entry point before re-rendering all
 ## chunks (world.gd calls this once, then render()s every chunk by origin).
@@ -123,6 +153,8 @@ func clear_layers() -> void:
 		return
 	ground_layer.clear()
 	ore_layer.clear()
+	clear_decals()
+	last_decal_report = {"placed": 0, "by_kind": {}}
 
 
 ## Erases destroyed cells from both layers at once (set_cell with source -1).
@@ -156,6 +188,16 @@ func ensure_tile_set() -> TileSet:
 	if _tile_set == null:
 		_tile_set = build_tile_set()
 	return _tile_set
+
+
+## Removes all decal sprites from the optional Decals layer (idempotent).
+func clear_decals() -> void:
+	if decal_layer == null:
+		return
+	var children := decal_layer.get_children()
+	for child: Node in children:
+		decal_layer.remove_child(child)
+		child.free()
 
 
 ## G6P-1：逐源资产探测 + 单色回退装配（report 为引用累积器：字典按引用传递）。
@@ -205,3 +247,66 @@ static func partial_asset_warning(loaded: int, missing: PackedStringArray) -> St
 
 func _source_for(ore_type: String) -> int:
 	return int(TYPE_SOURCES.get(ore_type, SOURCE_SOIL))
+
+
+## Deterministic sparse decal kind for a chunk-local cell. Empty = no decal.
+## Pure function — no RNG / schema / gameplay state.
+static func decal_kind_for(chunk_id: String, local: Vector2i) -> String:
+	var h: int = int(hash("%s:%d:%d:decal" % [chunk_id, local.x, local.y]))
+	var bucket: int = absi(h) % 1000
+	if bucket < DECAL_DAMAGE_MAX:
+		return "damage"
+	if bucket < DECAL_FLECK_MAX:
+		return "ore_fleck"
+	if bucket < DECAL_CRACK_MAX:
+		return "crack"
+	return ""
+
+
+func _ensure_decal_textures(base_dir: String) -> Dictionary:
+	if _decal_textures_base == base_dir and not _decal_textures.is_empty():
+		return _decal_textures
+	var loaded: Dictionary = {}
+	for kind: String in DECAL_ASSET_PROBES:
+		var probes: Array = DECAL_ASSET_PROBES[kind]
+		for probe_path: Variant in probes:
+			var texture := AssetAdapter.texture_at("%s/%s" % [base_dir, str(probe_path)])
+			if texture != null:
+				loaded[kind] = texture
+				break
+	_decal_textures = loaded
+	_decal_textures_base = base_dir
+	return loaded
+
+
+func _place_chunk_decals(chunk: Dictionary, chunk_origin: Vector2i, base_dir: String) -> void:
+	if decal_layer == null:
+		return
+	var textures := _ensure_decal_textures(base_dir)
+	if textures.is_empty():
+		return
+	var cells: Dictionary = chunk.get("cells", {})
+	var chunk_id := str(chunk.get("chunk_id", "chunk_0_0"))
+	var placed: int = int(last_decal_report.get("placed", 0))
+	var by_kind: Dictionary = (last_decal_report.get("by_kind", {}) as Dictionary).duplicate()
+	for grid_y: int in ChunkData.CHUNK_SIZE:
+		for grid_x: int in ChunkData.CHUNK_SIZE:
+			var local := Vector2i(grid_x, grid_y)
+			var cell_type := str(cells.get(local, "soil"))
+			if cell_type == "rock_wall":
+				continue
+			var kind := decal_kind_for(chunk_id, local)
+			if kind == "":
+				continue
+			if not textures.has(kind):
+				continue
+			var world_cell := local + chunk_origin
+			var sprite := Sprite2D.new()
+			sprite.name = "Decal_%d_%d_%s" % [world_cell.x, world_cell.y, kind]
+			sprite.texture = textures[kind] as Texture2D
+			sprite.centered = true
+			sprite.position = (Vector2(world_cell) + Vector2(0.5, 0.5)) * float(ChunkData.CELL_SIZE)
+			decal_layer.add_child(sprite)
+			placed += 1
+			by_kind[kind] = int(by_kind.get(kind, 0)) + 1
+	last_decal_report = {"placed": placed, "by_kind": by_kind}

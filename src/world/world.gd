@@ -60,6 +60,7 @@ var _world_response_exploited: bool = false
 var _world_response_initialized: bool = false
 
 @onready var _ground_layer: TileMapLayer = $Ground
+@onready var _decals: Node2D = $Decals
 @onready var _ore_overlay: TileMapLayer = $OreOverlay
 @onready var _buildings: Node2D = $Buildings
 @onready var _player_spawn: Marker2D = $PlayerSpawn
@@ -72,6 +73,7 @@ func _ready() -> void:
 	add_child(_renderer)
 	_renderer.ground_layer = _ground_layer
 	_renderer.ore_layer = _ore_overlay
+	_renderer.decal_layer = _decals
 
 	_generate_chunks()
 	_render_all_chunks()

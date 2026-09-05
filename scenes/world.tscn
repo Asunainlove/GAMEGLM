@@ -13,6 +13,8 @@ script = ExtResource("1_world")
 
 [node name="Ground" type="TileMapLayer" parent="."]
 
+[node name="Decals" type="Node2D" parent="."]
+
 [node name="OreOverlay" type="TileMapLayer" parent="."]
 
 [node name="Buildings" type="Node2D" parent="."]
