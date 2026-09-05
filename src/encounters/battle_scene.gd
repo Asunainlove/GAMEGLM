@@ -547,7 +547,7 @@ func _show_finish_banner(result: String) -> void:
 	label.text = VICTORY_TEXT if victory else DEFEAT_TEXT
 	label.add_theme_color_override("font_color", VICTORY_COLOR if victory else DEFEAT_COLOR)
 	label.visible = true
-	var overlay: ColorRect = ui.get_node_or_null("FinishBanner") as ColorRect
+	var overlay: Control = ui.get_node_or_null("FinishBanner") as Control
 	if overlay != null:
 		overlay.visible = true
 

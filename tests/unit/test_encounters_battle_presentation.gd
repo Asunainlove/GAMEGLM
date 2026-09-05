@@ -389,7 +389,7 @@ func test_victory_banner_blocks_actions_and_keeps_signal_timing() -> void:
 		assert_eq(str(_finished_events[0]["id"]), STUB_ENCOUNTER_ID)
 		assert_eq(str(_finished_events[0]["outcome"]["result"]), "victory")
 
-	var overlay: ColorRect = (scene.get_node("UI") as CanvasLayer).get_node("FinishBanner") as ColorRect
+	var overlay: Control = (scene.get_node("UI") as CanvasLayer).get_node("FinishBanner") as Control
 	assert_not_null(overlay, "battle.tscn 缺少 UI/FinishBanner（W003-A4 胜负横幅遮罩）。")
 	if overlay != null:
 		assert_true(overlay.visible, "胜利必须显示全屏横幅遮罩。")
@@ -430,7 +430,7 @@ func test_defeat_banner_shows_dark_purple_text() -> void:
 
 	scene.call("play_ally_action", "strike")
 	assert_eq(_finished_events.size(), 1)
-	var overlay: ColorRect = (scene.get_node("UI") as CanvasLayer).get_node("FinishBanner") as ColorRect
+	var overlay: Control = (scene.get_node("UI") as CanvasLayer).get_node("FinishBanner") as Control
 	if overlay == null:
 		fail_test("battle.tscn 缺少 UI/FinishBanner（W003-A4 胜负横幅遮罩）。")
 		return
