@@ -29,7 +29,7 @@ func test_app_exposes_required_session_hosts() -> void:
 	assert_true(ui_layer is CanvasLayer, "UILayer must be a CanvasLayer.")
 
 
-func test_app_starts_with_simplified_chinese_greybox_ui() -> void:
+func test_app_starts_with_simplified_chinese_startup_ui() -> void:
 	var app_scene: PackedScene = load(APP_SCENE_PATH) as PackedScene
 	assert_not_null(app_scene, "App scene must exist and load.")
 	if app_scene == null:
@@ -44,4 +44,4 @@ func test_app_starts_with_simplified_chinese_greybox_ui() -> void:
 	if title != null:
 		assert_eq(title.text, "星壤：余辉纪元")
 	if status != null:
-		assert_eq(status.text, "灰盒垂直切片 · 系统启动中")
+		assert_eq(status.text, "琉砂海 · 余辉纪元垂直切片")
