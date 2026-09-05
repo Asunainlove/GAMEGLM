@@ -189,3 +189,15 @@
 > Note (2026-09-03): Approved interim explore player set (idle+walk 48×48) — **partial ART-019** (full 12-frame gather/place/talk still owed). Title bg 1920×1080 approved (contract prefers 2560×1440; ≤2.5MB OK). Frame palette drift idle↔walk noted for next pass.
 | env_mine_wall_atlas_v3 | v2-polish | redo contiguous atlas | docs/art/environment-assets.md#ENV-07 | 2026-09-03 | 美术 | 幕僚长 | 2026-09-03 | approved | assets/art/world/tiles/env_mine_wall_atlas.png |
 > Note (2026-09-03): env_mine_wall_atlas_v3 approved (384×32, 0 near-black gutter cols); replaces assets tile.
+
+| luoxian_action_idle_01 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_idle_01.png |
+| luoxian_action_mine_00 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_mine_00.png |
+| luoxian_action_mine_01 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_mine_01.png |
+| luoxian_action_mine_02 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_mine_02.png |
+| luoxian_action_mine_03 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_mine_03.png |
+| luoxian_action_place_00 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_place_00.png |
+| luoxian_action_talk_00 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019-interim | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_talk_00.png |
+| env_world_soil_damage_v2 | v2-polish | env_v2 draft resize | docs/art/environment-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/world/decals/env_world_soil_damage.png |
+| env_world_soil_ore_fleck_v2 | v2-polish | env_v2 draft resize | docs/art/environment-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/world/decals/env_world_soil_ore_fleck.png |
+
+> Note (2026-09-06): Remaining v2-polish explore/decals approved by 幕僚长 standing auth — idle_01 + mine_00..03 (4) + place_00 + talk_00 (48×48) and soil_damage / soil_ore_fleck decals (32×32). Still **partial ART-019** (place/talk need more frames later). Idle_00/walk_00/walk_01 unchanged. Battle unit v2 sets remain pending (not dropped). Mine wall atlas v3 already on main via #26.
