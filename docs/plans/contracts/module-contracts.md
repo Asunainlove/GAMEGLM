@@ -52,7 +52,7 @@
 
 | 路径 | 根节点（name/type） | 关键子节点 |
 |---|---|---|
-| `res://scenes/player.tscn` | `Player` (CharacterBody2D, group `player`, script `res://src/player/player_controller.gd`) | `Sprite` (ColorRect/Polygon2D 灰盒), `Collision` (CollisionShape2D), `InteractionProbe` (Area2D) |
+| `res://scenes/player.tscn` | `Player` (CharacterBody2D, group `player`, script `res://src/player/player_controller.gd`) | `Sprite` (AnimatedSprite2D idle/walk; ART-019 Luoxian explore frames), `Collision` (CollisionShape2D), `InteractionProbe` (Area2D) |
 | `res://scenes/world.tscn` | `World` (Node2D) | `Ground` (TileMapLayer), `OreOverlay` (TileMapLayer), `Buildings` (Node2D), `PlayerSpawn` (Marker2D)；实例化 `res://scenes/player.tscn` |
 | `res://scenes/battle.tscn` | `Battle` (Node2D, script `res://src/encounters/battle_scene.gd`) | `Tracks` (Node2D), `UI` (CanvasLayer) |
 | `res://scenes/dialogue_box.tscn` | `DialogueBox` (CanvasLayer, script `res://src/narrative/dialogue_box.gd`) | `Panel/NameLabel/TextLabel/OptionsBox` |
