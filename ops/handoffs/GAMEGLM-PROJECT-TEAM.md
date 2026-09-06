@@ -2,13 +2,13 @@
 
 - 日期：2026-09-06（Asia/Shanghai）
 - 仓库：Asunainlove/GAMEGLM
-- 基线提交：`2d28c29`（feat(battle): wire lumen_leviathan Boss phase1+phase2 — PR #45；门禁绿点同 SHA）
-- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: G7-HUMAN`，`visual_polish_packet: closed`，`last_verified_commit: 2d28c29`）
+- 基线提交：`3b08960`（feat(player): wire ART-019 place/talk multi-frame — PR #47；门禁绿点同 SHA）
+- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: G7-HUMAN`，`visual_polish_packet: closed`，`last_verified_commit: 3b08960`）
 - 完成门：`G7 Windows RC`（见 `ops/GOAL.md`）
 
 ## 1. 当前状态（一句话）
 
-G6 方案 A P0（batch1–4）**全部 done**；观感包 **closed**（PR #22–#32）；战斗单位 v2 满帧（含 Boss `lumen_leviathan` P1+P2）**已接线完成**（PR #36–#45）。`active_packet=G7-HUMAN`。自动门禁绿（tip：`validate_content` PASS、默认 GUT **727/727 PASS**）。**硬门只剩主人 G7**（真人试玩/外部试玩/原创性终审；不得捏造结果）。ART-019 place/talk 补帧仍残留、不挡 G7。
+G6 方案 A P0（batch1–4）**全部 done**；观感包 **closed**（PR #22–#32）；战斗单位 v2 满帧（含 Boss `lumen_leviathan` P1+P2）**已接线完成**（PR #36–#45）。`active_packet=G7-HUMAN`。自动门禁绿（tip：`validate_content` PASS、默认 GUT **727/727 PASS**）。**硬门只剩主人 G7**（真人试玩/外部试玩/原创性终审；不得捏造结果）。ART-019 place/talk 多帧已接线（#47）。
 
 ## 2. 角色与责任人
 
@@ -72,7 +72,7 @@ RC 总清单：`docs/rc-checklist.md`
 **非真人可清残留（不阻塞 G7 裁定；产品确认后不另开产项）：**
 
 - [ ] `test_place_chain_*` 在脏 Godot userdata 下整包可轮换闪红（清 userdata 后全绿；单跑 integration 一直绿）——记残留，不挡 G7
-- [ ] ART-019 place/talk 补帧仍欠（不挡 G7）
+- [x] ART-019 place/talk 多帧已接线（`place_00..03` + `talk_00..01`；PR #47）
 - [ ] SFX / BGM **全表调用点**收尾接线（resolver 与 P0 钩子已在；余：`bgm_build` 焦点、结局 BGM-only fade、标题点击 SFX 等，见 `docs/art/audio-assets.md` §6）
 - [ ] 新鲜 `Verify-Slice` / 导出冒烟输出记入 `ops/evidence/`（不得只引用历史结论）
 - [ ] 合同剩余非 P0 / R1–R9 接线包可登记 backlog，**不阻塞 G7**
@@ -104,11 +104,11 @@ python scripts/validate_content.py
 
 1. **主人（硬门）**：按 `docs/g7-playtest-facilitator.md` 填 `docs/rc-playthrough-record.md`；代理不得代填。
 2. **工程/测试**：待命（无新批资产前不接线；测试按需抽检 tip）。
-3. **美术（残留、不挡 G7）**：ART-019 place/talk 补帧可继续。
-4. **产品**：不另开产项；本交接单与 `ops/state.json` 已对齐 G7-HUMAN / 观感包 closed / 单位 v2 满帧完成。
+3. **美术**：ART-019 已收口；无新批前待命。
+4. **产品**：不另开产项；本交接单与 `ops/state.json` 已对齐 G7-HUMAN / 观感包 closed / 单位 v2 + ART-019 完成。
 
 ## 8. 恢复协议
 
 1. 读 `AGENTS.md`、`ops/GOAL.md`、`ops/state.json`、本文件。
-2. 确认 `last_verified_commit` 为当前工作祖先或已记录的验证点（门禁绿点 / 基线 `2d28c29`）。
+2. 确认 `last_verified_commit` 为当前工作祖先或已记录的验证点（门禁绿点 / 基线 `3b08960`）。
 3. 仅从 `resume_from` / `next_packet_ids` 恢复；G7 结果不得由代理代填。
