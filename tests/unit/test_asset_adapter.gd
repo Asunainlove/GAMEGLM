@@ -214,6 +214,21 @@ func test_sprite_frames_accepts_boss_phase1_dir() -> void:
 		assert_eq(_pixel_of(frames.get_frame_texture("idle", 0)), Color(0, 1, 1))
 
 
+func test_sprite_frames_accepts_boss_phase2_via_phase_subdir() -> void:
+	var base := _temp_dir
+	_write_unit_frames(base, "battle/units/probe_boss/phase1", "probe_boss", Color(0, 1, 1))
+	_write_unit_frames(base, "battle/units/probe_boss/phase2", "probe_boss", Color(1, 0, 1))
+	var frames: SpriteFrames = ADAPTER.sprite_frames(
+		"battle_probe_boss", UNIT_STATES, UNIT_FRAME_COUNTS, base, "phase2")
+	assert_not_null(frames, "Boss phase2/ 经 phase_subdir 必须可解析。")
+	if frames != null:
+		assert_eq(
+			_pixel_of(frames.get_frame_texture("idle", 0)),
+			Color(1, 0, 1),
+			"phase_subdir=phase2 必须优先于 phase1。",
+		)
+
+
 func test_sprite_frames_accepts_flat_task_dir() -> void:
 	var base := _temp_dir
 	_write_unit_frames(base, "battle", "battle_probe_foe", Color(1, 1, 0))
