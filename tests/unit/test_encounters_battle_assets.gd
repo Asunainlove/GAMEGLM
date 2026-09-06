@@ -225,3 +225,106 @@ func test_destabilized_sprite_flash_driven_by_process() -> void:
 	assert_true(
 		modulated.b > modulated.r and modulated.b > modulated.g,
 		"精灵形态的失稳反馈必须按白↔紫脉动。")
+
+
+# --- 生产接线（#36/#37 v2 满 8 帧白名单）----------------------------------------
+
+
+func test_production_wired_units_resolve_eight_flat_frames() -> void:
+	## 扁平合同路径 assets/art/battle/units/<id>/<id>_<state>_<NN>.png
+	var wired: Array[String] = ["luoxian_fighter", "misa_weaver", "drift_swarmling"]
+	for unit_id: String in wired:
+		var frames: SpriteFrames = AssetAdapter.sprite_frames(
+			"battle_" + unit_id, UNIT_STATES, UNIT_FRAME_COUNTS
+		)
+		assert_not_null(frames, "%s must resolve production SpriteFrames." % unit_id)
+		if frames == null:
+			continue
+		for state: String in UNIT_STATES:
+			assert_eq(
+				frames.get_frame_count(state),
+				int(UNIT_FRAME_COUNTS[state]),
+				"%s/%s frame count." % [unit_id, state],
+			)
+		assert_eq(frames.get_animation_speed("idle"), 2.0)
+		assert_true(frames.get_animation_loop("idle"))
+		assert_eq(frames.get_animation_speed("attack"), 8.0)
+		assert_false(frames.get_animation_loop("attack"))
+
+
+func test_production_allowlist_wires_allies_and_swarm_keeps_unapproved_graybox() -> void:
+	## 生产目录：白名单单位 → Sprite；未批单位（shard_husk）→ 灰盒，且不记缺失告警。
+	var battle := {
+		"battle_id": "battle_wire_probe",
+		"seed": 0,
+		"turn": 1,
+		"units": [
+			{
+				"key": "a0|luoxian_fighter", "unit_id": "luoxian_fighter", "side": "ally",
+				"kind": "ally", "name_zh": "洛弦", "track": "front", "hp": 40, "max_hp": 40,
+				"speed": 5, "action_ids": [], "alive": true, "guard_ratio": 0.0,
+				"destabilized": false, "phases": [],
+			},
+			{
+				"key": "a1|misa_weaver", "unit_id": "misa_weaver", "side": "ally",
+				"kind": "ally", "name_zh": "弥砂", "track": "mid", "hp": 30, "max_hp": 30,
+				"speed": 6, "action_ids": [], "alive": true, "guard_ratio": 0.0,
+				"destabilized": false, "phases": [],
+			},
+			{
+				"key": "e0|drift_swarmling", "unit_id": "drift_swarmling", "side": "enemy",
+				"kind": "enemy_normal", "name_zh": "漂游幼群", "track": "front", "hp": 18,
+				"max_hp": 18, "speed": 7, "action_ids": [], "alive": true, "guard_ratio": 0.0,
+				"destabilized": false, "phases": [],
+			},
+			{
+				"key": "e1|shard_husk", "unit_id": "shard_husk", "side": "enemy",
+				"kind": "enemy_normal", "name_zh": "碎壳", "track": "mid", "hp": 22,
+				"max_hp": 22, "speed": 4, "action_ids": [], "alive": true, "guard_ratio": 0.0,
+				"destabilized": false, "phases": [],
+			},
+		],
+		"order": ["a0|luoxian_fighter"],
+		"active_index": 0,
+		"log": [],
+		"finished": false,
+		"result": "",
+		"action_defs": {},
+		"stub_steps": [],
+	}
+	var packed: PackedScene = load(BATTLE_SCENE_PATH) as PackedScene
+	var scene: Node2D = packed.instantiate() as Node2D
+	add_child_autofree(scene)
+	scene.set("store", null)
+	scene.set("engine_script", StubEngine)
+	# 生产默认目录（不注入 temp）——触发白名单。
+	scene.set("asset_base_dir", "res://assets/art")
+	StubEngine.battle_template = battle
+	scene.call("begin_encounter", {"id": "wire_probe"}, {})
+
+	var luoxian: Node2D = scene.get_node_or_null("Tracks/Row_front/a0_luoxian_fighter") as Node2D
+	var misa: Node2D = scene.get_node_or_null("Tracks/Row_mid/a1_misa_weaver") as Node2D
+	var swarm: Node2D = scene.get_node_or_null("Tracks/Row_front/e0_drift_swarmling") as Node2D
+	var husk: Node2D = scene.get_node_or_null("Tracks/Row_mid/e1_shard_husk") as Node2D
+	assert_not_null(luoxian)
+	assert_not_null(misa)
+	assert_not_null(swarm)
+	assert_not_null(husk)
+	if luoxian == null or misa == null or swarm == null or husk == null:
+		return
+
+	assert_not_null(luoxian.get_node_or_null("Sprite") as AnimatedSprite2D)
+	assert_null(luoxian.get_node_or_null("Box"))
+	assert_not_null(misa.get_node_or_null("Sprite") as AnimatedSprite2D)
+	assert_null(misa.get_node_or_null("Box"))
+	var swarm_sprite: AnimatedSprite2D = swarm.get_node_or_null("Sprite") as AnimatedSprite2D
+	assert_not_null(swarm_sprite)
+	assert_true(swarm_sprite.flip_h, "Enemy sprites must face left (A8).")
+	assert_null(swarm.get_node_or_null("Box"))
+	assert_not_null(husk.get_node_or_null("Box") as ColorRect, "Unapproved unit stays graybox.")
+	assert_null(husk.get_node_or_null("Sprite"), "shard_husk must not be wired.")
+
+	var luoxian_sprite: AnimatedSprite2D = luoxian.get_node("Sprite") as AnimatedSprite2D
+	var frames: SpriteFrames = luoxian_sprite.sprite_frames
+	for state: String in UNIT_STATES:
+		assert_eq(frames.get_frame_count(state), int(UNIT_FRAME_COUNTS[state]))
