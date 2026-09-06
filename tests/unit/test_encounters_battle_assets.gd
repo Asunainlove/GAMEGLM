@@ -227,12 +227,12 @@ func test_destabilized_sprite_flash_driven_by_process() -> void:
 		"精灵形态的失稳反馈必须按白↔紫脉动。")
 
 
-# --- 生产接线（#36/#37 v2 满 8 帧白名单）----------------------------------------
+# --- 生产接线（#36/#37/#41 v2 满 8 帧白名单）----------------------------------------
 
 
 func test_production_wired_units_resolve_eight_flat_frames() -> void:
 	## 扁平合同路径 assets/art/battle/units/<id>/<id>_<state>_<NN>.png
-	var wired: Array[String] = ["luoxian_fighter", "misa_weaver", "drift_swarmling"]
+	var wired: Array[String] = ["luoxian_fighter", "misa_weaver", "drift_swarmling", "shard_husk"]
 	for unit_id: String in wired:
 		var frames: SpriteFrames = AssetAdapter.sprite_frames(
 			"battle_" + unit_id, UNIT_STATES, UNIT_FRAME_COUNTS
@@ -252,8 +252,8 @@ func test_production_wired_units_resolve_eight_flat_frames() -> void:
 		assert_false(frames.get_animation_loop("attack"))
 
 
-func test_production_allowlist_wires_allies_and_swarm_keeps_unapproved_graybox() -> void:
-	## 生产目录：白名单单位 → Sprite；未批单位（shard_husk）→ 灰盒，且不记缺失告警。
+func test_production_allowlist_wires_approved_units_keeps_unapproved_graybox() -> void:
+	## 生产目录：白名单单位 → Sprite；未批单位（veinwarden_echo）→ 灰盒，且不记缺失告警。
 	var battle := {
 		"battle_id": "battle_wire_probe",
 		"seed": 0,
@@ -283,6 +283,12 @@ func test_production_allowlist_wires_allies_and_swarm_keeps_unapproved_graybox()
 				"max_hp": 22, "speed": 4, "action_ids": [], "alive": true, "guard_ratio": 0.0,
 				"destabilized": false, "phases": [],
 			},
+			{
+				"key": "e2|veinwarden_echo", "unit_id": "veinwarden_echo", "side": "enemy",
+				"kind": "enemy_elite", "name_zh": "脉守回响", "track": "rear", "hp": 50,
+				"max_hp": 50, "speed": 3, "action_ids": [], "alive": true, "guard_ratio": 0.0,
+				"destabilized": false, "phases": [],
+			},
 		],
 		"order": ["a0|luoxian_fighter"],
 		"active_index": 0,
@@ -306,11 +312,13 @@ func test_production_allowlist_wires_allies_and_swarm_keeps_unapproved_graybox()
 	var misa: Node2D = scene.get_node_or_null("Tracks/Row_mid/a1_misa_weaver") as Node2D
 	var swarm: Node2D = scene.get_node_or_null("Tracks/Row_front/e0_drift_swarmling") as Node2D
 	var husk: Node2D = scene.get_node_or_null("Tracks/Row_mid/e1_shard_husk") as Node2D
+	var echo: Node2D = scene.get_node_or_null("Tracks/Row_rear/e2_veinwarden_echo") as Node2D
 	assert_not_null(luoxian)
 	assert_not_null(misa)
 	assert_not_null(swarm)
 	assert_not_null(husk)
-	if luoxian == null or misa == null or swarm == null or husk == null:
+	assert_not_null(echo)
+	if luoxian == null or misa == null or swarm == null or husk == null or echo == null:
 		return
 
 	assert_not_null(luoxian.get_node_or_null("Sprite") as AnimatedSprite2D)
@@ -321,10 +329,17 @@ func test_production_allowlist_wires_allies_and_swarm_keeps_unapproved_graybox()
 	assert_not_null(swarm_sprite)
 	assert_true(swarm_sprite.flip_h, "Enemy sprites must face left (A8).")
 	assert_null(swarm.get_node_or_null("Box"))
-	assert_not_null(husk.get_node_or_null("Box") as ColorRect, "Unapproved unit stays graybox.")
-	assert_null(husk.get_node_or_null("Sprite"), "shard_husk must not be wired.")
+	var husk_sprite: AnimatedSprite2D = husk.get_node_or_null("Sprite") as AnimatedSprite2D
+	assert_not_null(husk_sprite, "shard_husk must be wired.")
+	assert_true(husk_sprite.flip_h, "Enemy shard_husk must face left (A8).")
+	assert_null(husk.get_node_or_null("Box"))
+	assert_not_null(echo.get_node_or_null("Box") as ColorRect, "Unapproved unit stays graybox.")
+	assert_null(echo.get_node_or_null("Sprite"), "veinwarden_echo must not be wired.")
 
 	var luoxian_sprite: AnimatedSprite2D = luoxian.get_node("Sprite") as AnimatedSprite2D
 	var frames: SpriteFrames = luoxian_sprite.sprite_frames
 	for state: String in UNIT_STATES:
 		assert_eq(frames.get_frame_count(state), int(UNIT_FRAME_COUNTS[state]))
+	var husk_frames: SpriteFrames = husk_sprite.sprite_frames
+	for state: String in UNIT_STATES:
+		assert_eq(husk_frames.get_frame_count(state), int(UNIT_FRAME_COUNTS[state]), "shard_husk/%s" % state)
