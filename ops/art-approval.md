@@ -211,7 +211,7 @@
 | luoxian_fighter_death_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | rejected | assets/art/battle/units/luoxian_fighter/luoxian_fighter_death_00.png |
 | luoxian_fighter_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | rejected | assets/art/battle/units/luoxian_fighter/luoxian_fighter_death_01.png |
 
-> Note (2026-09-06): **misa_weaver v2 full 8-frame set** approved/drop-in by 幕僚长 standing auth. Identity OK (warm sand tunic + cyan spool/thread). Replaces `assets/art/battle/units/misa_weaver/` 128×128 frames (strip `_v2`). No `.import` flood. No luoxian_fighter / swarmling.
+> Note (2026-09-06): **misa_weaver v2 full 8-frame set** approved/drop-in by 幕僚长 standing auth. Identity OK (warm sand tunic + cyan spool/thread). Replaces `assets/art/battle/units/misa_weaver/` 128×128 frames (strip `_v2`). No `.import` flood. No luoxian_fighter.
 | misa_weaver_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.2 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/misa_weaver/misa_weaver_idle_00.png |
 | misa_weaver_idle_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.2 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/misa_weaver/misa_weaver_idle_01.png |
 | misa_weaver_attack_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.2 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/misa_weaver/misa_weaver_attack_00.png |
@@ -220,3 +220,13 @@
 | misa_weaver_hit_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.2 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/misa_weaver/misa_weaver_hit_00.png |
 | misa_weaver_death_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.2 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/misa_weaver/misa_weaver_death_00.png |
 | misa_weaver_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.2 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/misa_weaver/misa_weaver_death_01.png |
+
+> Note (2026-09-06): **drift_swarmling v2 full 8-frame set** approved/drop-in by 幕僚长 standing auth. Verified RGBA transparent, content bbox ≤64, warm-orange identity. Replaces `assets/art/battle/units/drift_swarmling/` (strip `_v2`). No `.import` flood.
+| drift_swarmling_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.3 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/drift_swarmling/drift_swarmling_idle_00.png |
+| drift_swarmling_idle_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.3 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/drift_swarmling/drift_swarmling_idle_01.png |
+| drift_swarmling_attack_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.3 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/drift_swarmling/drift_swarmling_attack_00.png |
+| drift_swarmling_attack_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.3 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/drift_swarmling/drift_swarmling_attack_01.png |
+| drift_swarmling_attack_02_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.3 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/drift_swarmling/drift_swarmling_attack_02.png |
+| drift_swarmling_hit_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.3 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/drift_swarmling/drift_swarmling_hit_00.png |
+| drift_swarmling_death_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.3 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/drift_swarmling/drift_swarmling_death_00.png |
+| drift_swarmling_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.3 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/drift_swarmling/drift_swarmling_death_01.png |
