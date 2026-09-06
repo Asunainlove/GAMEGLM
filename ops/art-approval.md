@@ -242,3 +242,5 @@
 | luoxian_fighter_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.1 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/luoxian_fighter/luoxian_fighter_death_01.png |
 
 > Note (2026-09-06): **polish refresh** over #36 drop-in — cleaner staging polish for `misa_weaver` + `drift_swarmling` (same paths, no gameplay change). Standing auth 幕僚长. Swarmling verified RGBA transparent, content bbox ≤56. Misa matte cleanup + ring/cube identity. Strip `_v2` into existing asset paths. No `.import` flood; SpriteFrames paths unchanged (#38 wiring intact).
+
+> Note (2026-09-06): **luoxian_fighter hit/death matte cleanup refresh** over #37 drop-in — only `hit_00` / `death_00` / `death_01` replaced from staging polish (strip `_v2`). Idle/attack unchanged (same hash as main). Standing auth 幕僚长. No `.import` flood; SpriteFrames paths unchanged (#38 wiring intact).
