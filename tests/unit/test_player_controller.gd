@@ -82,8 +82,8 @@ func test_player_scene_matches_contract_layout() -> void:
 			assert_eq(anim.sprite_frames.get_frame_count(&"idle"), 2)
 			assert_eq(anim.sprite_frames.get_frame_count(&"walk"), 2)
 			assert_eq(anim.sprite_frames.get_frame_count(&"mine"), 4)
-			assert_eq(anim.sprite_frames.get_frame_count(&"place"), 1)
-			assert_eq(anim.sprite_frames.get_frame_count(&"talk"), 1)
+			assert_eq(anim.sprite_frames.get_frame_count(&"place"), 4)
+			assert_eq(anim.sprite_frames.get_frame_count(&"talk"), 2)
 			var idle_tex: Texture2D = anim.sprite_frames.get_frame_texture(&"idle", 0)
 			assert_not_null(idle_tex)
 			if idle_tex != null:
@@ -98,6 +98,22 @@ func test_player_scene_matches_contract_layout() -> void:
 					idle_tex_1.resource_path,
 					"res://assets/art/characters/luoxian/actions/luoxian_action_idle_01.png"
 				)
+			for i in range(4):
+				var place_tex: Texture2D = anim.sprite_frames.get_frame_texture(&"place", i)
+				assert_not_null(place_tex)
+				if place_tex != null:
+					assert_eq(
+						place_tex.resource_path,
+						"res://assets/art/characters/luoxian/actions/luoxian_action_place_%02d.png" % i
+					)
+			for i in range(2):
+				var talk_tex: Texture2D = anim.sprite_frames.get_frame_texture(&"talk", i)
+				assert_not_null(talk_tex)
+				if talk_tex != null:
+					assert_eq(
+						talk_tex.resource_path,
+						"res://assets/art/characters/luoxian/actions/luoxian_action_talk_%02d.png" % i
+					)
 
 	var collision: Node = player.get_node_or_null("Collision")
 	assert_true(collision is CollisionShape2D, "Collision must be a CollisionShape2D.")
