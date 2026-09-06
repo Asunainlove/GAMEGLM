@@ -18,7 +18,8 @@ extends RefCounted
 ##   命名 uia_ico_<item_id>[.png|_32.png]；
 ## - sprite_frames()：帧命名按 A8 §7.1 `<asset_id>_<state>_<NN>.png`（NN 两位
 ##   零填充、从 00 起）；battle_<unit_id> 优先探测 A8 §7.2 落位
-##   battle/units/<unit_id>/（Boss 备选 phase1/），再退回分类平铺目录；
+##   battle/units/<unit_id>/（Boss 备选 phase1/；可选 phase_subdir 指定 phase2/），
+##   再退回分类平铺目录；
 ## - texture_at()：接受完整路径（res:// 走导入系统，导出包行为一致；非
 ##   res://（如 user:// 测试注入）走原生 PNG 读取）。
 
@@ -126,7 +127,7 @@ static func texture_at(path: String) -> Texture2D:
 ## states 与 frame_counts 必须一一对应且帧数 ≥ 1，否则返回 null。
 static func sprite_frames(
 		asset_id: String, states: Array, frame_counts: Dictionary,
-		base_dir: String = DEFAULT_BASE_DIR) -> SpriteFrames:
+		base_dir: String = DEFAULT_BASE_DIR, phase_subdir: String = "") -> SpriteFrames:
 	if asset_id.is_empty() or states.is_empty():
 		return null
 	for state_value: Variant in states:
@@ -137,7 +138,7 @@ static func sprite_frames(
 			return null
 		if int(frame_counts[state]) < 1:
 			return null
-	for candidate: Dictionary in _sprite_frame_candidates(asset_id, base_dir):
+	for candidate: Dictionary in _sprite_frame_candidates(asset_id, base_dir, phase_subdir):
 		var frames := _try_build_sprite_frames(
 			str(candidate["dir"]), str(candidate["stem"]), states, frame_counts)
 		if frames != null:
@@ -171,20 +172,28 @@ static func _texture_candidates(asset_id: String, base_dir: String) -> PackedStr
 
 
 ## 帧组候选（dir + 帧名 stem）：battle_<unit_id> 优先 A8 §7.2 落位
-## units/<unit_id>/（Boss phase1/ 备选），其余分类退回平铺目录与 base_dir。
-static func _sprite_frame_candidates(asset_id: String, base_dir: String) -> Array[Dictionary]:
+## units/<unit_id>/（Boss phase1/ 备选）；phase_subdir 非空时优先该相位目录
+## （如 phase2，供相位切换后整体替换），其余分类退回平铺目录与 base_dir。
+static func _sprite_frame_candidates(
+		asset_id: String, base_dir: String, phase_subdir: String = "") -> Array[Dictionary]:
 	var candidates: Array[Dictionary] = []
 	if asset_id.begins_with("battle_"):
 		var unit_id := asset_id.substr("battle_".length())
 		if unit_id != "":
+			if phase_subdir != "":
+				candidates.append({
+					"dir": "%s/battle/units/%s/%s" % [base_dir, unit_id, phase_subdir],
+					"stem": unit_id,
+				})
 			candidates.append({
 				"dir": "%s/battle/units/%s" % [base_dir, unit_id],
 				"stem": unit_id,
 			})
-			candidates.append({
-				"dir": "%s/battle/units/%s/phase1" % [base_dir, unit_id],
-				"stem": unit_id,
-			})
+			if phase_subdir == "":
+				candidates.append({
+					"dir": "%s/battle/units/%s/phase1" % [base_dir, unit_id],
+					"stem": unit_id,
+				})
 	var category := _category_of(asset_id)
 	if category != "":
 		candidates.append({"dir": "%s/%s" % [base_dir, category], "stem": asset_id})

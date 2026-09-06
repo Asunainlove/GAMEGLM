@@ -71,9 +71,10 @@ var store: Object = null
 ## death2）；命中 → AnimatedSprite2D 替换灰盒 Box（血量/状态 Label 保留叠加，
 ## 精灵底边中心对齐灰盒底边 +20 px，A8 §2 挂点契约）；缺失 → 现状灰盒逐字节
 ## 不变。asset_base_dir 可注入（测试 user://；生产 res://assets/art）。
-## Boss phase2 精灵替换属后续接线包（本包只落 phase1 形态探测）。
+## Boss lumen_leviathan：phase_index < 0 → phase1/；phase_index >= 0（引擎
+## phase_change 后）→ phase2/；经 _rebuild_tracks 整体替换 SpriteFrames（A8 §7.3）。
 ##
-## 观感接线白名单（#36/#37/#41/#42 v2 满 8 帧已批）：生产目录仅对 WIRED_BATTLE_UNIT_IDS
+## 观感接线白名单（#36/#37/#41/#42/#44 v2 满帧已批）：生产目录仅对 WIRED_BATTLE_UNIT_IDS
 ## 替换灰盒；其余单位即使磁盘有帧也保持灰盒（未批观感接线）。注入目录
 ## （测试）跳过白名单，扁平路径夹具仍可用。
 const UNIT_SPRITE_STATES: Array[String] = ["idle", "attack", "hit", "death"]
@@ -81,9 +82,11 @@ const UNIT_SPRITE_FRAME_COUNTS: Dictionary = {"idle": 2, "attack": 3, "hit": 1, 
 const UNIT_SPRITE_BOTTOM_Y: float = 20.0
 ## 与 AssetAdapter.DEFAULT_BASE_DIR 同值（跨类常量默认参受限，就地镜像）。
 const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
-## Presentation-approved battle unit ids (luoxian/misa/drift #36/#37; shard_husk #41; veinwarden #42).
-## Elite veinwarden_echo is 192×192 — anchor via unit_sprite_anchor_height (no extra scale).
-const WIRED_BATTLE_UNIT_IDS: PackedStringArray = ["luoxian_fighter", "misa_weaver", "drift_swarmling", "shard_husk", "veinwarden_echo"]
+## Presentation-approved battle unit ids (luoxian/misa/drift #36/#37; shard_husk #41;
+## veinwarden #42; lumen_leviathan Boss phase1+phase2 #44).
+## Elite veinwarden_echo is 192×192; Boss lumen_leviathan is 256×256 — anchor via
+## unit_sprite_anchor_height (no extra scale).
+const WIRED_BATTLE_UNIT_IDS: PackedStringArray = ["luoxian_fighter", "misa_weaver", "drift_swarmling", "shard_husk", "veinwarden_echo", "lumen_leviathan"]
 
 var asset_base_dir: String = DEFAULT_ASSET_BASE_DIR
 
@@ -341,8 +344,10 @@ func _build_unit_node(unit: Dictionary, column: int) -> Node2D:
 	unit_node.set_meta("destabilized", destabilized)
 
 	# G6P-1：白名单 + 资产命中 → 精灵；未接线/缺失 → 灰盒 Box。
+	# Boss：phase_index >= 0 → phase2 帧组（与 CombatEngine phase_change 对齐）。
 	var unit_id := str(unit.get("unit_id", ""))
-	var sprite := _build_unit_sprite(unit_id)
+	var phase_index := int(unit.get("phase_index", -1))
+	var sprite := _build_unit_sprite(unit_id, phase_index)
 	if sprite != null:
 		_asset_loaded_units += 1
 		# A8 §2 朝向：盟友面右、敌人面左。
@@ -390,12 +395,14 @@ func _is_unit_sprite_wiring_enabled(unit_id: String) -> bool:
 
 
 ## 单位资产探测：contract 形态 id = battle_<unit_id>（A8 §2 命名基准）。
+## phase_index >= 0 → 优先 phase2/（Boss 相位后）；否则默认落位（含 phase1/）。
 ## 命中 → AnimatedSprite2D（idle 循环，底边中心对齐灰盒底边 +20 px）；缺失 → null。
-func _build_unit_sprite(unit_id: String) -> AnimatedSprite2D:
+func _build_unit_sprite(unit_id: String, phase_index: int = -1) -> AnimatedSprite2D:
 	if not _is_unit_sprite_wiring_enabled(unit_id):
 		return null
+	var phase_subdir := "phase2" if phase_index >= 0 else ""
 	var frames := AssetAdapter.sprite_frames(
-		"battle_" + unit_id, UNIT_SPRITE_STATES, UNIT_SPRITE_FRAME_COUNTS, asset_base_dir)
+		"battle_" + unit_id, UNIT_SPRITE_STATES, UNIT_SPRITE_FRAME_COUNTS, asset_base_dir, phase_subdir)
 	if frames == null:
 		return null
 	var sprite := AnimatedSprite2D.new()
