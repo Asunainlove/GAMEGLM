@@ -254,3 +254,13 @@
 | shard_husk_hit_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_hit_00.png |
 | shard_husk_death_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_death_00.png |
 | shard_husk_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_death_01.png |
+
+> Note (2026-09-06): **veinwarden_echo v2 full 8-frame set** approved/drop-in by 幕僚长 standing auth. Locked to cleaned idle_00 (cold cyan translucent echo + giant right crystal arm with warm gold veins + legless). Prior identity-drift rejection superseded. Replaces `assets/art/battle/units/veinwarden_echo/` (strip `_v2`). No `.import` flood. SpriteFrames wiring = follow-up for 工程.
+| veinwarden_echo_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.5 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/veinwarden_echo/veinwarden_echo_idle_00.png |
+| veinwarden_echo_idle_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.5 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/veinwarden_echo/veinwarden_echo_idle_01.png |
+| veinwarden_echo_attack_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.5 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/veinwarden_echo/veinwarden_echo_attack_00.png |
+| veinwarden_echo_attack_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.5 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/veinwarden_echo/veinwarden_echo_attack_01.png |
+| veinwarden_echo_attack_02_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.5 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/veinwarden_echo/veinwarden_echo_attack_02.png |
+| veinwarden_echo_hit_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.5 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/veinwarden_echo/veinwarden_echo_hit_00.png |
+| veinwarden_echo_death_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.5 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/veinwarden_echo/veinwarden_echo_death_00.png |
+| veinwarden_echo_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.5 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/veinwarden_echo/veinwarden_echo_death_01.png |
