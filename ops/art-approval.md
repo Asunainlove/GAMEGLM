@@ -201,3 +201,12 @@
 | env_world_soil_ore_fleck_v2 | v2-polish | env_v2 draft resize | docs/art/environment-assets.md | 2026-09-03 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/world/decals/env_world_soil_ore_fleck.png |
 
 > Note (2026-09-06): Remaining v2-polish explore/decals approved by 幕僚长 standing auth — idle_01 + mine_00..03 (4) + place_00 + talk_00 (48×48) and soil_damage / soil_ore_fleck decals (32×32). Still **partial ART-019** (place/talk need more frames later). Idle_00/walk_00/walk_01 unchanged. Battle unit v2 sets remain pending (not dropped). Mine wall atlas v3 already on main via #26.
+
+> Note (2026-09-06): ART-019 place_01..03 + talk_01 approved/drop-in by 幕僚长 standing auth (48×48). place_00/talk_00 unchanged on main. **REJECTED** luoxian_fighter hit_00_v2 / death_00_v2 / death_01_v2 — identity drift vs idle_00_v2; do **not** drop-in battle unit frames. Battle unit v2 packs remain staged only.
+| luoxian_action_place_01 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_place_01.png |
+| luoxian_action_place_02 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_place_02.png |
+| luoxian_action_place_03 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_place_03.png |
+| luoxian_action_talk_01 | v2-polish-explore | Cursor GenerateImage | docs/art/character-assets.md#ART-019 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/characters/luoxian/actions/luoxian_action_talk_01.png |
+| luoxian_fighter_hit_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | rejected | assets/art/battle/units/luoxian_fighter/luoxian_fighter_hit_00.png |
+| luoxian_fighter_death_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | rejected | assets/art/battle/units/luoxian_fighter/luoxian_fighter_death_00.png |
+| luoxian_fighter_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | rejected | assets/art/battle/units/luoxian_fighter/luoxian_fighter_death_01.png |
