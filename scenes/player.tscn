@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://src/player/player_controller.gd" id="1_player"]
 [ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_idle_00.png" id="2_idle0"]
@@ -9,8 +9,12 @@
 [ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_mine_01.png" id="7_mine1"]
 [ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_mine_02.png" id="8_mine2"]
 [ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_mine_03.png" id="9_mine3"]
-[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_place_00.png" id="10_place"]
-[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_talk_00.png" id="11_talk"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_place_00.png" id="10_place0"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_place_01.png" id="11_place1"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_place_02.png" id="12_place2"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_place_03.png" id="13_place3"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_talk_00.png" id="14_talk0"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/luoxian/actions/luoxian_action_talk_01.png" id="15_talk1"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_luoxian"]
 animations = [{
@@ -55,15 +59,27 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": ExtResource("10_place")
+"texture": ExtResource("10_place0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_place1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_place2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("13_place3")
 }],
 "loop": false,
 "name": &"place",
-"speed": 4.0
+"speed": 8.0
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": ExtResource("11_talk")
+"texture": ExtResource("14_talk0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("15_talk1")
 }],
 "loop": false,
 "name": &"talk",
