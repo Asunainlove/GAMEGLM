@@ -73,7 +73,7 @@ var store: Object = null
 ## 不变。asset_base_dir 可注入（测试 user://；生产 res://assets/art）。
 ## Boss phase2 精灵替换属后续接线包（本包只落 phase1 形态探测）。
 ##
-## 观感接线白名单（#36/#37 v2 满 8 帧已批）：生产目录仅对 WIRED_BATTLE_UNIT_IDS
+## 观感接线白名单（#36/#37/#41/#42 v2 满 8 帧已批）：生产目录仅对 WIRED_BATTLE_UNIT_IDS
 ## 替换灰盒；其余单位即使磁盘有帧也保持灰盒（未批观感接线）。注入目录
 ## （测试）跳过白名单，扁平路径夹具仍可用。
 const UNIT_SPRITE_STATES: Array[String] = ["idle", "attack", "hit", "death"]
@@ -81,8 +81,9 @@ const UNIT_SPRITE_FRAME_COUNTS: Dictionary = {"idle": 2, "attack": 3, "hit": 1, 
 const UNIT_SPRITE_BOTTOM_Y: float = 20.0
 ## 与 AssetAdapter.DEFAULT_BASE_DIR 同值（跨类常量默认参受限，就地镜像）。
 const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
-## Presentation-approved battle unit ids (luoxian/misa/drift v2 via #36/#37).
-const WIRED_BATTLE_UNIT_IDS: PackedStringArray = ["luoxian_fighter", "misa_weaver", "drift_swarmling"]
+## Presentation-approved battle unit ids (luoxian/misa/drift #36/#37; shard_husk #41; veinwarden #42).
+## Elite veinwarden_echo is 192×192 — anchor via unit_sprite_anchor_height (no extra scale).
+const WIRED_BATTLE_UNIT_IDS: PackedStringArray = ["luoxian_fighter", "misa_weaver", "drift_swarmling", "shard_husk", "veinwarden_echo"]
 
 var asset_base_dir: String = DEFAULT_ASSET_BASE_DIR
 
