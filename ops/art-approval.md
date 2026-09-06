@@ -244,3 +244,13 @@
 > Note (2026-09-06): **polish refresh** over #36 drop-in — cleaner staging polish for `misa_weaver` + `drift_swarmling` (same paths, no gameplay change). Standing auth 幕僚长. Swarmling verified RGBA transparent, content bbox ≤56. Misa matte cleanup + ring/cube identity. Strip `_v2` into existing asset paths. No `.import` flood; SpriteFrames paths unchanged (#38 wiring intact).
 
 > Note (2026-09-06): **luoxian_fighter hit/death matte cleanup refresh** over #37 drop-in — only `hit_00` / `death_00` / `death_01` replaced from staging polish (strip `_v2`). Idle/attack unchanged (same hash as main). Standing auth 幕僚长. No `.import` flood; SpriteFrames paths unchanged (#38 wiring intact).
+
+> Note (2026-09-06): **shard_husk v2 full 8-frame set** approved/drop-in by 幕僚长 standing auth. Warm brown-red shell + dark core + cold cyan light; idle_00 white matte cleared (corners alpha 0). Replaces `assets/art/battle/units/shard_husk/` (strip `_v2`). No `.import` flood. SpriteFrames wiring = follow-up for 工程 (tests currently assert shard unwired).
+| shard_husk_idle_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_idle_00.png |
+| shard_husk_idle_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_idle_01.png |
+| shard_husk_attack_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_attack_00.png |
+| shard_husk_attack_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_attack_01.png |
+| shard_husk_attack_02_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_attack_02.png |
+| shard_husk_hit_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_hit_00.png |
+| shard_husk_death_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_death_00.png |
+| shard_husk_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.4 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/shard_husk/shard_husk_death_01.png |
