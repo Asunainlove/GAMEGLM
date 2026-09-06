@@ -240,3 +240,5 @@
 | luoxian_fighter_hit_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.1 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/luoxian_fighter/luoxian_fighter_hit_00.png |
 | luoxian_fighter_death_00_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.1 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/luoxian_fighter/luoxian_fighter_death_00.png |
 | luoxian_fighter_death_01_v2 | v2-polish | Cursor GenerateImage | docs/art/battle-assets.md#2.1 | 2026-09-06 | 美术 | 幕僚长 | 2026-09-06 | approved | assets/art/battle/units/luoxian_fighter/luoxian_fighter_death_01.png |
+
+> Note (2026-09-06): **polish refresh** over #36 drop-in — cleaner staging polish for `misa_weaver` + `drift_swarmling` (same paths, no gameplay change). Standing auth 幕僚长. Swarmling verified RGBA transparent, content bbox ≤56. Misa matte cleanup + ring/cube identity. Strip `_v2` into existing asset paths. No `.import` flood; SpriteFrames paths unchanged (#38 wiring intact).
