@@ -227,12 +227,12 @@ func test_destabilized_sprite_flash_driven_by_process() -> void:
 		"精灵形态的失稳反馈必须按白↔紫脉动。")
 
 
-# --- 生产接线（#36/#37/#41 v2 满 8 帧白名单）----------------------------------------
+# --- 生产接线（#36/#37/#41/#42 v2 满 8 帧白名单）----------------------------------------
 
 
 func test_production_wired_units_resolve_eight_flat_frames() -> void:
 	## 扁平合同路径 assets/art/battle/units/<id>/<id>_<state>_<NN>.png
-	var wired: Array[String] = ["luoxian_fighter", "misa_weaver", "drift_swarmling", "shard_husk"]
+	var wired: Array[String] = ["luoxian_fighter", "misa_weaver", "drift_swarmling", "shard_husk", "veinwarden_echo"]
 	for unit_id: String in wired:
 		var frames: SpriteFrames = AssetAdapter.sprite_frames(
 			"battle_" + unit_id, UNIT_STATES, UNIT_FRAME_COUNTS
@@ -253,7 +253,7 @@ func test_production_wired_units_resolve_eight_flat_frames() -> void:
 
 
 func test_production_allowlist_wires_approved_units_keeps_unapproved_graybox() -> void:
-	## 生产目录：白名单单位 → Sprite；未批单位（veinwarden_echo）→ 灰盒，且不记缺失告警。
+	## 生产目录：白名单单位 → Sprite；未批 Boss（lumen_leviathan）→ 灰盒，且不记缺失告警。
 	var battle := {
 		"battle_id": "battle_wire_probe",
 		"seed": 0,
@@ -289,6 +289,12 @@ func test_production_allowlist_wires_approved_units_keeps_unapproved_graybox() -
 				"max_hp": 50, "speed": 3, "action_ids": [], "alive": true, "guard_ratio": 0.0,
 				"destabilized": false, "phases": [],
 			},
+			{
+				"key": "e3|lumen_leviathan", "unit_id": "lumen_leviathan", "side": "enemy",
+				"kind": "enemy_boss", "name_zh": "流明巨兽", "track": "front", "hp": 120,
+				"max_hp": 120, "speed": 2, "action_ids": [], "alive": true, "guard_ratio": 0.0,
+				"destabilized": false, "phases": [],
+			},
 		],
 		"order": ["a0|luoxian_fighter"],
 		"active_index": 0,
@@ -313,12 +319,14 @@ func test_production_allowlist_wires_approved_units_keeps_unapproved_graybox() -
 	var swarm: Node2D = scene.get_node_or_null("Tracks/Row_front/e0_drift_swarmling") as Node2D
 	var husk: Node2D = scene.get_node_or_null("Tracks/Row_mid/e1_shard_husk") as Node2D
 	var echo: Node2D = scene.get_node_or_null("Tracks/Row_rear/e2_veinwarden_echo") as Node2D
+	var levi: Node2D = scene.get_node_or_null("Tracks/Row_front/e3_lumen_leviathan") as Node2D
 	assert_not_null(luoxian)
 	assert_not_null(misa)
 	assert_not_null(swarm)
 	assert_not_null(husk)
 	assert_not_null(echo)
-	if luoxian == null or misa == null or swarm == null or husk == null or echo == null:
+	assert_not_null(levi)
+	if luoxian == null or misa == null or swarm == null or husk == null or echo == null or levi == null:
 		return
 
 	assert_not_null(luoxian.get_node_or_null("Sprite") as AnimatedSprite2D)
@@ -333,8 +341,19 @@ func test_production_allowlist_wires_approved_units_keeps_unapproved_graybox() -
 	assert_not_null(husk_sprite, "shard_husk must be wired.")
 	assert_true(husk_sprite.flip_h, "Enemy shard_husk must face left (A8).")
 	assert_null(husk.get_node_or_null("Box"))
-	assert_not_null(echo.get_node_or_null("Box") as ColorRect, "Unapproved unit stays graybox.")
-	assert_null(echo.get_node_or_null("Sprite"), "veinwarden_echo must not be wired.")
+	var echo_sprite: AnimatedSprite2D = echo.get_node_or_null("Sprite") as AnimatedSprite2D
+	assert_not_null(echo_sprite, "veinwarden_echo must be wired.")
+	assert_true(echo_sprite.flip_h, "Enemy veinwarden_echo must face left (A8).")
+	assert_null(echo.get_node_or_null("Box"))
+	# Elite 192×192: anchor height follows texture (no extra scale factor).
+	var echo_frames: SpriteFrames = echo_sprite.sprite_frames
+	assert_eq(
+		int(BattleScene.unit_sprite_anchor_height(echo_frames)),
+		192,
+		"veinwarden_echo idle texture height must be elite 192.",
+	)
+	assert_not_null(levi.get_node_or_null("Box") as ColorRect, "Unapproved Boss stays graybox.")
+	assert_null(levi.get_node_or_null("Sprite"), "lumen_leviathan must not be wired.")
 
 	var luoxian_sprite: AnimatedSprite2D = luoxian.get_node("Sprite") as AnimatedSprite2D
 	var frames: SpriteFrames = luoxian_sprite.sprite_frames
@@ -343,3 +362,5 @@ func test_production_allowlist_wires_approved_units_keeps_unapproved_graybox() -
 	var husk_frames: SpriteFrames = husk_sprite.sprite_frames
 	for state: String in UNIT_STATES:
 		assert_eq(husk_frames.get_frame_count(state), int(UNIT_FRAME_COUNTS[state]), "shard_husk/%s" % state)
+	for state: String in UNIT_STATES:
+		assert_eq(echo_frames.get_frame_count(state), int(UNIT_FRAME_COUNTS[state]), "veinwarden_echo/%s" % state)
