@@ -79,11 +79,13 @@ func test_world_syncs_placed_buildings_into_buildings_node() -> void:
 	var node: Node2D = buildings.get_child(0) as Node2D
 	assert_eq(str(node.name), "chunk_0_0|4|5")
 	assert_eq(node.position, Vector2(144, 176))
-	assert_true(bool(node.get_meta("graybox")), "Missing ENV-21 art must fall back to visible graybox.")
+	# Tip 4e1dc6d ships ENV-21..26 — expect real sprites, not graybox.
+	assert_false(bool(node.get_meta("graybox")), "Production env_bld art must replace graybox.")
 	assert_true(bool(node.get_meta("powered")), "anchor_block supply building uses powered skin.")
-	var graybox: ColorRect = node.get_node("Graybox") as ColorRect
-	assert_not_null(graybox)
-	assert_true(graybox.visible)
+	var sprite: Sprite2D = node.get_node("Sprite") as Sprite2D
+	assert_not_null(sprite)
+	assert_true(sprite.visible)
+	assert_not_null(sprite.texture)
 
 
 func test_world_despawns_removed_buildings_and_swaps_power_skin() -> void:
@@ -118,8 +120,9 @@ func test_world_despawns_removed_buildings_and_swaps_power_skin() -> void:
 	assert_eq(buildings.get_child_count(), 1, "Removed buildings must despawn.")
 	refiner = buildings.get_node("chunk_0_0|3|3") as Node2D
 	assert_false(bool(refiner.get_meta("powered")), "Alone refiner must swap to unpowered skin.")
-	var graybox: ColorRect = refiner.get_node("Graybox") as ColorRect
-	assert_eq(graybox.color, BuildingPresenter.GRAYBOX_UNPOWERED)
+	assert_false(bool(refiner.get_meta("graybox")), "Unpowered skin still uses real env_bld_unpowered art.")
+	var sprite: Sprite2D = refiner.get_node("Sprite") as Sprite2D
+	assert_not_null(sprite.texture)
 
 func test_presenter_prefers_env_bld_contract_art_over_graybox() -> void:
 	var temp := "user://p0b_env_bld_%d" % Time.get_ticks_usec()
@@ -164,4 +167,18 @@ func _remove_dir_recursive(path: String) -> void:
 		entry = dir.get_next()
 	dir.list_dir_end()
 	DirAccess.remove_absolute(path)
+
+
+func test_production_env_bld_assets_resolve_for_all_six_buildings() -> void:
+	var ids: Array[String] = [
+		"anchor_block", "anchor_workshop", "dust_refiner",
+		"stabilizer_pylon", "resonance_loom", "echo_chamber",
+	]
+	var presenter: BuildingPresenter = PRESENTER_SCRIPT.new()
+	presenter.asset_base_dir = BuildingPresenter.DEFAULT_ASSET_BASE_DIR
+	for building_id: String in ids:
+		var powered := presenter.probe_texture(building_id, true)
+		var unpowered := presenter.probe_texture(building_id, false)
+		assert_not_null(powered, "Missing powered art for %s" % building_id)
+		assert_not_null(unpowered, "Missing unpowered art for %s" % building_id)
 

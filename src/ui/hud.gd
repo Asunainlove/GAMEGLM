@@ -766,7 +766,7 @@ func _inventory_entries(snapshot: Dictionary) -> Array[Dictionary]:
 
 
 ## BuildBar：按注入目录渲染建造槽（图标 + 名 + 成本）。P0-E 增加 Icon /
-## NameLabel 挂点；灰占位直到 ui_bld_*.png 审批入库。选中按下态高亮；断电
+## NameLabel 挂点；优先 ui_bld_*，否则 env_bld_*_powered；全缺才灰占位。选中按下态高亮；断电
 ## 槽位右上角 UnpoweredPip（节点名仍为 UnpoweredDot 兼容 GAP4）；材料不足加后缀。
 ## 点击发 build_selected——表现层不直接改选中状态。
 func _render_build_bar() -> void:
@@ -815,6 +815,7 @@ func _render_build_bar() -> void:
 
 
 ## Icon hook: child named Icon (TextureRect or gray ColorRect placeholder).
+## Probe ui_bld_<id> first; fall back to env_bld_<id>_powered (world building art).
 func _make_building_icon(building_id: String) -> Control:
 	var host := Control.new()
 	host.name = "IconSlot"
@@ -823,6 +824,8 @@ func _make_building_icon(building_id: String) -> Control:
 	var texture: Texture2D = null
 	if not building_id.is_empty():
 		texture = AssetAdapter.texture(BUILDING_ICON_ID_FORMAT % building_id, asset_base_dir)
+		if texture == null:
+			texture = AssetAdapter.texture("env_bld_%s_powered" % building_id, asset_base_dir)
 	if texture != null:
 		var icon := TextureRect.new()
 		icon.name = "Icon"
