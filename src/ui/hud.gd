@@ -69,6 +69,13 @@ const HINT_FLAG_FORMAT: String = "hint_%s_seen"
 ## 缺失）一次性 push_warning 汇总，全缺失（生产基态）静默。
 const ITEM_ICON_ID_FORMAT: String = "ui_item_%s"
 const ITEM_ICON_SIZE: Vector2 = Vector2(24.0, 24.0)
+## P0-E BuildBar：建筑图标探测（ui_bld_<id> → ui/icons/…）；缺失用灰占位。
+const BUILDING_ICON_ID_FORMAT: String = "ui_bld_%s"
+const BUILDING_ICON_SIZE: Vector2 = Vector2(28.0, 28.0)
+const BUILDING_ICON_PLACEHOLDER := Color(0.35, 0.34, 0.32, 0.85)
+## 断电徽记语义色（token；非装饰 teal）。
+const UNPOWERED_PIP_COLOR: Color = Color(0.85, 0.15, 0.15)
+const UNPOWERED_PIP_SIZE: Vector2 = Vector2(8.0, 8.0)
 ## 与 AssetAdapter.DEFAULT_BASE_DIR 同值（跨类常量默认参受限，就地镜像）。
 const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
 
@@ -758,9 +765,10 @@ func _inventory_entries(snapshot: Dictionary) -> Array[Dictionary]:
 # ---------------------------------------------------------------- 建造热键栏（W002-GAP4）
 
 
-## BuildBar：按注入目录渲染 6 个建造槽（序号 + 中文名 + 成本摘要）。
-## 选中槽位按下态高亮；断电建筑槽位右上角小红点；材料不足槽位加（材料不足）。
-## 点击槽位发 build_selected 信号——表现层不直接改选中状态。
+## BuildBar：按注入目录渲染建造槽（图标 + 名 + 成本）。P0-E 增加 Icon /
+## NameLabel 挂点；优先 ui_bld_*，否则 env_bld_*_powered；全缺才灰占位。选中按下态高亮；断电
+## 槽位右上角 UnpoweredPip（节点名仍为 UnpoweredDot 兼容 GAP4）；材料不足加后缀。
+## 点击发 build_selected——表现层不直接改选中状态。
 func _render_build_bar() -> void:
 	_clear_children(_build_bar)
 	var catalog: Array = _provider_array(build_catalog)
@@ -771,31 +779,90 @@ func _render_build_bar() -> void:
 		if entry == null:
 			continue
 		var building_id := str(entry.get("building_id", ""))
+		var name_zh := str(entry.get("name_zh", building_id))
+		var cost_text := str(entry.get("cost_text", ""))
+		if not bool(entry.get("affordable", false)):
+			cost_text += UNAFFORDABLE_SUFFIX
 		var button := Button.new()
 		button.name = "BuildSlot_%s" % building_id
 		button.toggle_mode = true
 		button.button_pressed = building_id != "" and building_id == selected
-		var cost_text := str(entry.get("cost_text", ""))
-		if not bool(entry.get("affordable", false)):
-			cost_text += UNAFFORDABLE_SUFFIX
-		button.text = "%d %s\n%s" % [index + 1, str(entry.get("name_zh", building_id)), cost_text]
+		# Keep accessibility / legacy text identity for existing suites.
+		button.text = "%d %s\n%s" % [index + 1, name_zh, cost_text]
+		var row := HBoxContainer.new()
+		row.name = "SlotRow"
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(_make_building_icon(building_id))
+		var labels := VBoxContainer.new()
+		labels.name = "Labels"
+		labels.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var name_label := Label.new()
+		name_label.name = "NameLabel"
+		name_label.text = "%d %s" % [index + 1, name_zh]
+		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		labels.add_child(name_label)
+		var cost_label := Label.new()
+		cost_label.name = "CostLabel"
+		cost_label.text = cost_text
+		cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		labels.add_child(cost_label)
+		row.add_child(labels)
+		button.add_child(row)
 		if unpowered.has(building_id):
-			button.add_child(_make_unpowered_dot())
+			button.add_child(_make_unpowered_pip())
 		button.pressed.connect(_on_build_slot_pressed.bind(building_id))
 		_build_bar.add_child(button)
 
 
+## Icon hook: child named Icon (TextureRect or gray ColorRect placeholder).
+## Probe ui_bld_<id> first; fall back to env_bld_<id>_powered (world building art).
+func _make_building_icon(building_id: String) -> Control:
+	var host := Control.new()
+	host.name = "IconSlot"
+	host.custom_minimum_size = BUILDING_ICON_SIZE
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var texture: Texture2D = null
+	if not building_id.is_empty():
+		texture = AssetAdapter.texture(BUILDING_ICON_ID_FORMAT % building_id, asset_base_dir)
+		if texture == null:
+			texture = AssetAdapter.texture("env_bld_%s_powered" % building_id, asset_base_dir)
+	if texture != null:
+		var icon := TextureRect.new()
+		icon.name = "Icon"
+		icon.texture = texture
+		icon.custom_minimum_size = BUILDING_ICON_SIZE
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		host.add_child(icon)
+		return host
+	var placeholder := ColorRect.new()
+	placeholder.name = "Icon"
+	placeholder.color = BUILDING_ICON_PLACEHOLDER
+	placeholder.custom_minimum_size = BUILDING_ICON_SIZE
+	placeholder.size = BUILDING_ICON_SIZE
+	placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.add_child(placeholder)
+	return host
+
+
+func _make_unpowered_pip() -> ColorRect:
+	var pip := ColorRect.new()
+	# Tokenised pip; keep UnpoweredDot name for GAP4 suites / ui-assets anchors.
+	pip.name = "UnpoweredDot"
+	pip.set_meta("token", "UnpoweredPip")
+	pip.color = UNPOWERED_PIP_COLOR
+	pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	pip.offset_left = -12.0
+	pip.offset_top = 2.0
+	pip.offset_right = -4.0
+	pip.offset_bottom = 10.0
+	return pip
+
+
 func _make_unpowered_dot() -> ColorRect:
-	var dot := ColorRect.new()
-	dot.name = "UnpoweredDot"
-	dot.color = UNPOWERED_DOT_COLOR
-	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dot.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	dot.offset_left = -12.0
-	dot.offset_top = 2.0
-	dot.offset_right = -4.0
-	dot.offset_bottom = 10.0
-	return dot
+	return _make_unpowered_pip()
 
 
 func _on_build_slot_pressed(building_id: String) -> void:

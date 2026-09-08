@@ -42,6 +42,16 @@ const WORLD_RESPONSE_EXPLOITED_FLAG: String = "world_response_exploited"
 ## GameState autoload is used. Presentation only ever reads.
 var snapshot_provider: Callable = Callable()
 
+## P0-D: optional mining progress overlay from GameSession (`chunk|x|y` →
+## hardness_left). Presentation-only; missing provider → intact ore frames.
+var mining_progress_provider: Callable = Callable()
+
+## P0-B: optional building power defs override (tests). Default reads ContentDB.
+var building_defs_provider: Callable = Callable()
+
+## P0-B asset probe root (tests may inject user://).
+var building_asset_base_dir: String = BuildingPresenter.DEFAULT_ASSET_BASE_DIR
+
 ## Injectable saved start cell (world grid coordinates). Vector2i(-1, -1) falls
 ## back to snapshot.player.position; the default cell (0, 0) keeps the
 ## PlayerSpawn marker so fresh runs never drop the player at the world corner.
@@ -58,6 +68,11 @@ var _grid_size: Vector2i = FALLBACK_GRID_SIZE
 ##（_ready 前的首次 _generate_chunks 记为已初始化，此后轮询只对跳变反应）。
 var _world_response_exploited: bool = false
 var _world_response_initialized: bool = false
+
+## P0-B building presentation (spawn/despawn/powered skin under $Buildings).
+var _building_presenter: BuildingPresenter = BuildingPresenter.new()
+## P0-D: world cells currently showing a non-s0 ore damage frame.
+var _ore_damage_cells: Dictionary = {}
 
 @onready var _ground_layer: TileMapLayer = $Ground
 @onready var _decals: Node2D = $Decals
@@ -142,6 +157,9 @@ func refresh_from_snapshot() -> void:
 				continue
 			var world_cell := Vector2i(int(delta.get("cell_x", 0)), int(delta.get("cell_y", 0)))
 			_renderer.apply_delta(chunk_id, world_cell - origin, true)
+			_ore_damage_cells.erase(world_cell)
+	_sync_buildings(snapshot)
+	_sync_ore_damage_frames()
 
 
 ## Load-flow seam (W002-GAP3): moves an already-spawned player to a saved world
@@ -231,6 +249,7 @@ func _regenerate_scar_free_chunks(snapshot: Dictionary) -> void:
 ## grid origin (grid coordinates x CHUNK_SIZE cells).
 func _render_all_chunks() -> void:
 	_renderer.clear_layers()
+	_ore_damage_cells.clear()
 	for grid_y: int in _grid_size.y:
 		for grid_x: int in _grid_size.x:
 			var chunk_id := "chunk_%d_%d" % [grid_x, grid_y]
@@ -326,8 +345,115 @@ func _start_snapshot_polling() -> void:
 func _on_snapshot_poll_timeout() -> void:
 	var snapshot := _read_snapshot()
 	if int(snapshot.get("revision", 0)) == _last_revision:
+		# Mid-mine hardness is transient (no revision bump) — still advance ore frames.
+		_sync_ore_damage_frames()
 		return
 	# DLX-4：revision 推进后先检查世界回应 flag 跳变（可能重生成 + 重渲染 +
 	# 重放 delta），再走常规 delta 同步。
 	_reconcile_world_response(snapshot)
 	refresh_from_snapshot()
+
+# ---------------------------------------------------------------- P0-B / P0-D presentation
+
+
+## Public presentation nudge (GameSession mine strikes): re-apply ore damage frames
+## without requiring a snapshot revision bump.
+func sync_ore_presentation() -> void:
+	_sync_ore_damage_frames()
+
+
+
+
+## Sync `$Buildings` sprites from snapshot.placed_buildings + PowerGrid skin.
+func _sync_buildings(snapshot: Dictionary) -> void:
+	if _buildings == null:
+		return
+	_building_presenter.asset_base_dir = building_asset_base_dir
+	_building_presenter.building_defs = _resolve_building_defs()
+	var placed: Array = snapshot.get("placed_buildings", [])
+	if placed is Array:
+		_building_presenter.sync(_buildings, placed)
+	else:
+		_building_presenter.sync(_buildings, [])
+
+
+func _resolve_building_defs() -> Dictionary:
+	if building_defs_provider.is_valid():
+		var provided: Variant = building_defs_provider.call()
+		if provided is Dictionary:
+			return provided
+	var defs: Dictionary = {}
+	if not ContentDB.is_bootstrapped():
+		return defs
+	for building_id: String in ContentDB.ids_of("building"):
+		var definition := ContentDB.get_building(building_id)
+		defs[building_id] = {
+			"power_draw": int(definition.get("power_draw", 0)),
+			"power_supply": int(definition.get("power_supply", 0)),
+			"requires_room": bool(definition.get("requires_room", false)),
+		}
+	return defs
+
+
+## Advance ore atlas frames from GameSession mining progress; clear when gone.
+func _sync_ore_damage_frames() -> void:
+	if _renderer == null:
+		return
+	var progress := _read_mining_progress()
+	var active: Dictionary = {}
+	for key_value: Variant in progress.keys():
+		var key := str(key_value)
+		var parts := key.split("|")
+		if parts.size() != 3:
+			continue
+		var chunk_id := parts[0]
+		var world_cell := Vector2i(int(parts[1]), int(parts[2]))
+		if not _chunks.has(chunk_id):
+			continue
+		var cell_def := cell_def_at(chunk_id, world_cell)
+		var source_id := _ore_source_for_cell(chunk_id, world_cell)
+		if source_id < 0:
+			continue
+		var hardness_total := int(cell_def.get("hardness", 0))
+		var hardness_left := int(progress[key_value])
+		var coords := WorldRenderer.ore_atlas_coords(hardness_total, hardness_left)
+		_renderer.set_ore_frame(world_cell, source_id, coords)
+		if coords != WorldRenderer.ORE_FRAME_S0:
+			active[world_cell] = true
+	for cell_value: Variant in _ore_damage_cells.keys():
+		var cell: Vector2i = cell_value
+		if active.has(cell):
+			continue
+		var source_id := _ore_source_for_world_cell(cell)
+		if source_id >= 0:
+			_renderer.set_ore_frame(cell, source_id, WorldRenderer.ORE_FRAME_S0)
+	_ore_damage_cells = active
+
+
+func _read_mining_progress() -> Dictionary:
+	if not mining_progress_provider.is_valid():
+		return {}
+	var provided: Variant = mining_progress_provider.call()
+	if provided is Dictionary:
+		return provided
+	return {}
+
+
+func _ore_source_for_cell(chunk_id: String, world_cell: Vector2i) -> int:
+	if not _chunks.has(chunk_id):
+		return -1
+	var local := world_cell - ChunkData.chunk_origin(chunk_id)
+	var cells: Dictionary = (_chunks[chunk_id] as Dictionary).get("cells", {})
+	if not cells.has(local):
+		return -1
+	var ore_type := str(cells[local])
+	if ore_type == "rock_wall" or ore_type == "soil":
+		return -1
+	return int(WorldRenderer.TYPE_SOURCES.get(ore_type, -1))
+
+
+func _ore_source_for_world_cell(world_cell: Vector2i) -> int:
+	var chunk_x := int(floor(float(world_cell.x) / float(ChunkData.CHUNK_SIZE)))
+	var chunk_y := int(floor(float(world_cell.y) / float(ChunkData.CHUNK_SIZE)))
+	return _ore_source_for_cell("chunk_%d_%d" % [chunk_x, chunk_y], world_cell)
+
