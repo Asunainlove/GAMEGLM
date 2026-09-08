@@ -18,7 +18,7 @@ Make the sandbox loop look inhabited under 余辉 light without waiting on missi
 
 ## Changes
 
-- `src/world/building_presenter.gd` (new): spawn/despawn/update under `$Buildings`; probe `world/buildings/<id>_powered.png` / `_unpowered.png`; graybox ColorRect when absent; PowerGrid-ordered powered map.
+- `src/world/building_presenter.gd` (new): spawn/despawn/update under `$Buildings`; probe `env_bld_<id>_{powered,unpowered}.png` (legacy short name fallback); graybox when absent; PowerGrid-ordered powered map.
 - `src/world/world.gd`: `_sync_buildings` on snapshot refresh; `mining_progress_provider` + `sync_ore_presentation` for mid-mine frames (no revision bump).
 - `src/world/world_renderer.gd`: register ore atlas tiles beyond (0,0); `ore_atlas_coords(hardness_total, hardness_left)`; `set_ore_frame`.
 - `src/ui/hud.gd`: BuildBar `IconSlot`/`Icon`/`NameLabel`/`CostLabel`; tokenised `UnpoweredPip` (node name still `UnpoweredDot`).
@@ -30,8 +30,8 @@ Make the sandbox loop look inhabited under 余辉 light without waiting on missi
 
 | Surface | State |
 |---|---|
-| Building world sprites | **Graybox** 48×48 ColorRect (ENV-21..26 absent on disk) |
-| Building powered skin | Graybox color swap (powered warmer / unpowered dimmer); path-only drop-in when art arrives |
+| Building world sprites | Probe `env_bld_<id>_{powered,unpowered}.png` first; **graybox** only if missing (P0-A drop-in in flight) |
+| Building powered skin | Real textures when present; else graybox color swap |
 | Ore atlas s0..s2 | **Real** `env_ore_*_set.png` frames wired; damage uses s1/s2 |
 | BuildBar icons | **Placeholder** gray ColorRect until `ui/icons/ui_bld_*.png` approved |
 | BuildBar names/costs | Real text (unchanged catalog) |
@@ -50,6 +50,6 @@ Make the sandbox loop look inhabited under 余辉 light without waiting on missi
 |------|--------|
 | `python3 scripts/validate_content.py` | **PASS** (40 files / 65 defs / 14 schemas) |
 | Godot `--import` | exit 0 |
-| GUT `-gdir=res://tests/unit` | **735/735 PASS**, 11182 asserts, 10.74s (Godot 4.7.2 / GUT 9.7.1) |
+| GUT `-gdir=res://tests/unit` | **736/736 PASS**, 11186 asserts, 11.0s (Godot 4.7.2 / GUT 9.7.1) |
 
 Log: `/workspace/gut-logs/gut-p0-world-presence-full.log`

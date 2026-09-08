@@ -120,3 +120,48 @@ func test_world_despawns_removed_buildings_and_swaps_power_skin() -> void:
 	assert_false(bool(refiner.get_meta("powered")), "Alone refiner must swap to unpowered skin.")
 	var graybox: ColorRect = refiner.get_node("Graybox") as ColorRect
 	assert_eq(graybox.color, BuildingPresenter.GRAYBOX_UNPOWERED)
+
+func test_presenter_prefers_env_bld_contract_art_over_graybox() -> void:
+	var temp := "user://p0b_env_bld_%d" % Time.get_ticks_usec()
+	DirAccess.make_dir_recursive_absolute(temp.path_join("world/buildings"))
+	var image := Image.create_empty(48, 48, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.2, 0.6, 0.4, 1.0))
+	assert_eq(
+		image.save_png(temp.path_join("world/buildings/env_bld_anchor_block_powered.png")),
+		OK
+	)
+	var presenter: BuildingPresenter = PRESENTER_SCRIPT.new()
+	presenter.asset_base_dir = temp
+	var texture := presenter.probe_texture("anchor_block", true)
+	assert_not_null(texture, "Must resolve env_bld_anchor_block_powered.png")
+	var parent := Node2D.new()
+	add_child_autofree(parent)
+	presenter.building_defs = {
+		"anchor_block": {"power_draw": 0, "power_supply": 2, "requires_room": false},
+	}
+	presenter.sync(parent, [
+		{"building_id": "anchor_block", "chunk_id": "chunk_0_0", "cell_x": 1, "cell_y": 1},
+	])
+	var node: Node2D = parent.get_child(0) as Node2D
+	assert_false(bool(node.get_meta("graybox")), "Contract art must replace graybox.")
+	assert_true((node.get_node("Sprite") as Sprite2D).visible)
+	_remove_dir_recursive(temp)
+
+
+func _remove_dir_recursive(path: String) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if entry != "." and entry != "..":
+			var child := path.path_join(entry)
+			if dir.current_is_dir():
+				_remove_dir_recursive(child)
+			else:
+				DirAccess.remove_absolute(child)
+		entry = dir.get_next()
+	dir.list_dir_end()
+	DirAccess.remove_absolute(path)
+

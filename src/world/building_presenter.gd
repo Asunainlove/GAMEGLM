@@ -2,14 +2,16 @@ class_name BuildingPresenter
 extends RefCounted
 
 ## P0-B presentation: sync snapshot `placed_buildings` into `$Buildings` sprites.
-## Probe `world/buildings/<id>_powered.png` / `_unpowered.png` (ENV-21..26);
-## missing art → visible 48×48 graybox. Powered skin follows PowerGrid allocation
-## within the same poll window as World (~0.5–1s). No Autoload / SFX changes.
+## Probe ENV-21..26 contract ids first: `env_bld_<id>_{powered,unpowered}.png`
+## under `world/buildings/` (AssetAdapter env_ → world). Legacy `<id>_powered`
+## kept as last fallback. Missing art → visible 48×48 graybox. Powered skin
+## follows PowerGrid allocation within World poll (~0.5–1s). No Autoload / SFX.
 
 const CELL_SIZE: int = 32
 const SPRITE_SIZE: int = 48
 const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
-const BUILDING_PROBE_REL: String = "world/buildings/%s_%s.png"
+const BUILDING_ASSET_ID_FORMAT: String = "env_bld_%s_%s"
+const BUILDING_LEGACY_PROBE_REL: String = "world/buildings/%s_%s.png"
 
 ## Cool dusk graybox (永暮余辉). Powered = slightly warmer/brighter; unpowered =
 ## dimmer. No decorative teal (teal = power/energy chrome only elsewhere).
@@ -67,13 +69,22 @@ static func powered_by_instance(buildings: Array, defs: Dictionary) -> Dictionar
 	return result
 
 
-## Probe powered/unpowered texture; null when both missing (caller grayboxes).
+## Probe powered/unpowered texture; null when missing (caller grayboxes).
+## Order: contract env_bld_<id>_<suffix> → explicit buildings path → legacy short name.
 func probe_texture(building_id: String, powered: bool) -> Texture2D:
 	if building_id.is_empty():
 		return null
 	var suffix := "powered" if powered else "unpowered"
-	var path := "%s/%s" % [asset_base_dir, BUILDING_PROBE_REL % [building_id, suffix]]
-	return AssetAdapter.texture_at(path)
+	var asset_id := BUILDING_ASSET_ID_FORMAT % [building_id, suffix]
+	var texture := AssetAdapter.texture(asset_id, asset_base_dir)
+	if texture != null:
+		return texture
+	texture = AssetAdapter.texture_at("%s/world/buildings/%s.png" % [asset_base_dir, asset_id])
+	if texture != null:
+		return texture
+	return AssetAdapter.texture_at(
+		"%s/%s" % [asset_base_dir, BUILDING_LEGACY_PROBE_REL % [building_id, suffix]]
+	)
 
 
 ## Spawn / despawn / update Sprite2D children under `parent` from placed list.
