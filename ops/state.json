@@ -21,6 +21,8 @@
   ],
   "visual_polish_packet": "closed",
   "known_residuals": [
-    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite — single-run integration stays green; non-blocking"
-  ]
+    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite — single-run integration stays green; non-blocking",
+    "visual_refactor_packet=planned — see ops/visual-refactor-audit-2026-09-08.md; Pack P0 World Presence next (buildings+soil/ore+Buildings sync); prior visual_polish_packet remains closed"
+  ],
+  "visual_refactor_packet": "planned"
 }
