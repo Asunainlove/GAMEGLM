@@ -275,6 +275,36 @@ func test_build_bar_without_provider_renders_no_slots() -> void:
 	assert_eq(_build_buttons(hud).size(), 0, "Missing build_catalog provider must render zero slots gracefully.")
 
 
+func test_build_bar_exposes_icon_and_name_hooks() -> void:
+	var hud: Hud = _make_hud()
+	_wire_providers(hud)
+	_catalog_host.entries = _default_catalog()
+	_selection_host.building_id = "anchor_block"
+	hud.refresh()
+	var buttons: Array[Button] = _build_buttons(hud)
+	assert_eq(buttons.size(), 6)
+	var slot: Button = buttons[0]
+	var icon_slot: Node = slot.get_node_or_null("SlotRow/IconSlot")
+	assert_not_null(icon_slot, "BuildBar slots must expose IconSlot hook.")
+	var icon: Node = slot.get_node_or_null("SlotRow/IconSlot/Icon")
+	assert_not_null(icon, "BuildBar slots must expose Icon child (texture or graybox).")
+	var name_label: Label = slot.get_node_or_null("SlotRow/Labels/NameLabel") as Label
+	assert_not_null(name_label, "BuildBar slots must expose NameLabel hook.")
+	assert_true(name_label.text.contains("锚块"))
+	var cost_label: Label = slot.get_node_or_null("SlotRow/Labels/CostLabel") as Label
+	assert_not_null(cost_label)
+	assert_true(cost_label.text.contains("星壤尘"))
+	# Unpowered pip stays tokenised ColorRect named UnpoweredDot (compat).
+	_unpowered_host.ids = ["dust_refiner"]
+	hud.refresh()
+	buttons = _build_buttons(hud)
+	var pip: ColorRect = buttons[2].get_node_or_null("UnpoweredDot") as ColorRect
+	assert_not_null(pip)
+	assert_eq(pip.get_meta("token"), "UnpoweredPip")
+	assert_eq(pip.color, Hud.UNPOWERED_PIP_COLOR)
+
+
+
 # --- 背包配方区 ----------------------------------------------------------------------
 
 

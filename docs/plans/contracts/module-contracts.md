@@ -53,10 +53,10 @@
 | 路径 | 根节点（name/type） | 关键子节点 |
 |---|---|---|
 | `res://scenes/player.tscn` | `Player` (CharacterBody2D, group `player`, script `res://src/player/player_controller.gd`) | `Sprite` (AnimatedSprite2D idle/walk/mine/place/talk; ART-019 Luoxian explore frames), `Collision` (CollisionShape2D), `InteractionProbe` (Area2D) |
-| `res://scenes/world.tscn` | `World` (Node2D) | `Ground` (TileMapLayer), `Decals` (Node2D, visual soil decals), `OreOverlay` (TileMapLayer), `Buildings` (Node2D), `PlayerSpawn` (Marker2D)；实例化 `res://scenes/player.tscn` |
+| `res://scenes/world.tscn` | `World` (Node2D) | `Ground` (TileMapLayer), `Decals` (Node2D, visual soil decals), `OreOverlay` (TileMapLayer; ore atlas s0/s1/s2 from gathering hardness), `Buildings` (Node2D; P0-B sync from `placed_buildings` + PowerGrid powered/unpowered skin via `BuildingPresenter`, graybox if ENV-21..26 absent), `PlayerSpawn` (Marker2D)；实例化 `res://scenes/player.tscn` |
 | `res://scenes/battle.tscn` | `Battle` (Node2D, script `res://src/encounters/battle_scene.gd`) | `Tracks` (Node2D; wired units `luoxian_fighter`/`misa_weaver`/`drift_swarmling`/`shard_husk`/`veinwarden_echo`/`lumen_leviathan` (Boss phase1+phase2) → AnimatedSprite2D 8-frame via AssetAdapter; others graybox), `UI` (CanvasLayer) |
 | `res://scenes/dialogue_box.tscn` | `DialogueBox` (CanvasLayer, script `res://src/narrative/dialogue_box.gd`) | `Panel/NameLabel/TextLabel/OptionsBox` |
-| `res://scenes/ui_hud.tscn` | `Hud` (CanvasLayer, script `res://src/ui/hud.gd`) | `InventoryBar`, `ObjectiveLabel`, `MenuPanel` |
+| `res://scenes/ui_hud.tscn` | `Hud` (CanvasLayer, script `res://src/ui/hud.gd`) | `InventoryBar`, `ObjectiveLabel`, `BuildBar` (`BuildSlot_<id>` with `SlotRow/IconSlot/Icon` + `NameLabel`/`CostLabel`; `UnpoweredDot` pip token), `MenuPanel` |
 | `res://scenes/ending.tscn` | `Ending` (Node2D, script `res://src/endings/ending_scene.gd`) | `TitleLabel`, `SummaryLabel` |
 
 - `app.tscn` 既有 `WorldHost` / `UILayer` / `ModalLayer` 不改结构；新 UI 场景实例挂在 `UILayer` 下，模态挂 `ModalLayer`。

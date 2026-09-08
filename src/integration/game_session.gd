@@ -336,6 +336,11 @@ func bind_audio_director(director: Node) -> void:
 		battle.set("audio_director", director)
 
 
+## P0-D presentation seam：只读拷贝暂态采集进度（chunk|x|y → hardness_left）。
+func mining_progress_snapshot() -> Dictionary:
+	return _mining_progress.duplicate()
+
+
 func request_mine(cell: Vector2i) -> AppResult:
 	var chunk_id := _resolve_chunk_id(cell)
 	var cell_def := _cell_def_for(chunk_id, cell)
@@ -364,7 +369,17 @@ func request_mine(cell: Vector2i) -> AppResult:
 	else:
 		_mining_progress[progress_key] = int(strike.get("hardness_left", 0))
 		_play_sfx("sfx_mine_hit")
+	_nudge_world_ore_frames()
 	return result
+
+
+
+func _nudge_world_ore_frames() -> void:
+	if world == null:
+		return
+	if world.has_method("sync_ore_presentation"):
+		world.call("sync_ore_presentation")
+
 
 
 # ---------------------------------------------------------------- 建造链
@@ -1132,6 +1147,9 @@ func _resolve_nodes() -> void:
 		modal_layer = get_node_or_null("%ModalLayer") as CanvasLayer
 	if world != null and not building_rules.cell_lookup.is_valid():
 		building_rules.cell_lookup = Callable(world, "cell_def_at")
+	# P0-D：把暂态采集硬度进度注入 World，驱动矿图集破坏帧（无 revision 推进）。
+	if world != null and "mining_progress_provider" in world:
+		world.set("mining_progress_provider", Callable(self, "mining_progress_snapshot"))
 	if dialogue_box != null:
 		if "audio_director" in dialogue_box:
 			dialogue_box.set("audio_director", audio_director)

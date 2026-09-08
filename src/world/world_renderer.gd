@@ -38,8 +38,9 @@ const TYPE_SOURCES: Dictionary = {
 ## assets/art/world/tiles/ 优先，任务书平铺 assets/art/world/tilesets/<格型>.png
 ## 兜底）。逐源独立探测：命中即用该纹理替换单色图；任一缺失该源回退单色灰盒
 ## （逐源独立回退，互不牵连——有 rock_wall 纹理但缺 soil 也只替换 rock_wall 源）。
-## 图集形态（ore 三态 160×32 / 岩壁 384×32）按 32×32 region 挂 tile (0,0)=首格
-##（矿= _s0 完好帧；岩壁= _tile0 平铺变体）；态切换属后续接线包。
+## 图集形态（ore 160×32 = _s0/_s1/_s2/_glint_f0/_glint_f1；岩壁 384×32）按
+## 32×32 region 挂 tile：矿挂 (0..2,0) 破坏态 + 可选 glint；岩壁仍 (0,0) 首格。
+## P0-D：采集 hardness 进度映射 _s0/_s1/_s2（见 ore_atlas_coords）。
 const CELL_ASSET_PROBES: Dictionary = {
 	SOURCE_SOIL: ["world/tiles/env_world_soil_base.png", "world/tilesets/soil.png"],
 	SOURCE_ORE_DUST: ["world/tiles/env_ore_dust_set.png", "world/tilesets/ore_dust.png"],
@@ -64,6 +65,12 @@ const DECAL_ASSET_PROBES: Dictionary = {
 const DECAL_DAMAGE_MAX: int = 22
 const DECAL_FLECK_MAX: int = 55
 const DECAL_CRACK_MAX: int = 65
+
+## Ore atlas frame columns (ENV-04..06 strip): s0 intact, s1 damaged, s2 near-destroy.
+const ORE_FRAME_S0: Vector2i = Vector2i(0, 0)
+const ORE_FRAME_S1: Vector2i = Vector2i(1, 0)
+const ORE_FRAME_S2: Vector2i = Vector2i(2, 0)
+const ORE_ATLAS_DAMAGE_FRAMES: int = 3
 
 ## 默认探测根（与 AssetAdapter.DEFAULT_BASE_DIR 同值；跨类常量默认参受限就地
 ## 镜像，测试断言两值一致）。
@@ -214,8 +221,57 @@ func _add_cell_source(
 	else:
 		report["loaded"] = int(report["loaded"]) + 1
 	source.texture = texture
-	source.create_tile(Vector2i.ZERO)
+	_create_atlas_tiles(source, source_id, texture)
 	tile_set.add_source(source, source_id)
+
+
+## Registers atlas regions for a source. Ore atlases expose s0..s2 (and glint
+## columns when present); single-color / single-tile textures keep (0,0) only.
+func _create_atlas_tiles(source: TileSetAtlasSource, source_id: int, texture: Texture2D) -> void:
+	source.create_tile(Vector2i.ZERO)
+	if texture == null:
+		return
+	var columns: int = int(texture.get_width()) / ChunkData.CELL_SIZE
+	if columns <= 1:
+		return
+	var is_ore := source_id in [SOURCE_ORE_DUST, SOURCE_ORE_SHARD, SOURCE_ORE_CORE]
+	var limit := columns if is_ore else 1
+	for column: int in range(1, limit):
+		var atlas_coords := Vector2i(column, 0)
+		if not source.has_tile(atlas_coords):
+			source.create_tile(atlas_coords)
+
+
+## Map existing gathering hardness to ore atlas frames (ENV contract §9.5-R2).
+## hardness_left == total → s0; left == 1 (and total > 1) → s2; else mid → s1.
+## Does not invent gameplay numbers — only remaps Gathering hardness fields.
+static func ore_atlas_coords(hardness_total: int, hardness_left: int) -> Vector2i:
+	if hardness_total <= 0:
+		return ORE_FRAME_S0
+	var left: int = clampi(hardness_left, 0, hardness_total)
+	if left >= hardness_total:
+		return ORE_FRAME_S0
+	if left <= 1:
+		return ORE_FRAME_S2
+	return ORE_FRAME_S1
+
+
+## Presentation seam: set OreOverlay atlas coords for a world-absolute cell.
+## source_id < 0 erases the overlay cell (same as destroy). Missing atlas tile
+## falls back to s0 when the source has no requested column.
+func set_ore_frame(world_cell: Vector2i, source_id: int, atlas_coords: Vector2i) -> void:
+	if ore_layer == null:
+		push_warning("WorldRenderer.set_ore_frame() skipped: ore layer is not injected.")
+		return
+	if source_id < 0:
+		ore_layer.set_cell(world_cell, -1)
+		return
+	var tile_set := ensure_tile_set()
+	var source := tile_set.get_source(source_id) as TileSetAtlasSource
+	var coords := atlas_coords
+	if source != null and not source.has_tile(coords):
+		coords = ORE_FRAME_S0
+	ore_layer.set_cell(world_cell, source_id, coords)
 
 
 func _probe_cell_texture(source_id: int, base_dir: String) -> Texture2D:

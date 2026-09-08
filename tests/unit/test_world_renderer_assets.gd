@@ -199,10 +199,11 @@ func test_build_tile_set_accepts_ore_atlas_strip() -> void:
 	if dust != null:
 		assert_eq(dust.texture.get_size(), Vector2(160, 32), "合同图集整图必须原样加载。")
 		assert_eq(dust.texture_region_size, Vector2i(32, 32))
-		assert_eq(dust.get_tiles_count(), 1, "本包只挂 _s0（格 0,0）；态切换属后续接线包。")
+		assert_eq(dust.get_tiles_count(), 5, "P0-D：ore 图集挂 s0/s1/s2 + glint 列（5 格）。")
 		_assert_pixel_close(dust.texture, Color(0, 1, 1), "tile (0,0) 必须取图集首格（_s0）。")
-		# Atlas 坐标 (0,0) 读数与灰盒渲染路径一致（render() 恒写 ZERO 坐标）。
 		assert_true(dust.has_tile(Vector2i.ZERO))
+		assert_true(dust.has_tile(Vector2i(1, 0)))
+		assert_true(dust.has_tile(Vector2i(2, 0)))
 
 
 func test_build_tile_set_accepts_rock_wall_atlas_strip() -> void:
