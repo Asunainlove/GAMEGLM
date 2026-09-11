@@ -381,6 +381,13 @@ func _nudge_world_ore_frames() -> void:
 		world.call("sync_ore_presentation")
 
 
+func _nudge_world_build_dust(cell: Vector2i) -> void:
+	if world == null:
+		return
+	if world.has_method("play_build_dust_at_cell"):
+		world.call("play_build_dust_at_cell", cell)
+
+
 
 # ---------------------------------------------------------------- 建造链
 
@@ -426,6 +433,7 @@ func request_place(cell: Vector2i) -> AppResult:
 		push_warning("GameSession: Progression.react(built) failed: %s" % react_result.message)
 	_reconcile_effect_flags()
 	_play_sfx("sfx_build_place")
+	_nudge_world_build_dust(cell)
 	_schedule_autosave()
 	return result
 

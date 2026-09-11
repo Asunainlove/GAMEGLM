@@ -156,3 +156,44 @@ func _apply_visual(node: Node2D, building_id: String, powered: bool) -> void:
 	node.set_meta("powered", powered)
 	node.set_meta("building_id", building_id)
 	node.set_meta("graybox", true)
+
+
+## ENV-27: one-shot build dust over a cell (presentation-only). Plays f0→f1 then frees.
+## Spec: 64×64, ~120 ms/frame, above building sprites under `$Buildings`. Missing art → null.
+const DUST_ASSET_IDS: Array[String] = [
+	"env_fx_build_dust_seq_f0",
+	"env_fx_build_dust_seq_f1",
+]
+const DUST_FRAME_DURATION_SEC: float = 0.12
+const DUST_ANIM_NAME: String = "build_dust"
+const DUST_Z_INDEX: int = 10
+
+
+func play_build_dust(parent: Node2D, world_position: Vector2) -> AnimatedSprite2D:
+	if parent == null:
+		return null
+	var frames := SpriteFrames.new()
+	frames.add_animation(DUST_ANIM_NAME)
+	frames.set_animation_loop(DUST_ANIM_NAME, false)
+	var fps := 1.0 / DUST_FRAME_DURATION_SEC
+	frames.set_animation_speed(DUST_ANIM_NAME, fps)
+	var loaded := 0
+	for asset_id: String in DUST_ASSET_IDS:
+		var texture := AssetAdapter.texture(asset_id, asset_base_dir)
+		if texture == null:
+			continue
+		frames.add_frame(DUST_ANIM_NAME, texture)
+		loaded += 1
+	if loaded == 0:
+		return null
+	var sprite := AnimatedSprite2D.new()
+	sprite.name = "BuildDust"
+	sprite.centered = true
+	sprite.z_index = DUST_Z_INDEX
+	sprite.sprite_frames = frames
+	sprite.position = world_position
+	sprite.animation = DUST_ANIM_NAME
+	parent.add_child(sprite)
+	sprite.animation_finished.connect(sprite.queue_free)
+	sprite.play(DUST_ANIM_NAME)
+	return sprite

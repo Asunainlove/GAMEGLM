@@ -1,14 +1,14 @@
 # GAMEGLM 项目组交接单（产品协调）
 
-- 日期：2026-09-06（Asia/Shanghai）
+- 日期：2026-09-11（Asia/Shanghai）
 - 仓库：Asunainlove/GAMEGLM
-- 基线提交：`3b08960`（feat(player): wire ART-019 place/talk multi-frame — PR #47；门禁绿点同 SHA）
-- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: G7-HUMAN`，`visual_polish_packet: closed`，`last_verified_commit: 3b08960`）
-- 完成门：`G7 Windows RC`（见 `ops/GOAL.md`）
+- 基线提交：`1671f3f`（P0 world-presence skeleton #51）+ ENV-27 build dust place wiring（本包）
+- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: VISUAL-REFACTOR-P0`，`visual_refactor_packet: wiring_landed`，`window_status: visual_refactor_p0`，`visual_polish_packet: closed`）
+- 完成门：`G7 Windows RC`（见 `ops/GOAL.md`；**G7 搁置至观感通过**）
 
 ## 1. 当前状态（一句话）
 
-G6 方案 A P0（batch1–4）**全部 done**；观感包 **closed**（PR #22–#32）；战斗单位 v2 满帧（含 Boss `lumen_leviathan` P1+P2）**已接线完成**（PR #36–#45）。`active_packet=G7-HUMAN`。自动门禁绿（tip：`validate_content` PASS、默认 GUT **727/727 PASS**）。**硬门只剩主人 G7**（真人试玩/外部试玩/原创性终审；不得捏造结果）。ART-019 place/talk 多帧已接线（#47）。
+`active_packet=VISUAL-REFACTOR-P0`，`visual_refactor_packet=wiring_landed`（#51 世界存在感骨架 + ENV-27 建造尘雾 place 接线已落主线验收待测）。G7 人工门禁**搁置**至观感 owner 通过；勿捏造试玩结果。P1 未启动。
 
 ## 2. 角色与责任人
 
@@ -102,13 +102,12 @@ python scripts/validate_content.py
 
 ## 7. 确切下一步
 
-1. **主人（硬门）**：按 `docs/g7-playtest-facilitator.md` 填 `docs/rc-playthrough-record.md`；代理不得代填。
-2. **工程/测试**：待命（无新批资产前不接线；测试按需抽检 tip）。
-3. **美术**：ART-019 已收口；无新批前待命。
-4. **产品**：不另开产项；本交接单与 `ops/state.json` 已对齐 G7-HUMAN / 观感包 closed / 单位 v2 + ART-019 完成。
+1. **产品/测试**：目检 VISUAL-REFACTOR-P0 世界存在感 + 建造落成尘雾（ENV-27）；silhouette/ore overlay 已由 #52 合入；本包仅 ENV-27 dust + state。
+2. **G7**：继续搁置至观感 owner 通过后再恢复 `g7_human_gates`；代理不得代填试玩记录。
+3. **工程**：P1 未启动；残留见 `ops/state.json` known_residuals。
 
 ## 8. 恢复协议
 
 1. 读 `AGENTS.md`、`ops/GOAL.md`、`ops/state.json`、本文件。
-2. 确认 `last_verified_commit` 为当前工作祖先或已记录的验证点（门禁绿点 / 基线 `3b08960`）。
+2. 确认 `last_verified_commit` 为当前工作祖先或已记录的验证点（门禁绿点 / 基线 `1671f3f`+本包 tip）。
 3. 仅从 `resume_from` / `next_packet_ids` 恢复；G7 结果不得由代理代填。

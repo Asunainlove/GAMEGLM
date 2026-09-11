@@ -182,3 +182,41 @@ func test_production_env_bld_assets_resolve_for_all_six_buildings() -> void:
 		assert_not_null(powered, "Missing powered art for %s" % building_id)
 		assert_not_null(unpowered, "Missing unpowered art for %s" % building_id)
 
+
+
+func test_presenter_play_build_dust_spawns_and_frees() -> void:
+	var presenter: BuildingPresenter = PRESENTER_SCRIPT.new()
+	presenter.asset_base_dir = BuildingPresenter.DEFAULT_ASSET_BASE_DIR
+	var parent := Node2D.new()
+	add_child_autofree(parent)
+	var sprite: AnimatedSprite2D = presenter.play_build_dust(parent, Vector2(96, 128))
+	assert_not_null(sprite, "ENV-27 dust frames must resolve from assets/art/world/fx.")
+	assert_eq(sprite.get_parent(), parent)
+	assert_eq(sprite.position, Vector2(96, 128))
+	assert_true(sprite.is_playing())
+	assert_eq(sprite.animation, BuildingPresenter.DUST_ANIM_NAME)
+	var frames: SpriteFrames = sprite.sprite_frames
+	assert_not_null(frames)
+	assert_eq(frames.get_frame_count(BuildingPresenter.DUST_ANIM_NAME), 2)
+	# Wait past both frames (+slack); animation_finished → queue_free.
+	await get_tree().create_timer(BuildingPresenter.DUST_FRAME_DURATION_SEC * 2.0 + 0.25).timeout
+	assert_false(is_instance_valid(sprite), "Dust sprite must free after one-shot.")
+
+
+func test_world_play_build_dust_at_cell_adds_fx_under_buildings() -> void:
+	var world: Node2D = _instantiate_world({
+		"revision": 1,
+		"world_seed": 0,
+		"chunk_deltas": {},
+		"placed_buildings": [],
+		"flags": {},
+	})
+	world.call("play_build_dust_at_cell", Vector2i(2, 3))
+	var buildings: Node2D = world.get_node("Buildings") as Node2D
+	var dust: AnimatedSprite2D = null
+	for child: Node in buildings.get_children():
+		if child is AnimatedSprite2D and str(child.name) == "BuildDust":
+			dust = child as AnimatedSprite2D
+			break
+	assert_not_null(dust, "World must parent BuildDust under $Buildings.")
+	assert_eq(dust.position, Vector2(80, 112))

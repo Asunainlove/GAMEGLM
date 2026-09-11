@@ -2,11 +2,11 @@
   "goal_status": "active",
   "milestone": "G7",
   "window": "W004-G6A+G7P",
-  "window_status": "g7_human_gates",
+  "window_status": "visual_refactor_p0",
   "project_team_status": "active",
-  "last_verified_commit": "3b08960",
-  "active_packet": "G7-HUMAN",
-  "resume_from": "g7_human_gates_owner_playtest",
+  "last_verified_commit": "6131300",
+  "active_packet": "VISUAL-REFACTOR-P0",
+  "resume_from": "visual_refactor_p0_world_presence",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
@@ -14,15 +14,15 @@
     "batch4_audio": "done"
   },
   "next_packet_ids": [
-    "G7-HUMAN"
+    "VISUAL-REFACTOR-P0"
   ],
   "known_blockers": [
-    "G7 human gates still open (owner only): fill docs/rc-playthrough-record.md — facilitator docs/g7-playtest-facilitator.md ready; do not fabricate results"
+    "Visual look not owner-passed; G7 shelved until look passes (g7_human_gates paused - do not invent playtest results)"
   ],
   "visual_polish_packet": "closed",
   "known_residuals": [
-    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite — single-run integration stays green; non-blocking",
-    "visual_refactor_packet=planned — see ops/visual-refactor-audit-2026-09-08.md; Pack P0 World Presence next (buildings+soil/ore+Buildings sync); prior visual_polish_packet remains closed"
+    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
+    "P1 not started (mention only; do not start P1 while VISUAL-REFACTOR-P0 look验收 pending)"
   ],
-  "visual_refactor_packet": "planned"
+  "visual_refactor_packet": "wiring_landed"
 }
