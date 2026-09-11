@@ -2,11 +2,11 @@
   "goal_status": "active",
   "milestone": "G7",
   "window": "W004-G6A+G7P",
-  "window_status": "visual_refactor_p2_standby",
+  "window_status": "visual_refactor_p3",
   "project_team_status": "active",
   "last_verified_commit": "1188bf0",
-  "active_packet": "VISUAL-REFACTOR-P2",
-  "resume_from": "visual_refactor_p2_standby",
+  "active_packet": "VISUAL-REFACTOR-P3",
+  "resume_from": "visual_refactor_p3_btnrail",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
@@ -14,15 +14,15 @@
     "batch4_audio": "done"
   },
   "next_packet_ids": [
-    "VISUAL-REFACTOR-P2"
+    "VISUAL-REFACTOR-P3"
   ],
   "known_blockers": [
-    "Visual look not owner-passed; G7 shelved until look passes — awaiting 幕僚长 re-eval after P2 (do not invent playtest results)"
+    "Visual look not owner-passed — awaiting owner review of tip 1188bf0 (do not invent/proxy playtest results); G7 shelved until look passes"
   ],
   "visual_polish_packet": "closed",
   "known_residuals": [
     "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
-    "P2 residual: title btnrail still graybox (uia_ttl_btnrail) — non-blocking"
+    "P3: title btnrail graybox (uia_ttl_btnrail) — active packet target; art pending; skeleton OK until approved"
   ],
   "visual_refactor_packet": "p2_closed",
   "p1_a_explore_luoxian": "done",
