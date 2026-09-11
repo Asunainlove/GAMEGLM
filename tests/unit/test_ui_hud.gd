@@ -127,6 +127,9 @@ func _label_texts(node: Node) -> Array[String]:
 	for child: Node in node.get_children():
 		if child is Label:
 			texts.append((child as Label).text)
+		else:
+			# P2-B: InventoryBar/ItemsBox wrap rows in Slot_* frames.
+			texts.append_array(_label_texts(child))
 	return texts
 
 

@@ -39,14 +39,44 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -380.0
-offset_top = -290.0
+offset_top = -360.0
 offset_right = 380.0
-offset_bottom = 290.0
+offset_bottom = 360.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 theme_override_constants/separation = 14
 alignment = 1
+
+[node name="LogoSlot" type="Control" parent="Root/Layout"]
+custom_minimum_size = Vector2(640, 160)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+
+[node name="LogoGraybox" type="ColorRect" parent="Root/Layout/LogoSlot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.094, 0.133, 0.184, 0.85)
+
+[node name="Logo" type="TextureRect" parent="Root/Layout/LogoSlot"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
 
 [node name="TitleLabel" type="Label" parent="Root/Layout"]
 unique_name_in_owner = true
@@ -71,28 +101,74 @@ size_flags_horizontal = 4
 mouse_filter = 2
 color = Color(0.91, 0.784, 0.471, 0.7)
 
-[node name="NewGameButton" type="Button" parent="Root/Layout"]
+[node name="ButtonRailHost" type="Control" parent="Root/Layout"]
+custom_minimum_size = Vector2(320, 232)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+
+[node name="ButtonRailGraybox" type="ColorRect" parent="Root/Layout/ButtonRailHost"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.043, 0.067, 0.11, 0.7)
+
+[node name="ButtonRailScrim" type="TextureRect" parent="Root/Layout/ButtonRailHost"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ButtonColumn" type="VBoxContainer" parent="Root/Layout/ButtonRailHost"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -108.0
+offset_right = 150.0
+offset_bottom = 108.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="NewGameButton" type="Button" parent="Root/Layout/ButtonRailHost/ButtonColumn"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "新游戏"
 
-[node name="ContinueButton" type="Button" parent="Root/Layout"]
+[node name="ContinueButton" type="Button" parent="Root/Layout/ButtonRailHost/ButtonColumn"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "继续"
 
-[node name="HelpButton" type="Button" parent="Root/Layout"]
+[node name="HelpButton" type="Button" parent="Root/Layout/ButtonRailHost/ButtonColumn"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "说明"
 
-[node name="QuitButton" type="Button" parent="Root/Layout"]
+[node name="QuitButton" type="Button" parent="Root/Layout/ButtonRailHost/ButtonColumn"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 48)
 layout_mode = 2

@@ -277,3 +277,11 @@ func test_probe_reports_directory_existence() -> void:
 	# batch1 已落位 assets/art；探测存在性而非「生产树必须空」。
 	assert_true(ADAPTER.probe("res://assets/art"), "batch1 落位后 assets/art 必须可探测。")
 	assert_false(ADAPTER.probe("res://assets/art/__missing_probe_dir__"), "缺失子目录必须返回 false。")
+
+
+func test_uia_prefix_resolves_under_ui_category() -> void:
+	# Contract filenames are uia_<cat>_<name>.png (UIA-* snake_case).
+	_write_png(_temp_dir.path_join("ui/title"), "uia_ttl_logo.png", Vector2i(8, 4), Color(1, 0.8, 0.2))
+	var texture: Texture2D = ADAPTER.texture("uia_ttl_logo", _temp_dir)
+	assert_not_null(texture, "uia_ prefix must resolve under ui/title contract path.")
+	assert_eq(_pixel_of(texture), Color(1, 0.8, 0.2))
