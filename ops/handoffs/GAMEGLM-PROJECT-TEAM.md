@@ -8,7 +8,7 @@
 
 ## 1. 当前状态（一句话）
 
-P1 已关闭（`visual_refactor_packet=p1_closed`）。P2 工程骨架进行中（`active_packet=VISUAL-REFACTOR-P2`，`resume_from=visual_refactor_p2_logo_inv_track`）：P2-A UI chrome done (#61)：LOGO/inv slots/battle tracks 已接线；btnrail 仍 graybox。G7 搁置至观感通过。
+P2 已关闭（`visual_refactor_packet=p2_closed`）。P3 进行中（`active_packet=VISUAL-REFACTOR-P3`，`resume_from=visual_refactor_p3_btnrail`，`p3_a_btnrail=done`）：title `uia_ttl_btnrail` 已接线 (#64 art + 本包工程)。G7 搁置至观感通过。
 
 ## 2. 角色与责任人
 

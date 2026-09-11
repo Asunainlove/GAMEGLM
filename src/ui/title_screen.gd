@@ -31,8 +31,9 @@ var has_save: Callable = Callable()
 
 var _fade_tween: Tween = null
 
-## P2-B art probes (ui-assets §7): drop-in under assets/art/ui/title/.
+## P2/P3 art probes (ui-assets §7): drop-in under assets/art/ui/title/.
 ## Missing → visible graybox structure; never invent approved art files.
+## Locked P3-A path: assets/art/ui/title/uia_ttl_btnrail.png
 const LOGO_ASSET_ID: String = "uia_ttl_logo"
 const BTNRAIL_ASSET_ID: String = "uia_ttl_btnrail"
 const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
@@ -69,6 +70,7 @@ func _ready() -> void:
 func apply_p2_art_hooks() -> void:
 	_apply_logo_probe()
 	_apply_btnrail_probe()
+	_apply_title_rule_residual()
 
 
 func _apply_logo_probe() -> void:
@@ -101,7 +103,13 @@ func _apply_logo_probe() -> void:
 func _apply_btnrail_probe() -> void:
 	if _btnrail == null or _btnrail_graybox == null:
 		return
+	# Exact contract (P3-A approved): res://assets/art/ui/title/uia_ttl_btnrail.png
+	# Optional 320×196 companion; texture_at uses FileAccess.exists fallback.
 	var texture := AssetAdapter.texture(BTNRAIL_ASSET_ID, asset_base_dir)
+	if texture == null:
+		texture = AssetAdapter.texture("%s_320" % BTNRAIL_ASSET_ID, asset_base_dir)
+	if texture == null:
+		texture = AssetAdapter.texture_at("%s/ui/title/uia_ttl_btnrail.png" % asset_base_dir)
 	if texture != null:
 		_btnrail.texture = texture
 		_btnrail.visible = true
@@ -113,6 +121,16 @@ func _apply_btnrail_probe() -> void:
 		_btnrail_graybox.visible = true
 		_btnrail_graybox.color = BTNRAIL_GRAYBOX
 		_root.set_meta("btnrail_graybox", true)
+
+
+## Audit residual: decorative ColorRect rule under subtitle — hide when real LOGO
+## already carries §7.1 gold hairline; no gameplay impact.
+func _apply_title_rule_residual() -> void:
+	var rule := _root.get_node_or_null("Layout/Rule") as ColorRect
+	if rule == null:
+		return
+	var logo_is_graybox := bool(_root.get_meta("logo_graybox", true))
+	rule.visible = logo_is_graybox
 
 
 ## auto 槽是否存在可读档；has_save 未注入（无效）时按无存档处理。

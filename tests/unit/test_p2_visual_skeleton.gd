@@ -1,8 +1,8 @@
 extends GutTest
 
-## VISUAL-REFACTOR-P2: title LOGO / inv slots / battle track floor.
-## Production tip binds REAL art (#61); user:// inject still covers graybox fallback.
-## Button-rail scrim remains graybox residual (no UIA-TTL-BTNRAIL yet).
+## VISUAL-REFACTOR-P2/P3: title LOGO / btnrail / inv slots / battle track floor.
+## Production tip binds REAL art (#61 LOGO/inv/tracks + #64 btnrail).
+## user:// inject still covers graybox fallback when files missing.
 
 const TITLE_SCENE_PATH: String = "res://scenes/title_screen.tscn"
 const HUD_SCENE_PATH: String = "res://scenes/ui_hud.tscn"
@@ -83,6 +83,8 @@ func test_title_logo_and_btnrail_graybox_when_art_missing() -> void:
 	var rail_gray: ColorRect = title.get_node("%ButtonRailGraybox") as ColorRect
 	assert_false(rail.visible)
 	assert_true(rail_gray.visible)
+	var rule: ColorRect = title.get_node("Root/Layout/Rule") as ColorRect
+	assert_true(rule.visible, "Graybox logo keeps decorative rule.")
 
 
 func test_title_logo_and_btnrail_swap_on_drop_in() -> void:
@@ -102,6 +104,8 @@ func test_title_logo_and_btnrail_swap_on_drop_in() -> void:
 	var rail: TextureRect = title.get_node("%ButtonRailScrim") as TextureRect
 	assert_true(rail.visible)
 	assert_not_null(rail.texture)
+	var rule: ColorRect = title.get_node("Root/Layout/Rule") as ColorRect
+	assert_false(rule.visible, "Drop-in LOGO hides decorative rule.")
 
 
 func test_hud_inventory_slots_graybox_frames() -> void:
@@ -177,17 +181,23 @@ func test_no_new_styleboxflat_chrome_on_p2_hooks() -> void:
 
 
 func test_production_binds_real_p2_art() -> void:
-	# Default res://assets/art after #61 — LOGO / inv slot / battle tracks REAL;
-	# btnrail stays graybox.
+	# Default res://assets/art after #61+#64 — LOGO / btnrail / inv / tracks REAL.
 	var title: Node = _load_title()
 	var root: Control = title.get_node("%Root") as Control
 	assert_false(bool(root.get_meta("logo_graybox")), "Production must bind uia_ttl_logo.")
-	assert_true(bool(root.get_meta("btnrail_graybox")), "btnrail remains graybox residual.")
+	assert_false(bool(root.get_meta("btnrail_graybox")), "Production must bind uia_ttl_btnrail (#64).")
 	var logo: TextureRect = title.get_node("%Logo") as TextureRect
 	assert_true(logo.visible)
 	assert_not_null(logo.texture)
 	var label: Label = title.get_node("%TitleLabel") as Label
 	assert_false(label.visible)
+	var rail: TextureRect = title.get_node("%ButtonRailScrim") as TextureRect
+	var rail_gray: ColorRect = title.get_node("%ButtonRailGraybox") as ColorRect
+	assert_true(rail.visible)
+	assert_not_null(rail.texture)
+	assert_false(rail_gray.visible)
+	var rule: ColorRect = title.get_node("Root/Layout/Rule") as ColorRect
+	assert_false(rule.visible, "Real LOGO hides decorative ColorRect rule residual.")
 	var backdrop: TextureRect = title.get_node("Root/Backdrop") as TextureRect
 	assert_eq(backdrop.texture.resource_path, "res://assets/art/ui/title/bg_title.png")
 
