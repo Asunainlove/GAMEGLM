@@ -73,6 +73,11 @@ const ITEM_ICON_SIZE: Vector2 = Vector2(24.0, 24.0)
 const BUILDING_ICON_ID_FORMAT: String = "ui_bld_%s"
 const BUILDING_ICON_SIZE: Vector2 = Vector2(28.0, 28.0)
 const BUILDING_ICON_PLACEHOLDER := StarsoilTokens.BUILD_ICON_PLACEHOLDER
+## P2-B inventory slot frames (ui-assets §4.1 UIA-INV-SLOT). Probe under ui/;
+## missing → visible graybox frame; never invent approved art into assets/.
+const INV_SLOT_ASSET_ID: String = "uia_inv_slot"
+const INV_SLOT_SIZE: Vector2 = Vector2(48.0, 48.0)
+const INV_SLOT_GRAYBOX := Color(0.043, 0.067, 0.110, 0.90)
 ## 断电徽记语义色（token；非装饰 teal）。
 const UNPOWERED_PIP_COLOR: Color = Color(0.85, 0.15, 0.15)
 const UNPOWERED_PIP_SIZE: Vector2 = Vector2(8.0, 8.0)
@@ -689,15 +694,24 @@ func _render_inventory_bar(snapshot: Dictionary) -> void:
 			overflow_kinds += 1
 			continue
 		var entry: Dictionary = entries[index]
-		var icon := _item_icon(str(entry["id"]))
+		var item_id := str(entry["id"])
+		var slot := _make_inv_slot_frame("Slot_%s" % item_id)
+		var row := HBoxContainer.new()
+		row.name = "SlotRow"
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var icon := _item_icon(item_id)
 		if icon != null:
 			loaded_icons += 1
-			_inventory_bar.add_child(icon)
+			row.add_child(icon)
 		else:
-			missing_item_ids.append(str(entry["id"]))
-		_append_label(_inventory_bar, "%s ×%d" % [entry["name"], entry["amount"]])
+			missing_item_ids.append(item_id)
+		_append_label(row, "%s ×%d" % [entry["name"], entry["amount"]])
+		slot.add_child(row)
+		_inventory_bar.add_child(slot)
 	if overflow_kinds > 0:
-		_append_label(_inventory_bar, "+%d" % overflow_kinds)
+		var overflow_slot := _make_inv_slot_frame("Slot_overflow")
+		_append_label(overflow_slot, "+%d" % overflow_kinds)
+		_inventory_bar.add_child(overflow_slot)
 	var warning := partial_icon_warning(loaded_icons, missing_item_ids)
 	if warning != "" and not _icon_asset_warning_emitted:
 		push_warning(warning)
@@ -722,6 +736,35 @@ func _item_icon(item_id: String) -> TextureRect:
 	return icon
 
 
+## P2-B slot frame host: probes uia_inv_slot; graybox ColorRect when missing.
+## Children (icon/label) layer above Frame. Meta `inv_slot_graybox` for tests.
+func _make_inv_slot_frame(slot_name: String) -> Control:
+	var host := Control.new()
+	host.name = slot_name
+	host.custom_minimum_size = INV_SLOT_SIZE
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var texture := AssetAdapter.texture(INV_SLOT_ASSET_ID, asset_base_dir)
+	if texture != null:
+		var frame := TextureRect.new()
+		frame.name = "Frame"
+		frame.texture = texture
+		frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+		frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		frame.stretch_mode = TextureRect.STRETCH_SCALE
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		host.add_child(frame)
+		host.set_meta("inv_slot_graybox", false)
+	else:
+		var gray := ColorRect.new()
+		gray.name = "Frame"
+		gray.color = INV_SLOT_GRAYBOX
+		gray.set_anchors_preset(Control.PRESET_FULL_RECT)
+		gray.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		host.add_child(gray)
+		host.set_meta("inv_slot_graybox", true)
+	return host
+
+
 ## 混合态一次性汇总文案（纯函数，测试断言用）：loaded==0（全缺失基态）或
 ## missing 为空（全量命中）时返回 ""；只有"部分命中部分缺失"才汇总。
 static func partial_icon_warning(loaded_icons: int, missing_item_ids: PackedStringArray) -> String:
@@ -739,7 +782,10 @@ func _render_inventory_panel(snapshot: Dictionary) -> void:
 		_append_label(_inventory_items_box, "背包空空如也。")
 		return
 	for entry: Dictionary in entries:
-		_append_label(_inventory_items_box, "%s ×%d" % [entry["name"], entry["amount"]])
+		var item_id := str(entry["id"])
+		var slot := _make_inv_slot_frame("PanelSlot_%s" % item_id)
+		_append_label(slot, "%s ×%d" % [entry["name"], entry["amount"]])
+		_inventory_items_box.add_child(slot)
 
 
 func _inventory_entries(snapshot: Dictionary) -> Array[Dictionary]:

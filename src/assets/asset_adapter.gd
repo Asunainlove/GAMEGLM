@@ -12,7 +12,7 @@ extends RefCounted
 ##   汇总告警由调用方一次性自行发出。
 ##
 ## 探测顺序（先合同落位、后任务书平铺，两者都支持即“按合同放置即生效”）：
-## - texture()：按资产 id 前缀分类（env_→world / ui_→ui / battle_→battle /
+## - texture()：按资产 id 前缀分类（env_→world / uia_|ui_→ui / battle_→battle /
 ##   char_→characters），依次探测各分类的合同子目录，再退回分类平铺目录；
 ##   ui_item_<item_id>（HUD 物品图标，G6P-1 任务 4）额外优先探测 A7 §9 合同
 ##   命名 uia_ico_<item_id>[.png|_32.png]；
@@ -28,6 +28,7 @@ const DEFAULT_BASE_DIR: String = "res://assets/art"
 ## 资产 id 前缀 → 分类目录（G6P-1 任务书约定的映射表）。
 const PREFIX_CATEGORIES: Dictionary = {
 	"env_": "world",
+	"uia_": "ui",
 	"ui_": "ui",
 	"battle_": "battle",
 	"char_": "characters",

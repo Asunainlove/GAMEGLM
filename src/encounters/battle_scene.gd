@@ -82,6 +82,12 @@ const UNIT_SPRITE_FRAME_COUNTS: Dictionary = {"idle": 2, "attack": 3, "hit": 1, 
 const UNIT_SPRITE_BOTTOM_Y: float = 20.0
 ## 与 AssetAdapter.DEFAULT_BASE_DIR 同值（跨类常量默认参受限，就地镜像）。
 const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
+## P2-B battle track floor (ui-assets §8.2 UIA-BAT-TRACKS). Probe ui/battle/;
+## missing → visible graybox under Tracks; never invent approved art files.
+const TRACK_FLOOR_ASSET_ID: String = "uia_bat_tracks"
+const TRACK_FLOOR_SIZE: Vector2 = Vector2(1280.0, 560.0)
+const TRACK_FLOOR_ORIGIN: Vector2 = Vector2(0.0, 40.0)
+const TRACK_FLOOR_GRAYBOX := Color(0.071, 0.102, 0.149, 0.85)
 ## Presentation-approved battle unit ids (luoxian/misa/drift #36/#37; shard_husk #41;
 ## veinwarden #42; lumen_leviathan Boss phase1+phase2 #44).
 ## Elite veinwarden_echo is 192×192; Boss lumen_leviathan is 256×256 — anchor via
@@ -297,10 +303,50 @@ func _track_row(track: String) -> Node2D:
 	return row
 
 
+## P2-B: ensure Tracks/TrackFloor with Sprite2D or graybox ColorRect.
+## Real uia_bat_tracks drop-in swaps graybox → sprite; presentation-only.
+func _ensure_track_floor(tracks: Node2D) -> void:
+	var floor_root: Node2D = tracks.get_node_or_null("TrackFloor") as Node2D
+	if floor_root == null:
+		floor_root = Node2D.new()
+		floor_root.name = "TrackFloor"
+		floor_root.z_index = -1
+		tracks.add_child(floor_root)
+		tracks.move_child(floor_root, 0)
+	floor_root.position = TRACK_FLOOR_ORIGIN
+	var sprite := floor_root.get_node_or_null("Floor") as Sprite2D
+	var graybox := floor_root.get_node_or_null("Graybox") as ColorRect
+	if sprite == null:
+		sprite = Sprite2D.new()
+		sprite.name = "Floor"
+		sprite.centered = false
+		floor_root.add_child(sprite)
+	if graybox == null:
+		graybox = ColorRect.new()
+		graybox.name = "Graybox"
+		graybox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		graybox.size = TRACK_FLOOR_SIZE
+		floor_root.add_child(graybox)
+	var texture := AssetAdapter.texture(TRACK_FLOOR_ASSET_ID, asset_base_dir)
+	if texture != null:
+		sprite.texture = texture
+		sprite.visible = true
+		graybox.visible = false
+		floor_root.set_meta("track_floor_graybox", false)
+	else:
+		sprite.texture = null
+		sprite.visible = false
+		graybox.visible = true
+		graybox.color = TRACK_FLOOR_GRAYBOX
+		graybox.size = TRACK_FLOOR_SIZE
+		floor_root.set_meta("track_floor_graybox", true)
+
+
 func _rebuild_tracks() -> void:
 	var tracks: Node2D = get_node_or_null("Tracks") as Node2D
 	if tracks == null:
 		return
+	_ensure_track_floor(tracks)
 	for track: String in TRACK_ROWS:
 		var existing_row: Node2D = _track_row(track)
 		if existing_row != null:

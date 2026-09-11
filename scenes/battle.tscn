@@ -8,6 +8,9 @@ script = ExtResource("1_battle")
 
 [node name="Tracks" type="Node2D" parent="."]
 
+[node name="TrackFloor" type="Node2D" parent="Tracks"]
+z_index = -1
+
 [node name="UI" type="CanvasLayer" parent="."]
 
 [node name="TurnLabel" type="Label" parent="UI"]

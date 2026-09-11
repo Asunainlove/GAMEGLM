@@ -31,12 +31,28 @@ var has_save: Callable = Callable()
 
 var _fade_tween: Tween = null
 
+## P2-B art probes (ui-assets §7): drop-in under assets/art/ui/title/.
+## Missing → visible graybox structure; never invent approved art files.
+const LOGO_ASSET_ID: String = "uia_ttl_logo"
+const BTNRAIL_ASSET_ID: String = "uia_ttl_btnrail"
+const DEFAULT_ASSET_BASE_DIR: String = "res://assets/art"
+const LOGO_GRAYBOX := Color(0.094, 0.133, 0.184, 0.85)
+const BTNRAIL_GRAYBOX := Color(0.043, 0.067, 0.110, 0.70)
+
+## Injectable for tests (user://).
+var asset_base_dir: String = DEFAULT_ASSET_BASE_DIR
+
 @onready var _root: Control = %Root
 @onready var _new_game_button: Button = %NewGameButton
 @onready var _continue_button: Button = %ContinueButton
 @onready var _help_button: Button = %HelpButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _help_panel: PanelContainer = %HelpPanel
+@onready var _title_label: Label = %TitleLabel
+@onready var _logo: TextureRect = %Logo
+@onready var _logo_graybox: ColorRect = %LogoGraybox
+@onready var _btnrail: TextureRect = %ButtonRailScrim
+@onready var _btnrail_graybox: ColorRect = %ButtonRailGraybox
 
 
 func _ready() -> void:
@@ -46,6 +62,52 @@ func _ready() -> void:
 	_quit_button.pressed.connect(_on_quit_pressed)
 	_help_panel.visible = false
 	refresh_continue_state()
+	apply_p2_art_hooks()
+
+
+## Probe UIA-TTL-LOGO + UIA-TTL-BTNRAIL; swap graybox → real texture on drop-in.
+func apply_p2_art_hooks() -> void:
+	_apply_logo_probe()
+	_apply_btnrail_probe()
+
+
+func _apply_logo_probe() -> void:
+	if _logo == null or _logo_graybox == null:
+		return
+	var texture := AssetAdapter.texture(LOGO_ASSET_ID, asset_base_dir)
+	if texture != null:
+		_logo.texture = texture
+		_logo.visible = true
+		_logo_graybox.visible = false
+		# Real wordmark replaces 64px Label as sole identity; keep node for a11y tests.
+		if _title_label != null:
+			_title_label.visible = false
+		_root.set_meta("logo_graybox", false)
+	else:
+		_logo.texture = null
+		_logo.visible = false
+		_logo_graybox.visible = true
+		_logo_graybox.color = LOGO_GRAYBOX
+		if _title_label != null:
+			_title_label.visible = true
+		_root.set_meta("logo_graybox", true)
+
+
+func _apply_btnrail_probe() -> void:
+	if _btnrail == null or _btnrail_graybox == null:
+		return
+	var texture := AssetAdapter.texture(BTNRAIL_ASSET_ID, asset_base_dir)
+	if texture != null:
+		_btnrail.texture = texture
+		_btnrail.visible = true
+		_btnrail_graybox.visible = false
+		_root.set_meta("btnrail_graybox", false)
+	else:
+		_btnrail.texture = null
+		_btnrail.visible = false
+		_btnrail_graybox.visible = true
+		_btnrail_graybox.color = BTNRAIL_GRAYBOX
+		_root.set_meta("btnrail_graybox", true)
 
 
 ## auto 槽是否存在可读档；has_save 未注入（无效）时按无存档处理。

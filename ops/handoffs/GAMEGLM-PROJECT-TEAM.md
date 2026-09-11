@@ -2,13 +2,13 @@
 
 - 日期：2026-09-11（Asia/Shanghai）
 - 仓库：Asunainlove/GAMEGLM
-- 基线提交：`c39effa`（#56 P1-A 洛弦探索可读性）+ 本包 Theme/去灰盒工程
-- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: VISUAL-REFACTOR-P1`，`visual_refactor_packet: p0_closed`，`window_status: visual_refactor_p1`，`p1_a_explore_luoxian: done`，`visual_polish_packet: closed`）
-- 完成门：`G7 Windows RC`（见 `ops/GOAL.md`；**G7 搁置至观感通过**）
+- 基线提交：`12ab292`（#59 P1 closed）+ 本包 P2-B 工程骨架
+- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: VISUAL-REFACTOR-P2`，`visual_refactor_packet: p1_closed`，`window_status: visual_refactor_p2`，`resume_from: visual_refactor_p2_logo_inv_track`，`p1_a_explore_luoxian: done`，`p2_status: in_progress`，`visual_polish_packet: closed`）
+- 完成门：`G7 Windows RC`（见 `ops/GOAL.md`；**G7 搁置至观感通过 — P2 后再评估**）
 
 ## 1. 当前状态（一句话）
 
-P0 已关闭（`visual_refactor_packet=p0_closed`）。P1 Theme+Ending/FinishBanner/BuildBar 去灰盒工程已启动（`active_packet=VISUAL-REFACTOR-P1`，`resume_from=visual_refactor_p1_theme_hud`）；P1-A 洛弦探索动作美术已合入 `c39effa`。G7 搁置至观感通过。
+P1 已关闭（`visual_refactor_packet=p1_closed`）。P2 工程骨架进行中（`active_packet=VISUAL-REFACTOR-P2`，`resume_from=visual_refactor_p2_logo_inv_track`）：title LOGO / inventory slot frames / battle track floors 路径探测 + graybox，待美术批准落位。G7 搁置至观感通过。
 
 ## 2. 角色与责任人
 

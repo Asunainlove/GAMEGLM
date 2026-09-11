@@ -116,7 +116,19 @@ func _label_texts(node: Node) -> Array[String]:
 	for child: Node in node.get_children():
 		if child is Label:
 			texts.append((child as Label).text)
+		else:
+			texts.append_array(_label_texts(child))
 	return texts
+
+
+func _find_named(node: Node, target: String) -> Node:
+	if str(node.name) == target:
+		return node
+	for child: Node in node.get_children():
+		var found := _find_named(child, target)
+		if found != null:
+			return found
+	return null
 
 
 # ---------------------------------------------------------------- 契约测试
@@ -132,9 +144,12 @@ func test_missing_icons_render_labels_only() -> void:
 	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
 	var texts: Array[String] = _label_texts(bar)
 	assert_eq(texts, ["辉砂晶片 ×2", "星壤尘 ×5"] as Array[String], "槽文本保持基线。")
+	assert_eq(bar.get_child_count(), 2, "两物品各一 Slot 框。")
 	for child: Node in bar.get_children():
-		assert_true(child is Label, "缺资产时槽位只允许 Label 节点（实际 %s）。" % child.get_class())
-	assert_eq(bar.get_child_count(), 2, "缺资产不得出现图标节点。")
+		assert_true(str(child.name).begins_with("Slot_"), "P2-B 槽必须包在 Slot_* 框内。")
+		assert_true(bool(child.get_meta("inv_slot_graybox")), "空目录下槽框为 graybox。")
+		assert_eq(_find_named(child, "Icon_starsoil_dust"), null)
+		assert_eq(_find_named(child, "Icon_lumen_shard"), null)
 
 
 func test_injected_icon_shows_at_contract_path() -> void:
@@ -146,13 +161,12 @@ func test_injected_icon_shows_at_contract_path() -> void:
 	hud.asset_base_dir = _temp_dir
 	hud.refresh()
 	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
-	# 排序：lumen_shard 无图标（纯 Label）在前，starsoil_dust 图标 + Label 在后。
-	assert_eq(bar.get_child_count(), 3, "一个图标 + 两个文本 = 3 个节点。")
-	var icon: TextureRect = bar.get_child(1) as TextureRect
-	assert_not_null(icon, "命中物品必须在文本左侧出现 TextureRect 图标。")
+	# 排序：lumen_shard 在前，starsoil_dust 在后；各包在 Slot_* 内。
+	assert_eq(bar.get_child_count(), 2, "两物品各一 Slot 框。")
+	var icon: TextureRect = _find_named(bar, "Icon_starsoil_dust") as TextureRect
+	assert_not_null(icon, "命中物品必须出现 TextureRect 图标。")
 	if icon == null:
 		return
-	assert_eq(icon.name, &"Icon_starsoil_dust")
 	assert_eq(icon.custom_minimum_size, ITEM_ICON_SIZE, "图标必须 24×24。")
 	assert_eq(
 		icon.expand_mode, TextureRect.EXPAND_IGNORE_SIZE,
@@ -174,12 +188,11 @@ func test_injected_icon_accepts_flat_fallback_path() -> void:
 	hud.asset_base_dir = _temp_dir
 	hud.refresh()
 	var bar: HBoxContainer = hud.get_node("InventoryBar") as HBoxContainer
-	assert_eq(bar.get_child_count(), 3, "一个图标 + 两个文本 = 3 个节点。")
-	var icon: TextureRect = bar.get_child(0) as TextureRect
+	assert_eq(bar.get_child_count(), 2, "两物品各一 Slot 框。")
+	var icon: TextureRect = _find_named(bar, "Icon_lumen_shard") as TextureRect
 	assert_not_null(icon, "平铺落位兜底必须生效。")
 	if icon == null:
 		return
-	assert_eq(icon.name, &"Icon_lumen_shard")
 	assert_eq(_pixel_of(icon.texture), Color(0, 1, 0))
 
 
