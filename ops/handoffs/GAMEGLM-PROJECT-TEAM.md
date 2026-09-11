@@ -3,12 +3,12 @@
 - 日期：2026-09-11（Asia/Shanghai）
 - 仓库：Asunainlove/GAMEGLM
 - 基线提交：`1671f3f`（P0 world-presence skeleton #51）+ ENV-27 build dust place wiring（本包）
-- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: VISUAL-REFACTOR-P0`，`visual_refactor_packet: wiring_landed`，`window_status: visual_refactor_p0`，`visual_polish_packet: closed`）
+- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: VISUAL-REFACTOR-P0`，`visual_refactor_packet: p0_closed`，`window_status: visual_refactor_p0`，`visual_polish_packet: closed`）
 - 完成门：`G7 Windows RC`（见 `ops/GOAL.md`；**G7 搁置至观感通过**）
 
 ## 1. 当前状态（一句话）
 
-`active_packet=VISUAL-REFACTOR-P0`，`visual_refactor_packet=wiring_landed`（#51 世界存在感骨架 + ENV-27 建造尘雾 place 接线已落主线验收待测）。G7 人工门禁**搁置**至观感 owner 通过；勿捏造试玩结果。P1 未启动。
+`active_packet=VISUAL-REFACTOR-P0`，`visual_refactor_packet=p0_closed`（#51 世界存在感骨架 + ENV-27 建造尘雾 place 接线已落主线验收待测）。G7 人工门禁**搁置**至观感 owner 通过；勿捏造试玩结果。P1 未启动。
 
 ## 2. 角色与责任人
 

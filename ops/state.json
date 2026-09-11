@@ -4,7 +4,7 @@
   "window": "W004-G6A+G7P",
   "window_status": "visual_refactor_p0",
   "project_team_status": "active",
-  "last_verified_commit": "73a5f1d",
+  "last_verified_commit": "a74378a",
   "active_packet": "VISUAL-REFACTOR-P0",
   "resume_from": "visual_refactor_p0_world_presence",
   "g6a_batch_status": {
@@ -21,8 +21,7 @@
   ],
   "visual_polish_packet": "closed",
   "known_residuals": [
-    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
-    "P1 not started (mention only; do not start P1 while VISUAL-REFACTOR-P0 look验收 pending)"
+    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking"
   ],
-  "visual_refactor_packet": "wiring_landed"
+  "visual_refactor_packet": "p0_closed"
 }
