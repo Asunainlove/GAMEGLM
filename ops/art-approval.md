@@ -322,3 +322,19 @@
 | luoxian_action_place_03_p1a | VISUAL-REFACTOR-P1-A | Cursor GenerateImage / v2-polish p1b | docs/art/character-assets.md#ART-019 | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/characters/luoxian/actions/luoxian_action_place_03.png |
 | luoxian_action_talk_00_p1a | VISUAL-REFACTOR-P1-A | Cursor GenerateImage / v2-polish p1b | docs/art/character-assets.md#ART-019 | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/characters/luoxian/actions/luoxian_action_talk_00.png |
 | luoxian_action_talk_01_p1a | VISUAL-REFACTOR-P1-A | Cursor GenerateImage / v2-polish p1b | docs/art/character-assets.md#ART-019 | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/characters/luoxian/actions/luoxian_action_talk_01.png |
+
+> Note (2026-09-11): **VISUAL-REFACTOR-P2-A** approved by 幕僚长 standing auth 2026-09-11. Title LOGO + inventory HUD slots + battle tracks drop-in for eng AssetAdapter probes (`uia_ttl_logo` / `uia_inv_slot` / `uia_bat_tracks`). Source `ops/art-staging/v2-polish/ui/` (+ `ui/p2/`). btnrail NOT provided — skipped. No `.import` flood. No gameplay code. Wiring = follow-up for 工程 (P2-B).
+
+| uia_ttl_logo | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/title/uia_ttl_logo.png |
+| uia_ttl_logo_640 | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/title/uia_ttl_logo_640.png |
+| uia_ttl_logo_svg | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/title/uia_ttl_logo.svg |
+| uia_inv_slot | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/inventory/uia_inv_slot.png |
+| uia_inv_slot_hover | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/inventory/uia_inv_slot_hover.png |
+| uia_inv_qty | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/inventory/uia_inv_qty.png |
+| uia_hud_slotframe | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/inventory/uia_hud_slotframe.png |
+| uia_hud_overflow_badge | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/inventory/uia_hud_overflow_badge.png |
+| uia_bat_tracks | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/battle/uia_bat_tracks.png |
+| uia_bat_track_div | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/battle/uia_bat_track_div.png |
+| uia_bat_track_div_back | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/battle/uia_bat_track_div_back.png |
+| uia_bat_track_div_front | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/battle/uia_bat_track_div_front.png |
+| uia_bat_track_div_mid | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/battle/uia_bat_track_div_mid.png |
