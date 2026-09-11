@@ -22,9 +22,10 @@
   "visual_polish_packet": "closed",
   "known_residuals": [
     "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
-    "P2-A in progress — title LOGO / inventory slot frames / battle track floors (awaiting art approval into assets/)"
+    "P2 btnrail graybox residual — UIA-TTL-BTNRAIL not approved; LOGO/inv slots/battle tracks wired (#61 / 13b21f0)"
   ],
   "visual_refactor_packet": "p1_closed",
   "p1_a_explore_luoxian": "done",
-  "p2_status": "in_progress"
+  "p2_status": "in_progress",
+  "p2_a_ui_chrome": "done"
 }

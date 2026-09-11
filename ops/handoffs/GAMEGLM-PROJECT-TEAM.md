@@ -8,7 +8,7 @@
 
 ## 1. 当前状态（一句话）
 
-P1 已关闭（`visual_refactor_packet=p1_closed`）。P2 工程骨架进行中（`active_packet=VISUAL-REFACTOR-P2`，`resume_from=visual_refactor_p2_logo_inv_track`）：title LOGO / inventory slot frames / battle track floors 路径探测 + graybox，待美术批准落位。G7 搁置至观感通过。
+P1 已关闭（`visual_refactor_packet=p1_closed`）。P2 工程骨架进行中（`active_packet=VISUAL-REFACTOR-P2`，`resume_from=visual_refactor_p2_logo_inv_track`）：P2-A UI chrome done (#61)：LOGO/inv slots/battle tracks 已接线；btnrail 仍 graybox。G7 搁置至观感通过。
 
 ## 2. 角色与责任人
 

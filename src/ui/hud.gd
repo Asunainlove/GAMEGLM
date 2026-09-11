@@ -743,7 +743,10 @@ func _make_inv_slot_frame(slot_name: String) -> Control:
 	host.name = slot_name
 	host.custom_minimum_size = INV_SLOT_SIZE
 	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Exact: uia_inv_slot.png; optional hover/qty/hud_* present on tip but unused here.
 	var texture := AssetAdapter.texture(INV_SLOT_ASSET_ID, asset_base_dir)
+	if texture == null:
+		texture = AssetAdapter.texture_at("%s/ui/inventory/uia_inv_slot.png" % asset_base_dir)
 	if texture != null:
 		var frame := TextureRect.new()
 		frame.name = "Frame"

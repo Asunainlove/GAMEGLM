@@ -1,8 +1,8 @@
 extends GutTest
 
-## VISUAL-REFACTOR-P2 engineering skeleton (P2-B): title LOGO / button-rail,
-## inventory slot frames, battle track floor. Art not approved yet — probes
-## graybox until drop-in under assets/art/ui/{title,inventory,battle}/.
+## VISUAL-REFACTOR-P2: title LOGO / inv slots / battle track floor.
+## Production tip binds REAL art (#61); user:// inject still covers graybox fallback.
+## Button-rail scrim remains graybox residual (no UIA-TTL-BTNRAIL yet).
 
 const TITLE_SCENE_PATH: String = "res://scenes/title_screen.tscn"
 const HUD_SCENE_PATH: String = "res://scenes/ui_hud.tscn"
@@ -174,3 +174,41 @@ func test_no_new_styleboxflat_chrome_on_p2_hooks() -> void:
 	assert_false(rail_host is PanelContainer, "Button rail must not introduce Panel StyleBoxFlat chrome.")
 	var logo_slot: Control = title.get_node("Root/Layout/LogoSlot") as Control
 	assert_false(logo_slot is PanelContainer)
+
+
+func test_production_binds_real_p2_art() -> void:
+	# Default res://assets/art after #61 — LOGO / inv slot / battle tracks REAL;
+	# btnrail stays graybox.
+	var title: Node = _load_title()
+	var root: Control = title.get_node("%Root") as Control
+	assert_false(bool(root.get_meta("logo_graybox")), "Production must bind uia_ttl_logo.")
+	assert_true(bool(root.get_meta("btnrail_graybox")), "btnrail remains graybox residual.")
+	var logo: TextureRect = title.get_node("%Logo") as TextureRect
+	assert_true(logo.visible)
+	assert_not_null(logo.texture)
+	var label: Label = title.get_node("%TitleLabel") as Label
+	assert_false(label.visible)
+	var backdrop: TextureRect = title.get_node("Root/Backdrop") as TextureRect
+	assert_eq(backdrop.texture.resource_path, "res://assets/art/ui/title/bg_title.png")
+
+	_fake = FakeSnapshotProvider.new()
+	_fake.payload = {
+		"revision": 1,
+		"inventory": {"starsoil_dust": 1},
+		"flags": {},
+		"placed_buildings": [],
+	}
+	var hud: Hud = (load(HUD_SCENE_PATH) as PackedScene).instantiate() as Hud
+	hud.snapshot_provider = _fake.get_snapshot
+	add_child_autofree(hud)
+	hud.refresh()
+	var slot: Control = hud.get_node("InventoryBar").get_child(0) as Control
+	assert_false(bool(slot.get_meta("inv_slot_graybox")), "Production must bind uia_inv_slot.")
+	assert_true(slot.get_node("Frame") is TextureRect)
+
+	var battle: Node2D = (load(BATTLE_SCENE_PATH) as PackedScene).instantiate() as Node2D
+	add_child_autofree(battle)
+	battle.call("_rebuild_tracks")
+	var floor_root: Node2D = battle.get_node("Tracks/TrackFloor") as Node2D
+	assert_false(bool(floor_root.get_meta("track_floor_graybox")), "Production must bind uia_bat_tracks.")
+	assert_true((floor_root.get_node("Floor") as Sprite2D).visible)

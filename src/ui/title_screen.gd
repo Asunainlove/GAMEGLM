@@ -74,7 +74,12 @@ func apply_p2_art_hooks() -> void:
 func _apply_logo_probe() -> void:
 	if _logo == null or _logo_graybox == null:
 		return
+	# Exact contract: uia_ttl_logo.png; optional 640 display variant.
 	var texture := AssetAdapter.texture(LOGO_ASSET_ID, asset_base_dir)
+	if texture == null:
+		texture = AssetAdapter.texture("%s_640" % LOGO_ASSET_ID, asset_base_dir)
+	if texture == null:
+		texture = AssetAdapter.texture_at("%s/ui/title/uia_ttl_logo.png" % asset_base_dir)
 	if texture != null:
 		_logo.texture = texture
 		_logo.visible = true

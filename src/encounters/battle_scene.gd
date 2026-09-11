@@ -305,7 +305,40 @@ func _track_row(track: String) -> Node2D:
 
 ## P2-B: ensure Tracks/TrackFloor with Sprite2D or graybox ColorRect.
 ## Real uia_bat_tracks drop-in swaps graybox → sprite; presentation-only.
+const TRACK_DIV_ASSET_IDS: Array[String] = [
+	"uia_bat_track_div_front",
+	"uia_bat_track_div_mid",
+	"uia_bat_track_div_back",
+	"uia_bat_track_div",
+]
+const TRACK_DIV_Y: Array[float] = [0.0, 96.0, 192.0]
+
+
+func _ensure_track_dividers(floor_root: Node2D) -> void:
+	## Optional UIA-BAT track separators; missing → no-op (floor still valid).
+	for i: int in mini(TRACK_DIV_ASSET_IDS.size(), TRACK_DIV_Y.size()):
+		var asset_id := TRACK_DIV_ASSET_IDS[i]
+		var node_name := "Div_%s" % asset_id
+		var div := floor_root.get_node_or_null(node_name) as Sprite2D
+		var texture := AssetAdapter.texture(asset_id, asset_base_dir)
+		if texture == null:
+			texture = AssetAdapter.texture_at("%s/ui/battle/%s.png" % [asset_base_dir, asset_id])
+		if texture == null:
+			if div != null:
+				div.visible = false
+			continue
+		if div == null:
+			div = Sprite2D.new()
+			div.name = node_name
+			div.centered = false
+			floor_root.add_child(div)
+		div.texture = texture
+		div.position = Vector2(80.0, TRACK_DIV_Y[i] + 40.0)
+		div.visible = true
+
+
 func _ensure_track_floor(tracks: Node2D) -> void:
+
 	var floor_root: Node2D = tracks.get_node_or_null("TrackFloor") as Node2D
 	if floor_root == null:
 		floor_root = Node2D.new()
@@ -327,7 +360,10 @@ func _ensure_track_floor(tracks: Node2D) -> void:
 		graybox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		graybox.size = TRACK_FLOOR_SIZE
 		floor_root.add_child(graybox)
+	# Exact: uia_bat_tracks.png; optional track_div* lines if present.
 	var texture := AssetAdapter.texture(TRACK_FLOOR_ASSET_ID, asset_base_dir)
+	if texture == null:
+		texture = AssetAdapter.texture_at("%s/ui/battle/uia_bat_tracks.png" % asset_base_dir)
 	if texture != null:
 		sprite.texture = texture
 		sprite.visible = true
@@ -340,6 +376,7 @@ func _ensure_track_floor(tracks: Node2D) -> void:
 		graybox.color = TRACK_FLOOR_GRAYBOX
 		graybox.size = TRACK_FLOOR_SIZE
 		floor_root.set_meta("track_floor_graybox", true)
+	_ensure_track_dividers(floor_root)
 
 
 func _rebuild_tracks() -> void:
