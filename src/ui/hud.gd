@@ -72,7 +72,7 @@ const ITEM_ICON_SIZE: Vector2 = Vector2(24.0, 24.0)
 ## P0-E BuildBar：建筑图标探测（ui_bld_<id> → ui/icons/…）；缺失用灰占位。
 const BUILDING_ICON_ID_FORMAT: String = "ui_bld_%s"
 const BUILDING_ICON_SIZE: Vector2 = Vector2(28.0, 28.0)
-const BUILDING_ICON_PLACEHOLDER := Color(0.35, 0.34, 0.32, 0.85)
+const BUILDING_ICON_PLACEHOLDER := StarsoilTokens.BUILD_ICON_PLACEHOLDER
 ## 断电徽记语义色（token；非装饰 teal）。
 const UNPOWERED_PIP_COLOR: Color = Color(0.85, 0.15, 0.15)
 const UNPOWERED_PIP_SIZE: Vector2 = Vector2(8.0, 8.0)

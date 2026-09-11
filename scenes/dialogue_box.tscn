@@ -1,19 +1,7 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/narrative/dialogue_box.gd" id="1_dialogue"]
 [ext_resource type="Theme" path="res://themes/starsoil_theme.tres" id="2_theme"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_dialog.png" id="3_panel"]
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_dialog"]
-content_margin_left = 24.0
-content_margin_top = 16.0
-content_margin_right = 24.0
-content_margin_bottom = 16.0
-texture = ExtResource("3_panel")
-texture_margin_left = 28.0
-texture_margin_top = 24.0
-texture_margin_right = 28.0
-texture_margin_bottom = 28.0
 
 [node name="DialogueBox" type="CanvasLayer"]
 layer = 50
@@ -32,7 +20,7 @@ offset_bottom = -28.0
 grow_horizontal = 2
 grow_vertical = 0
 theme = ExtResource("2_theme")
-theme_override_styles/panel = SubResource("StyleBoxTexture_dialog")
+theme_type_variation = &"PanelDialog"
 
 [node name="NameLabel" type="Label" parent="Panel"]
 layout_mode = 0
@@ -40,8 +28,7 @@ offset_left = 28.0
 offset_top = 16.0
 offset_right = 1156.0
 offset_bottom = 48.0
-theme_override_colors/font_color = Color(0.969, 0.902, 0.69, 1)
-theme_override_font_sizes/font_size = 20
+theme_type_variation = &"LabelScreenTitle"
 text = "？？？"
 
 [node name="TextLabel" type="Label" parent="Panel"]
@@ -50,7 +37,7 @@ offset_left = 28.0
 offset_top = 56.0
 offset_right = 1156.0
 offset_bottom = 128.0
-theme_override_font_sizes/font_size = 18
+theme_type_variation = &"LabelPanelTitle"
 text = "……"
 autowrap_mode = 3
 

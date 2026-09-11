@@ -2,13 +2,13 @@
 
 - 日期：2026-09-11（Asia/Shanghai）
 - 仓库：Asunainlove/GAMEGLM
-- 基线提交：`1671f3f`（P0 world-presence skeleton #51）+ ENV-27 build dust place wiring（本包）
-- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: VISUAL-REFACTOR-P0`，`visual_refactor_packet: p0_closed`，`window_status: visual_refactor_p0`，`visual_polish_packet: closed`）
+- 基线提交：`c39effa`（#56 P1-A 洛弦探索可读性）+ 本包 Theme/去灰盒工程
+- 状态源：`ops/state.json`（`project_team_status: active`，`active_packet: VISUAL-REFACTOR-P1`，`visual_refactor_packet: p0_closed`，`window_status: visual_refactor_p1`，`p1_a_explore_luoxian: done`，`visual_polish_packet: closed`）
 - 完成门：`G7 Windows RC`（见 `ops/GOAL.md`；**G7 搁置至观感通过**）
 
 ## 1. 当前状态（一句话）
 
-`active_packet=VISUAL-REFACTOR-P0`，`visual_refactor_packet=p0_closed`（#51 世界存在感骨架 + ENV-27 建造尘雾 place 接线已落主线验收待测）。G7 人工门禁**搁置**至观感 owner 通过；勿捏造试玩结果。P1 未启动。
+P0 已关闭（`visual_refactor_packet=p0_closed`）。P1 Theme+Ending/FinishBanner/BuildBar 去灰盒工程已启动（`active_packet=VISUAL-REFACTOR-P1`，`resume_from=visual_refactor_p1_theme_hud`）；P1-A 洛弦探索动作美术已合入 `c39effa`。G7 搁置至观感通过。
 
 ## 2. 角色与责任人
 
@@ -104,7 +104,7 @@ python scripts/validate_content.py
 
 1. **产品/测试**：目检 VISUAL-REFACTOR-P0 世界存在感 + 建造落成尘雾（ENV-27）；silhouette/ore overlay 已由 #52 合入；本包仅 ENV-27 dust + state。
 2. **G7**：继续搁置至观感 owner 通过后再恢复 `g7_human_gates`；代理不得代填试玩记录。
-3. **工程**：P1 未启动；残留见 `ops/state.json` known_residuals。
+3. **工程**：P1-B/C Theme+去灰盒进行中；残留仅 place_chain flaky（见 `ops/state.json`）。
 
 ## 8. 恢复协议
 

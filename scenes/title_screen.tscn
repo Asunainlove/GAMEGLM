@@ -1,20 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/ui/title_screen.gd" id="1_title"]
 [ext_resource type="Theme" path="res://themes/starsoil_theme.tres" id="2_theme"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_help.png" id="3_help"]
 [ext_resource type="Texture2D" path="res://assets/art/ui/title/bg_title.png" id="4_bg"]
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_help"]
-content_margin_left = 16.0
-content_margin_top = 12.0
-content_margin_right = 16.0
-content_margin_bottom = 12.0
-texture = ExtResource("3_help")
-texture_margin_left = 24.0
-texture_margin_top = 20.0
-texture_margin_right = 24.0
-texture_margin_bottom = 20.0
 
 [node name="TitleScreen" type="CanvasLayer"]
 layer = 30
@@ -71,8 +59,8 @@ horizontal_alignment = 1
 [node name="Subtitle" type="Label" parent="Root/Layout"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.79, 0.72, 1)
-theme_override_font_sizes/font_size = 18
+theme_type_variation = &"LabelPanelTitle"
+theme_override_colors/font_color = Color(0.576, 0.655, 0.706, 1)
 text = "琉砂海 · 垂直切片"
 horizontal_alignment = 1
 
@@ -127,12 +115,12 @@ offset_bottom = 210.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
-theme_override_styles/panel = SubResource("StyleBoxTexture_help")
+theme_type_variation = &"PanelHelp"
 
 [node name="HelpText" type="Label" parent="Root/HelpPanel"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.74, 0.8, 0.82, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.576, 0.655, 0.706, 1)
+theme_type_variation = &"LabelPanelTitle"
 text = "操作说明
 移动：WASD 或方向键
 采集：鼠标左键 或 空格键

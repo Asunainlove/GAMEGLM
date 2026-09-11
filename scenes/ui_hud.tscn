@@ -1,43 +1,7 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="1_hud"]
 [ext_resource type="Theme" path="res://themes/starsoil_theme.tres" id="2_theme"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_inventory.png" id="3_inv"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_menu.png" id="4_menu"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_help.png" id="5_help"]
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_inv"]
-content_margin_left = 18.0
-content_margin_top = 14.0
-content_margin_right = 18.0
-content_margin_bottom = 14.0
-texture = ExtResource("3_inv")
-texture_margin_left = 28.0
-texture_margin_top = 24.0
-texture_margin_right = 28.0
-texture_margin_bottom = 28.0
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_menu"]
-content_margin_left = 18.0
-content_margin_top = 14.0
-content_margin_right = 18.0
-content_margin_bottom = 14.0
-texture = ExtResource("4_menu")
-texture_margin_left = 28.0
-texture_margin_top = 24.0
-texture_margin_right = 28.0
-texture_margin_bottom = 28.0
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_help"]
-content_margin_left = 12.0
-content_margin_top = 10.0
-content_margin_right = 12.0
-content_margin_bottom = 10.0
-texture = ExtResource("5_help")
-texture_margin_left = 24.0
-texture_margin_top = 20.0
-texture_margin_right = 24.0
-texture_margin_bottom = 20.0
 
 [node name="Hud" type="CanvasLayer"]
 layer = 20
@@ -65,7 +29,7 @@ offset_right = -16.0
 offset_bottom = 48.0
 grow_horizontal = 0
 theme = ExtResource("2_theme")
-theme_override_font_sizes/font_size = 15
+theme_type_variation = &"LabelPanelTitle"
 horizontal_alignment = 2
 
 [node name="RelationsPanel" type="HBoxContainer" parent="."]
@@ -98,7 +62,7 @@ offset_bottom = 236.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
-theme_override_styles/panel = SubResource("StyleBoxTexture_inv")
+theme_type_variation = &"PanelInventory"
 
 [node name="Content" type="VBoxContainer" parent="InventoryPanel"]
 layout_mode = 2
@@ -106,7 +70,7 @@ theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="InventoryPanel/Content"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_type_variation = &"LabelPanelTitle"
 text = "背包"
 
 [node name="ItemsBox" type="VBoxContainer" parent="InventoryPanel/Content"]
@@ -115,7 +79,7 @@ theme_override_constants/separation = 6
 
 [node name="RecipesTitle" type="Label" parent="InventoryPanel/Content"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_type_variation = &"LabelPanelTitle"
 text = "配方"
 
 [node name="RecipesBox" type="VBoxContainer" parent="InventoryPanel/Content"]
@@ -154,6 +118,7 @@ grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
 theme = ExtResource("2_theme")
+theme_type_variation = &"PanelMenu"
 
 [node name="HintLabel" type="Label" parent="HintToast"]
 layout_mode = 2
@@ -176,7 +141,7 @@ offset_bottom = 214.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
-theme_override_styles/panel = SubResource("StyleBoxTexture_menu")
+theme_type_variation = &"PanelMenu"
 
 [node name="Content" type="VBoxContainer" parent="MenuPanel"]
 layout_mode = 2
@@ -185,7 +150,7 @@ alignment = 1
 
 [node name="Title" type="Label" parent="MenuPanel/Content"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_type_variation = &"LabelScreenTitle"
 text = "菜单"
 horizontal_alignment = 1
 
@@ -213,7 +178,7 @@ text = "重新开始"
 visible = false
 custom_minimum_size = Vector2(0, 148)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxTexture_help")
+theme_type_variation = &"PanelHelp"
 
 [node name="HelpText" type="Label" parent="MenuPanel/Content/HelpPanel"]
 layout_mode = 2

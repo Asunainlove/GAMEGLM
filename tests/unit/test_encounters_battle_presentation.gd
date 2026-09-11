@@ -484,7 +484,7 @@ func test_destabilized_flash_oscillates_between_base_and_purple() -> void:
 	if scene == null:
 		return
 	var script: Script = scene.get_script()
-	var base := Color(0.42, 0.52, 0.66)
+	var base := BattleScene.ALLY_COLOR
 	var midpoint: Color = script.destabilized_box_color(base, 0.0)
 	var peak: Color = script.destabilized_box_color(base, PI / 12.0)
 	var trough: Color = script.destabilized_box_color(base, PI / 4.0)

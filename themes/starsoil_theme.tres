@@ -1,29 +1,65 @@
-[gd_resource type="Theme" load_steps=11 format=3]
+[gd_resource type="Theme" load_steps=15 format=3]
 
 [ext_resource type="FontFile" path="res://assets/fonts/NotoSansSC-Regular.subset.otf" id="1_font"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_menu.png" id="2_panel"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/buttons/btn_normal.png" id="3_btn_n"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/buttons/btn_hover.png" id="4_btn_h"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/buttons/btn_pressed.png" id="5_btn_p"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/buttons/btn_disabled.png" id="6_btn_d"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_menu.png" id="2_panel_menu"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_dialog.png" id="3_panel_dialog"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_inventory.png" id="4_panel_inv"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/panels/panel_help.png" id="5_panel_help"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/buttons/btn_normal.png" id="6_btn_n"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/buttons/btn_hover.png" id="7_btn_h"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/buttons/btn_pressed.png" id="8_btn_p"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/buttons/btn_disabled.png" id="9_btn_d"]
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_panel"]
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_panel_menu"]
 content_margin_left = 16.0
 content_margin_top = 12.0
 content_margin_right = 16.0
 content_margin_bottom = 12.0
-texture = ExtResource("2_panel")
+texture = ExtResource("2_panel_menu")
 texture_margin_left = 28.0
 texture_margin_top = 24.0
 texture_margin_right = 28.0
 texture_margin_bottom = 28.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_panel_dialog"]
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
+texture = ExtResource("3_panel_dialog")
+texture_margin_left = 28.0
+texture_margin_top = 24.0
+texture_margin_right = 28.0
+texture_margin_bottom = 28.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_panel_inv"]
+content_margin_left = 18.0
+content_margin_top = 14.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+texture = ExtResource("4_panel_inv")
+texture_margin_left = 28.0
+texture_margin_top = 24.0
+texture_margin_right = 28.0
+texture_margin_bottom = 28.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_panel_help"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+texture = ExtResource("5_panel_help")
+texture_margin_left = 24.0
+texture_margin_top = 20.0
+texture_margin_right = 24.0
+texture_margin_bottom = 20.0
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_button_normal"]
 content_margin_left = 14.0
 content_margin_top = 8.0
 content_margin_right = 14.0
 content_margin_bottom = 8.0
-texture = ExtResource("3_btn_n")
+texture = ExtResource("6_btn_n")
 texture_margin_left = 10.0
 texture_margin_top = 8.0
 texture_margin_right = 10.0
@@ -34,7 +70,7 @@ content_margin_left = 14.0
 content_margin_top = 8.0
 content_margin_right = 14.0
 content_margin_bottom = 8.0
-texture = ExtResource("4_btn_h")
+texture = ExtResource("7_btn_h")
 texture_margin_left = 10.0
 texture_margin_top = 8.0
 texture_margin_right = 10.0
@@ -45,7 +81,7 @@ content_margin_left = 14.0
 content_margin_top = 8.0
 content_margin_right = 14.0
 content_margin_bottom = 8.0
-texture = ExtResource("5_btn_p")
+texture = ExtResource("8_btn_p")
 texture_margin_left = 10.0
 texture_margin_top = 8.0
 texture_margin_right = 10.0
@@ -56,24 +92,64 @@ content_margin_left = 14.0
 content_margin_top = 8.0
 content_margin_right = 14.0
 content_margin_bottom = 8.0
-texture = ExtResource("6_btn_d")
+texture = ExtResource("9_btn_d")
 texture_margin_left = 10.0
 texture_margin_top = 8.0
 texture_margin_right = 10.0
 texture_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_focus_gold"]
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+bg_color = Color(0.094, 0.133, 0.184, 0.35)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.91, 0.784, 0.471, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dim_overlay"]
+bg_color = Color(0.043, 0.067, 0.11, 0.72)
 
 [resource]
 default_font = ExtResource("1_font")
 default_font_size = 14
 Button/colors/font_color = Color(0.859, 0.902, 0.922, 1)
 Button/colors/font_disabled_color = Color(0.361, 0.42, 0.463, 1)
+Button/colors/font_focus_color = Color(0.969, 0.902, 0.69, 1)
 Button/colors/font_hover_color = Color(0.969, 0.902, 0.69, 1)
 Button/colors/font_pressed_color = Color(0.91, 0.784, 0.471, 1)
 Button/styles/disabled = SubResource("StyleBoxTexture_button_disabled")
-Button/styles/focus = SubResource("StyleBoxTexture_button_hover")
+Button/styles/focus = SubResource("StyleBoxFlat_focus_gold")
 Button/styles/hover = SubResource("StyleBoxTexture_button_hover")
 Button/styles/normal = SubResource("StyleBoxTexture_button_normal")
 Button/styles/pressed = SubResource("StyleBoxTexture_button_pressed")
 Label/colors/font_color = Color(0.859, 0.902, 0.922, 1)
-Panel/styles/panel = SubResource("StyleBoxTexture_panel")
-PanelContainer/styles/panel = SubResource("StyleBoxTexture_panel")
+Label/font_sizes/font_size = 14
+LabelPanelTitle/base_type = "Label"
+LabelPanelTitle/colors/font_color = Color(0.859, 0.902, 0.922, 1)
+LabelPanelTitle/font_sizes/font_size = 18
+LabelScreenTitle/base_type = "Label"
+LabelScreenTitle/colors/font_color = Color(0.969, 0.902, 0.69, 1)
+LabelScreenTitle/font_sizes/font_size = 20
+LabelBanner/base_type = "Label"
+LabelBanner/colors/font_color = Color(0.969, 0.902, 0.69, 1)
+LabelBanner/font_sizes/font_size = 22
+Panel/styles/panel = SubResource("StyleBoxTexture_panel_menu")
+PanelContainer/styles/panel = SubResource("StyleBoxTexture_panel_menu")
+PanelDialog/base_type = "Panel"
+PanelDialog/styles/panel = SubResource("StyleBoxTexture_panel_dialog")
+PanelInventory/base_type = "PanelContainer"
+PanelInventory/styles/panel = SubResource("StyleBoxTexture_panel_inv")
+PanelMenu/base_type = "PanelContainer"
+PanelMenu/styles/panel = SubResource("StyleBoxTexture_panel_menu")
+PanelHelp/base_type = "PanelContainer"
+PanelHelp/styles/panel = SubResource("StyleBoxTexture_panel_help")
+PanelDimOverlay/base_type = "PanelContainer"
+PanelDimOverlay/styles/panel = SubResource("StyleBoxFlat_dim_overlay")

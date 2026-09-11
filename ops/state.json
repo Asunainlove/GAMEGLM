@@ -2,11 +2,11 @@
   "goal_status": "active",
   "milestone": "G7",
   "window": "W004-G6A+G7P",
-  "window_status": "visual_refactor_p0",
+  "window_status": "visual_refactor_p1",
   "project_team_status": "active",
-  "last_verified_commit": "a74378a",
-  "active_packet": "VISUAL-REFACTOR-P0",
-  "resume_from": "visual_refactor_p0_world_presence",
+  "last_verified_commit": "c39effa",
+  "active_packet": "VISUAL-REFACTOR-P1",
+  "resume_from": "visual_refactor_p1_theme_hud",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
@@ -14,7 +14,7 @@
     "batch4_audio": "done"
   },
   "next_packet_ids": [
-    "VISUAL-REFACTOR-P0"
+    "VISUAL-REFACTOR-P1"
   ],
   "known_blockers": [
     "Visual look not owner-passed; G7 shelved until look passes (g7_human_gates paused - do not invent playtest results)"
@@ -23,5 +23,6 @@
   "known_residuals": [
     "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking"
   ],
-  "visual_refactor_packet": "p0_closed"
+  "visual_refactor_packet": "p0_closed",
+  "p1_a_explore_luoxian": "done"
 }
