@@ -37,7 +37,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.02, 0.035, 0.055, 0.76)
+color = Color(0.043, 0.067, 0.11, 0.76)
 
 [node name="Layout" type="VBoxContainer" parent="UILayer/StartupScreen"]
 layout_mode = 1
@@ -58,7 +58,7 @@ alignment = 1
 
 [node name="Eyebrow" type="Label" parent="UILayer/StartupScreen/Layout"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.79, 0.72, 1)
+theme_override_colors/font_color = Color(0.576, 0.655, 0.706, 1)
 theme_override_font_sizes/font_size = 18
 text = "琉砂海 · 垂直切片"
 horizontal_alignment = 1
@@ -81,7 +81,7 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 2)
 layout_mode = 2
 mouse_filter = 2
-color = Color(0.42, 0.79, 0.72, 0.72)
+color = Color(0.91, 0.784, 0.471, 0.7)
 
 [node name="Hint" type="Label" parent="UILayer/StartupScreen/Layout"]
 layout_mode = 2

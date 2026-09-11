@@ -30,9 +30,9 @@ const ROW_SPACING: float = 96.0
 const ALLY_ORIGIN: Vector2 = Vector2(96.0, 120.0)
 const ENEMY_ORIGIN: Vector2 = Vector2(560.0, 120.0)
 const UNIT_SPACING: float = 120.0
-const ALLY_COLOR: Color = Color(0.42, 0.52, 0.66)
-const ENEMY_COLOR: Color = Color(0.62, 0.4, 0.38)
-const BOSS_COLOR: Color = Color(0.72, 0.5, 0.2)
+const ALLY_COLOR: Color = StarsoilTokens.BATTLE_ALLY_BOX
+const ENEMY_COLOR: Color = StarsoilTokens.BATTLE_ENEMY_BOX
+const BOSS_COLOR: Color = StarsoilTokens.BATTLE_BOSS_BOX
 const MAX_AUTO_TURNS: int = 64
 
 # --- W003-A4 表现层常量（文案全原创中文；只消费引擎 log）---------------------------
