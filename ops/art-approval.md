@@ -338,3 +338,8 @@
 | uia_bat_track_div_back | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/battle/uia_bat_track_div_back.png |
 | uia_bat_track_div_front | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/battle/uia_bat_track_div_front.png |
 | uia_bat_track_div_mid | VISUAL-REFACTOR-P2-A | Cursor GenerateImage / v2-polish ui | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/battle/uia_bat_track_div_mid.png |
+
+> Note (2026-09-11): **VISUAL-REFACTOR-P3-A** title button rail approved by 幕僚长 standing auth 2026-09-11. Drop-in `uia_ttl_btnrail` 9-patch 64×32 (+ optional 320 preview companion) for title button rail. Source `ops/art-staging/v2-polish/ui/p3/` (contact `p3a_btnrail_contact.jpg` staging-only). Completes btnrail skipped in P2-A. No `.import` flood. No scenes/src. Wiring = follow-up for 工程.
+
+| uia_ttl_btnrail | VISUAL-REFACTOR-P3-A | Cursor GenerateImage / v2-polish ui/p3 | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/title/uia_ttl_btnrail.png |
+| uia_ttl_btnrail_320 | VISUAL-REFACTOR-P3-A | Cursor GenerateImage / v2-polish ui/p3 | docs/art/ui-assets.md | 2026-09-11 | 美术 | 幕僚长 | 2026-09-11 | approved | assets/art/ui/title/uia_ttl_btnrail_320.png |
