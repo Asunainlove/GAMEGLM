@@ -362,6 +362,15 @@ func sync_ore_presentation() -> void:
 	_sync_ore_damage_frames()
 
 
+## ENV-27: play build-dust sequence at a world cell (presentation-only; no state).
+func play_build_dust_at_cell(cell: Vector2i) -> void:
+	if _buildings == null:
+		return
+	_building_presenter.asset_base_dir = building_asset_base_dir
+	var world_position := (Vector2(cell) + Vector2(0.5, 0.5)) * float(BuildingPresenter.CELL_SIZE)
+	_building_presenter.play_build_dust(_buildings, world_position)
+
+
 
 
 ## Sync `$Buildings` sprites from snapshot.placed_buildings + PowerGrid skin.
