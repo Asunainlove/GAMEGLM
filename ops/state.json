@@ -22,10 +22,12 @@
   "visual_polish_packet": "closed",
   "known_residuals": [
     "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
-    "P3: title btnrail graybox (uia_ttl_btnrail) — active packet target; art pending; skeleton OK until approved"
+    "P3-A btnrail art (#64) wired on title ButtonRailScrim — real texture bound; look still owner-gated"
   ],
   "visual_refactor_packet": "p2_closed",
   "p1_a_explore_luoxian": "done",
   "p2_status": "closed",
-  "p2_a_ui_chrome": "done"
+  "p2_a_ui_chrome": "done",
+  "p3_status": "skeleton",
+  "p3_a_btnrail": "done"
 }
