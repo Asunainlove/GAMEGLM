@@ -6,7 +6,7 @@
   "project_team_status": "active",
   "last_verified_commit": "1ea1c0d",
   "active_packet": "VISUAL-REFACTOR-P1",
-  "resume_from": "visual_refactor_p1_theme_hud",
+  "resume_from": "visual_refactor_p1_standby",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
@@ -17,12 +17,13 @@
     "VISUAL-REFACTOR-P1"
   ],
   "known_blockers": [
-    "Visual look not owner-passed; G7 shelved until look passes (g7_human_gates paused - do not invent playtest results)"
+    "Visual look not owner-passed; G7 shelved until look passes (do not invent playtest results)"
   ],
   "visual_polish_packet": "closed",
   "known_residuals": [
-    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking"
+    "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
+    "P1 stretch (non-blocking): inventory slot frames / title LOGO / battle track floors — art+wire when 幕僚长派; do not open P2"
   ],
-  "visual_refactor_packet": "p0_closed",
+  "visual_refactor_packet": "p1_closed",
   "p1_a_explore_luoxian": "done"
 }
