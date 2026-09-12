@@ -871,7 +871,7 @@ func test_startup_screen_fades_out_and_remains_in_tree() -> void:
 
 func test_startup_screen_does_not_block_input_during_fade() -> void:
 	# 淡出（约 2s）不得阻塞输入：启动屏根与其布局容器都必须 IGNORE 鼠标，
-	# 否则全屏 ColorRect / 居中 VBoxContainer 会在淡出窗口期吞掉点击。
+	# 否则全屏 StartupScreen / 居中 VBoxContainer 会在淡出窗口期吞掉点击。
 	var packed := load(APP_SCENE_PATH) as PackedScene
 	assert_not_null(packed, "app.tscn must load.")
 	if packed == null:

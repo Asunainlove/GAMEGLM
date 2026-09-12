@@ -471,10 +471,10 @@ func test_destabilized_and_guard_tags_render_on_unit_nodes() -> void:
 	assert_true((ally.get_node("Label") as Label).text.contains("失稳"), "失稳单位必须带失稳标签。")
 	assert_true(bool(ally.get_meta("destabilized", false)), "失稳单位节点必须带 destabilized 元数据。")
 	var ally_box: ColorRect = ally.get_node("Box") as ColorRect
-	assert_true(
-		ally_box.color.r > ally_box.color.g and ally_box.color.b > ally_box.color.g,
-		"失稳单位色块必须立即呈紫色（此后按帧闪紫）。"
-	)
+	assert_not_null(ally_box, "缺资产仍有 Box 占位。")
+	if ally_box != null:
+		assert_false(ally_box.visible, "P4: 失稳缺资产不得闪彩色砖。")
+		assert_true(bool(ally.get_meta("unit_box_invisible", false)))
 	assert_true((boss.get_node("Label") as Label).text.contains("防护"), "防护中单位必须带防护标签。")
 	assert_false(bool(boss.get_meta("destabilized", true)), "非失稳单位不得带 destabilized 元数据。")
 
