@@ -1,8 +1,7 @@
 extends GutTest
 
-## VISUAL-REFACTOR-P5-B: battle action icons + banner skins skeleton.
-## Unapproved art under assets/art/ui/battle/ must NOT be required —
-## FileAccess/AssetAdapter probe with graybox Label/Flat fallback.
+## VISUAL-REFACTOR-P5: battle action icons + banner skins.
+## Production tip binds REAL P5-A art (#73); user:// inject still covers graybox fallback.
 
 const BATTLE_SCENE_PATH: String = "res://scenes/battle.tscn"
 
@@ -184,14 +183,19 @@ func test_action_icons_graybox_then_drop_in() -> void:
 	assert_eq(icons_bound, 3, "Attack/guard/item icons bind on drop-in.")
 
 
-func test_production_unapproved_paths_not_required() -> void:
-	# Production tip: no UIA-BAT action/banner art yet — graybox OK, GUT stays green.
+func test_production_binds_real_p5_art() -> void:
+	# Default res://assets/art after #73 — action icons + banner skins REAL.
+	StubEngine.battle_template = _ally_battle()
 	var scene: Node2D = _make_scene()
 	scene.set("asset_base_dir", "res://assets/art")
 	scene.call("apply_p5_banner_hooks")
 	var ui: CanvasLayer = scene.get_node("UI") as CanvasLayer
-	assert_true(bool(ui.get_meta("phase_banner_graybox")))
-	assert_true(bool(ui.get_meta("turn_banner_graybox")))
+	assert_false(bool(ui.get_meta("phase_banner_graybox")), "Production must bind uia_bat_bnr_phase (#73).")
+	assert_false(bool(ui.get_meta("turn_banner_graybox")), "Production must bind uia_bat_bnr_turn (#73).")
+	var phase_skin: TextureRect = ui.get_node("PhaseBannerSkin") as TextureRect
+	var round_skin: TextureRect = ui.get_node("RoundBannerSkin") as TextureRect
+	assert_not_null(phase_skin.texture)
+	assert_not_null(round_skin.texture)
 	for asset_id: String in [
 		"uia_bat_ico_attack",
 		"uia_bat_ico_guard",
@@ -203,10 +207,25 @@ func test_production_unapproved_paths_not_required() -> void:
 		"uia_bat_bnr_result_defeat",
 	]:
 		var path := "res://assets/art/ui/battle/%s.png" % asset_id
-		assert_false(
+		assert_true(
 			FileAccess.file_exists(path),
-			"Unapproved P5 art must not be committed: %s" % path
+			"P5-A art must be present on tip: %s" % path
 		)
+	scene.call("begin_encounter", {"id": "p5_probe"}, {})
+	var box: VBoxContainer = scene.get_node("UI/ActionsBox") as VBoxContainer
+	assert_false(bool(box.get_meta("action_icons_graybox")), "Production must bind action icons (#73).")
+	var icons_bound := 0
+	for child: Node in box.get_children():
+		var btn := child as Button
+		if btn != null and btn.icon != null:
+			icons_bound += 1
+	assert_eq(icons_bound, 3, "Attack/guard/item icons bound on production tip.")
+	scene.call("_show_finish_banner", "victory")
+	var finish: Control = ui.get_node("FinishBanner") as Control
+	assert_false(bool(finish.get_meta("finish_banner_graybox")), "Production must bind result victory banner.")
+	var banner_skin: TextureRect = finish.get_node("BannerSkin") as TextureRect
+	assert_not_null(banner_skin.texture)
+	assert_true(banner_skin.visible)
 	# Track floor from P2 remains real.
 	assert_true(FileAccess.file_exists("res://assets/art/ui/battle/uia_bat_tracks.png"))
 

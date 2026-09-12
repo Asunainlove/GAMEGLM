@@ -22,7 +22,7 @@
   "visual_polish_packet": "closed",
   "known_residuals": [
     "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
-    "P5 in progress: battle action icons + banner skins (skeleton OK until P5-A art approved)",
+    "P5-A battle chrome art (#73) wired on action icons + banners — real textures bound; look still owner-gated",
     "Post-P5 residuals (non-blocking): recipe row text list; parallax ENV-18..20; boundary wall ENV-28; Boss arena stage"
   ],
   "visual_refactor_packet": "p4_closed",
@@ -32,5 +32,6 @@
   "p3_status": "closed",
   "p3_a_btnrail": "done",
   "p4_status": "closed",
-  "p5_status": "skeleton"
+  "p5_status": "wiring",
+  "p5_a_battle_chrome": "done"
 }

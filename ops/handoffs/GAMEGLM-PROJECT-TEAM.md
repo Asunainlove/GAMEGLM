@@ -8,7 +8,7 @@
 
 ## 1. 当前状态（一句话）
 
-P2 已关闭（`visual_refactor_packet=p2_closed`）。P3 进行中（`active_packet=VISUAL-REFACTOR-P3`，`resume_from=visual_refactor_p3_btnrail`，`p3_a_btnrail=done`）：title `uia_ttl_btnrail` 已接线 (#64 art + 本包工程)。G7 搁置至观感通过。
+P4 已关闭（`visual_refactor_packet=p4_closed`）。P5 接线中（`active_packet=VISUAL-REFACTOR-P5`，`resume_from=visual_refactor_p5_battle_icons_banners`，`p5_status=wiring`，`p5_a_battle_chrome=done`）：battle `uia_bat_ico_*` / `uia_bat_bnr_*` 已接线 (#73 art + 本包工程)。G7 搁置至观感通过。
 
 ## 2. 角色与责任人
 
