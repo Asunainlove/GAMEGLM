@@ -88,8 +88,8 @@ const TRACK_FLOOR_ASSET_ID: String = "uia_bat_tracks"
 const TRACK_FLOOR_SIZE: Vector2 = Vector2(1280.0, 560.0)
 const TRACK_FLOOR_ORIGIN: Vector2 = Vector2(0.0, 40.0)
 const TRACK_FLOOR_GRAYBOX := Color(0.071, 0.102, 0.149, 0.85)
-## P5-B UIA-BAT action icons + banner skins (ui-assets §8.1 / §8.4).
-## Probe assets/art/ui/battle/; missing → graybox Label/theme Flat (never invent art).
+## P5 UIA-BAT action icons + banner skins (ui-assets §8.1 / §8.4).
+## Probe assets/art/ui/battle/; P5-A (#73) drop-in binds REAL textures; missing → graybox Label/theme Flat.
 const ACTION_ICON_SIZE: Vector2 = Vector2(16.0, 16.0)
 const ACTION_ICON_ASSET_BY_KIND: Dictionary = {
 	"attack": "uia_bat_ico_attack",
