@@ -2,11 +2,11 @@
   "goal_status": "active",
   "milestone": "G7",
   "window": "W004-G6A+G7P",
-  "window_status": "visual_refactor_p5_standby",
+  "window_status": "visual_refactor_p6",
   "project_team_status": "active",
   "last_verified_commit": "39c421e",
-  "active_packet": "VISUAL-REFACTOR-P5",
-  "resume_from": "visual_refactor_p5_standby",
+  "active_packet": "VISUAL-REFACTOR-P6",
+  "resume_from": "visual_refactor_p6_parallax_border_boss",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
@@ -14,7 +14,7 @@
     "batch4_audio": "done"
   },
   "next_packet_ids": [
-    "VISUAL-REFACTOR-P5"
+    "VISUAL-REFACTOR-P6"
   ],
   "known_blockers": [
     "Visual look not owner-passed — awaiting owner review of tip (do not invent/proxy playtest results); G7 shelved until look passes"
@@ -22,7 +22,8 @@
   "visual_polish_packet": "closed",
   "known_residuals": [
     "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
-    "Post-P5 residuals (non-blocking): recipe row text list; parallax ENV-18..20; boundary wall ENV-28; Boss arena stage"
+    "P6 in progress: parallax ENV-18..20 + boundary wall ENV-28 + Boss arena stage (skeleton OK until P6-A art approved)",
+    "Post-P6 residual (non-blocking): recipe row text list"
   ],
   "visual_refactor_packet": "p5_closed",
   "p1_a_explore_luoxian": "done",
@@ -32,5 +33,6 @@
   "p3_a_btnrail": "done",
   "p4_status": "closed",
   "p5_status": "closed",
-  "p5_a_battle_chrome": "done"
+  "p5_a_battle_chrome": "done",
+  "p6_status": "skeleton"
 }
