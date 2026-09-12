@@ -3,7 +3,7 @@ extends Node2D
 
 ## WP13 战斗场景（灰盒）：契约 docs/plans/contracts/module-contracts.md §4/§5。
 ## begin_encounter 经 EncounterDirector.start 组装 config、用真实 CombatEngine
-## create_battle 建局；每个战斗单位渲染为 ColorRect+Label 灰盒节点并按
+## create_battle 建局；每个战斗单位渲染为 Sprite 或不可见占位 Box+Label 并按
 ## front/mid/rear 行排（盟友居左、敌人居右）。轮到盟友时 ActionsBox 为其
 ## action_ids 生成 Button（中文文案来自 action_defs）；按下后自动选目标并
 ## submit_action——引擎内置的敌方回合循环随后自动结算，直到轮到下一位盟友
@@ -69,8 +69,8 @@ var store: Object = null
 ## G6P-1 任务 3：单位资产适配缝——渲染前经 AssetAdapter.sprite_frames 探测单位
 ## contract 形态（A8 §2，asset id = battle_<unit_id>，帧 8：idle2/attack3/hit1/
 ## death2）；命中 → AnimatedSprite2D 替换灰盒 Box（血量/状态 Label 保留叠加，
-## 精灵底边中心对齐灰盒底边 +20 px，A8 §2 挂点契约）；缺失 → 现状灰盒逐字节
-## 不变。asset_base_dir 可注入（测试 user://；生产 res://assets/art）。
+## 精灵底边中心对齐灰盒底边 +20 px，A8 §2 挂点契约）；缺失 → 不可见占位 Box
+## （P4：无彩色砖闪；visible=false + a=0）。asset_base_dir 可注入（测试 user://；生产 res://assets/art）。
 ## Boss lumen_leviathan：phase_index < 0 → phase1/；phase_index >= 0（引擎
 ## phase_change 后）→ phase2/；经 _rebuild_tracks 整体替换 SpriteFrames（A8 §7.3）。
 ##
@@ -440,11 +440,16 @@ func _build_unit_node(unit: Dictionary, column: int) -> Node2D:
 	else:
 		if _is_unit_sprite_wiring_enabled(unit_id):
 			_asset_missing_unit_ids.append(_asset_probe_name(unit))
+		# P4: probe miss → invisible placeholder (no colored graybox flash).
+		# Keep Box node for layout/meta compat; hide until real art swaps in.
 		var box := ColorRect.new()
 		box.name = "Box"
 		box.position = Vector2(-28.0, -20.0)
 		box.size = Vector2(56.0, 40.0)
-		box.color = DESTABILIZED_COLOR if destabilized else color
+		box.color = Color(0, 0, 0, 0)
+		box.visible = false
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		unit_node.set_meta("unit_box_invisible", true)
 		unit_node.add_child(box)
 
 	var label := Label.new()
@@ -799,8 +804,8 @@ func _error_text(entry: Dictionary) -> String:
 
 # --- W003-A4 表现层：失稳闪紫 -------------------------------------------------------
 
-## 每帧刷新失稳单位的反馈：灰盒形态闪 Box 色；资产精灵形态（G6P-1）闪
-## self_modulate（白↔紫，同一纯函数——基色取白色即"无色调"常态）。
+## 每帧刷新失稳单位的反馈：可见灰盒形态闪 Box 色（P4 缺资产占位不可见则跳过）；
+## 资产精灵形态（G6P-1）闪 self_modulate（白↔紫，同一纯函数——基色取白色即"无色调"常态）。
 func _process(delta: float) -> void:
 	_flash_clock += delta
 	var tree := get_tree()
@@ -812,7 +817,8 @@ func _process(delta: float) -> void:
 			continue
 		var box := unit_node.get_node_or_null("Box") as ColorRect
 		var base: Color = unit_node.get_meta("base_color", ENEMY_COLOR)
-		if box != null:
+		# P4: invisible Box is a silent placeholder — never flash coloured bricks.
+		if box != null and box.visible and not bool(unit_node.get_meta("unit_box_invisible", false)):
 			box.color = destabilized_box_color(base, _flash_clock)
 			continue
 		var sprite := unit_node.get_node_or_null("Sprite") as Node2D

@@ -19,7 +19,8 @@ extends Node
 ##    保证重载后的读档必然失败（无档）→ 干净的初始状态与 PlayerSpawn 出生点。
 ##
 ## W001-P05 既有契约（test_app_bootstrap / test_integration 锁定，未改动）：
-## StartupScreen 节点与其文案**保留**（保留为标题背景层，标题在其上层 30），
+## StartupScreen 节点与其文案**保留**（P4：PanelContainer + token StyleBoxFlat scrim/
+## gold Rule；非裸 ColorRect 栈；保留为标题背景层，标题在其上层 30），
 ## mouse_filter 均 IGNORE 不阻塞输入；淡出完成入口 finish_startup_fade 公开，
 ## 测试可手动调用完成（跳过真实补间等待）。
 ##
@@ -44,7 +45,7 @@ static var _fresh_boot_pending: bool = false
 @onready var world_host: Node2D = %WorldHost
 @onready var modal_layer: CanvasLayer = %ModalLayer
 @onready var ui_layer: CanvasLayer = %UILayer
-@onready var startup_screen: ColorRect = %StartupScreen
+@onready var startup_screen: Control = %StartupScreen
 @onready var title_screen: TitleScreen = %TitleScreen
 @onready var game_session: Node = get_node_or_null("GameSession")
 

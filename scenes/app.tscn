@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://src/app/app.gd" id="1_app"]
 [ext_resource type="PackedScene" path="res://scenes/world.tscn" id="2_world"]
@@ -6,6 +6,12 @@
 [ext_resource type="PackedScene" path="res://scenes/dialogue_box.tscn" id="4_dialogue"]
 [ext_resource type="Script" path="res://src/integration/game_session.gd" id="5_session"]
 [ext_resource type="PackedScene" path="res://scenes/title_screen.tscn" id="6_title"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_startup_scrim"]
+bg_color = Color(0.043, 0.067, 0.11, 0.76)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_startup_rule"]
+bg_color = Color(0.91, 0.784, 0.471, 0.7)
 
 [node name="App" type="Node"]
 script = ExtResource("1_app")
@@ -29,7 +35,7 @@ layer = 50
 unique_name_in_owner = true
 layer = 20
 
-[node name="StartupScreen" type="ColorRect" parent="UILayer"]
+[node name="StartupScreen" type="PanelContainer" parent="UILayer"]
 unique_name_in_owner = true
 anchors_preset = 15
 anchor_right = 1.0
@@ -37,7 +43,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.043, 0.067, 0.11, 0.76)
+theme_override_styles/panel = SubResource("StyleBoxFlat_startup_scrim")
 
 [node name="Layout" type="VBoxContainer" parent="UILayer/StartupScreen"]
 layout_mode = 1
@@ -65,27 +71,27 @@ horizontal_alignment = 1
 
 [node name="Title" type="Label" parent="UILayer/StartupScreen/Layout"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.92, 0.88, 0.72, 1)
+theme_override_colors/font_color = Color(0.969, 0.902, 0.69, 1)
 theme_override_font_sizes/font_size = 46
 text = "星壤：余辉纪元"
 horizontal_alignment = 1
 
 [node name="Status" type="Label" parent="UILayer/StartupScreen/Layout"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.74, 0.8, 0.82, 1)
+theme_override_colors/font_color = Color(0.859, 0.902, 0.922, 1)
 theme_override_font_sizes/font_size = 22
 text = "琉砂海 · 余辉纪元垂直切片"
 horizontal_alignment = 1
 
-[node name="Rule" type="ColorRect" parent="UILayer/StartupScreen/Layout"]
+[node name="Rule" type="Panel" parent="UILayer/StartupScreen/Layout"]
 custom_minimum_size = Vector2(0, 2)
 layout_mode = 2
 mouse_filter = 2
-color = Color(0.91, 0.784, 0.471, 0.7)
+theme_override_styles/panel = SubResource("StyleBoxFlat_startup_rule")
 
 [node name="Hint" type="Label" parent="UILayer/StartupScreen/Layout"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.52, 0.59, 0.62, 1)
+theme_override_colors/font_color = Color(0.361, 0.42, 0.463, 1)
 theme_override_font_sizes/font_size = 16
 text = "星壤 · 余辉纪元 — 原创深空余辉审美"
 horizontal_alignment = 1

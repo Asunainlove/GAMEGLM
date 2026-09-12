@@ -3,8 +3,8 @@ extends GutTest
 ## G6P-1 任务 3：战斗单位资产适配契约测试（TDD：先于实现编写）。
 ##
 ## 契约：
-## - 资产缺失（生产基态 / 注入空目录）→ 单位节点保持灰盒（Box ColorRect +
-##   Label），节点结构与 W003-A4 基线逐字节一致，零告警；
+## - 资产缺失（生产基态 / 注入空目录）→ 单位节点保留不可见占位 Box（P4：无彩色
+##   砖闪）+ Label，零告警；
 ## - 注入合同帧（A8 §7.2 battle/units/<unit_id>/<unit_id>_<state>_<NN>.png，
 ##   8 帧：idle2/attack3/hit1/death2）→ Box 被精灵节点替换，血量/状态 Label
 ##   保留叠加，精灵底边中心对齐灰盒底边（原点 +20 px，A8 §2 挂点契约）；
@@ -161,7 +161,7 @@ func _probe_unit_node(scene: Node2D) -> Node2D:
 
 
 func test_missing_unit_assets_render_greybox() -> void:
-	# 注入目录为空（无任何帧）→ 灰盒不变。
+	# 注入目录为空（无任何帧）→ 不可见占位 Box（P4：无彩色砖闪）。
 	var scene: Node2D = _make_scene(_stub_battle())
 	if scene == null:
 		return
@@ -169,7 +169,12 @@ func test_missing_unit_assets_render_greybox() -> void:
 	assert_not_null(unit_node, "单位节点必须照常创建。")
 	if unit_node == null:
 		return
-	assert_not_null(unit_node.get_node_or_null("Box") as ColorRect, "灰盒 Box 必须保留。")
+	var box: ColorRect = unit_node.get_node_or_null("Box") as ColorRect
+	assert_not_null(box, "缺资产仍保留 Box 占位节点。")
+	if box != null:
+		assert_false(box.visible, "P4: 缺资产 Box 必须不可见（无灰盒闪）。")
+		assert_eq(box.color.a, 0.0, "P4: 缺资产 Box 必须透明。")
+	assert_true(bool(unit_node.get_meta("unit_box_invisible", false)), "P4 meta unit_box_invisible。")
 	assert_null(unit_node.get_node_or_null("Sprite"), "缺资产不得出现精灵节点。")
 	var label: Label = unit_node.get_node("Label") as Label
 	assert_eq(label.text, "探针单位 20/20", "灰盒 Label 文案保持基线。")
