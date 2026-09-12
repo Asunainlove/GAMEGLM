@@ -6,7 +6,7 @@
   "project_team_status": "active",
   "last_verified_commit": "9634010",
   "active_packet": "VISUAL-REFACTOR-P5",
-  "resume_from": "visual_refactor_p5_battle_icons_banner",
+  "resume_from": "visual_refactor_p5_battle_icons_banners",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
@@ -22,6 +22,7 @@
   "visual_polish_packet": "closed",
   "known_residuals": [
     "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
+    "P5 in progress: battle action icons + banner skins (skeleton OK until P5-A art approved)",
     "Post-P5 residuals (non-blocking): recipe row text list; parallax ENV-18..20; boundary wall ENV-28; Boss arena stage"
   ],
   "visual_refactor_packet": "p4_closed",
