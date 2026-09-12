@@ -88,6 +88,21 @@ const TRACK_FLOOR_ASSET_ID: String = "uia_bat_tracks"
 const TRACK_FLOOR_SIZE: Vector2 = Vector2(1280.0, 560.0)
 const TRACK_FLOOR_ORIGIN: Vector2 = Vector2(0.0, 40.0)
 const TRACK_FLOOR_GRAYBOX := Color(0.071, 0.102, 0.149, 0.85)
+## P5-B UIA-BAT action icons + banner skins (ui-assets §8.1 / §8.4).
+## Probe assets/art/ui/battle/; missing → graybox Label/theme Flat (never invent art).
+const ACTION_ICON_SIZE: Vector2 = Vector2(16.0, 16.0)
+const ACTION_ICON_ASSET_BY_KIND: Dictionary = {
+	"attack": "uia_bat_ico_attack",
+	"guard": "uia_bat_ico_guard",
+	"item": "uia_bat_ico_item",
+	"destabilize": "uia_bat_ico_attack",
+	"skill": "uia_bat_ico_attack",
+}
+const BANNER_PHASE_ASSET_ID: String = "uia_bat_bnr_phase"
+const BANNER_TURN_ASSET_ID: String = "uia_bat_bnr_turn"
+const BANNER_RESULT_ASSET_ID: String = "uia_bat_bnr_result"
+const BANNER_RESULT_VICTORY_ASSET_ID: String = "uia_bat_bnr_result_victory"
+const BANNER_RESULT_DEFEAT_ASSET_ID: String = "uia_bat_bnr_result_defeat"
 ## Presentation-approved battle unit ids (luoxian/misa/drift #36/#37; shard_husk #41;
 ## veinwarden #42; lumen_leviathan Boss phase1+phase2 #44).
 ## Elite veinwarden_echo is 192×192; Boss lumen_leviathan is 256×256 — anchor via
@@ -577,12 +592,29 @@ func _refresh_actions() -> void:
 	if active.is_empty() or str(active.get("side", "")) != "ally":
 		return
 	var action_defs: Dictionary = _as_dictionary(_battle.get("action_defs", {}))
+	var any_icon := false
+	var any_missing := false
 	for action_id: Variant in _as_array(active.get("action_ids", [])):
 		var action := str(action_id)
+		var def := _as_dictionary(action_defs.get(action, {}))
 		var button := Button.new()
-		button.text = str(_as_dictionary(action_defs.get(action, {})).get("name_zh", action))
+		button.text = str(def.get("name_zh", action))
+		var icon := _probe_action_icon(def)
+		if icon != null:
+			button.icon = icon
+			button.expand_icon = true
+			button.custom_minimum_size = Vector2(0.0, maxf(ACTION_ICON_SIZE.y + 8.0, 0.0))
+			any_icon = true
+		else:
+			any_missing = true
 		button.pressed.connect(_on_action_button_pressed.bind(action))
 		actions_box.add_child(button)
+	# Graybox when no approved icons bind; mixed drop-in still marks graybox false if any real.
+	actions_box.set_meta("action_icons_graybox", not any_icon)
+	if any_missing and any_icon:
+		actions_box.set_meta("action_icons_partial", true)
+	else:
+		actions_box.set_meta("action_icons_partial", false)
 
 
 func _on_action_button_pressed(action_id: String) -> void:
@@ -625,7 +657,10 @@ func _banner_label(node_path: String) -> Label:
 
 ## 闪现横幅：立即整幅可见，保持 seconds - BANNER_FADE_SECONDS 后淡出并隐藏；
 ## 同一横幅重复点亮时先终止上一次的淡出动画，避免双动画争抢。
-func _flash_banner(label: Label, text: String, seconds: float, previous: Tween) -> Tween:
+## P5-B: optional TextureRect skin fades with the Label (graybox = Label only).
+func _flash_banner(
+		label: Label, text: String, seconds: float, previous: Tween, skin: TextureRect = null
+) -> Tween:
 	if previous != null and previous.is_valid():
 		previous.kill()
 	if label == null:
@@ -633,25 +668,43 @@ func _flash_banner(label: Label, text: String, seconds: float, previous: Tween) 
 	label.text = text
 	label.modulate.a = 1.0
 	label.visible = true
+	if skin != null:
+		skin.modulate.a = 1.0
+		skin.visible = skin.texture != null
 	var tween := create_tween()
 	tween.tween_interval(maxf(0.0, seconds - BANNER_FADE_SECONDS))
 	tween.tween_property(label, "modulate:a", 0.0, BANNER_FADE_SECONDS)
-	tween.tween_callback(func() -> void: label.visible = false)
+	if skin != null and skin.texture != null:
+		tween.parallel().tween_property(skin, "modulate:a", 0.0, BANNER_FADE_SECONDS)
+	tween.chain().tween_callback(func() -> void:
+		label.visible = false
+		if skin != null:
+			skin.visible = false
+	)
 	return tween
 
 
 func _show_phase_banner(entry: Dictionary) -> void:
+	apply_p5_banner_hooks()
 	var text := PHASE_BANNER_FORMAT % _display_name(str(entry.get("unit", "")))
-	_phase_tween = _flash_banner(_banner_label("PhaseBanner"), text, phase_banner_seconds, _phase_tween)
+	var skin := _banner_skin("PhaseBannerSkin")
+	_phase_tween = _flash_banner(
+		_banner_label("PhaseBanner"), text, phase_banner_seconds, _phase_tween, skin
+	)
 
 
 func _show_round_banner(turn: int) -> void:
+	apply_p5_banner_hooks()
 	var text := ROUND_BANNER_FORMAT % maxi(1, turn)
-	_round_tween = _flash_banner(_banner_label("RoundBanner"), text, round_banner_seconds, _round_tween)
+	var skin := _banner_skin("RoundBannerSkin")
+	_round_tween = _flash_banner(
+		_banner_label("RoundBanner"), text, round_banner_seconds, _round_tween, skin
+	)
 
 
 ## 胜负横幅：全屏遮罩 + 居中大字（胜利金 / 败北暗紫）。与 finish 同帧点亮，
 ## 持续到场景卸载；时长常量仅描述设计展示时长（信号时序不变）。
+## P5-B: BannerSkin TextureRect / StyleBoxTexture probe; missing → theme Flat graybox.
 func _show_finish_banner(result: String) -> void:
 	var ui: CanvasLayer = _ui_layer()
 	if ui == null:
@@ -666,6 +719,7 @@ func _show_finish_banner(result: String) -> void:
 	var overlay: Control = ui.get_node_or_null("FinishBanner") as Control
 	if overlay != null:
 		overlay.visible = true
+		_apply_finish_banner_skin(overlay, victory)
 
 
 # --- W003-A4 表现层：战报面板 -------------------------------------------------------
@@ -853,3 +907,150 @@ static func _as_array(value: Variant) -> Array:
 	if typeof(value) == TYPE_ARRAY:
 		return value
 	return []
+
+
+# --- P5-B UIA-BAT action icons + banner skins ------------------------------------
+
+
+## Presentation hooks for tests: probe banner skins without starting an encounter.
+func apply_p5_banner_hooks() -> void:
+	_ensure_banner_skin_nodes()
+	_bind_banner_skin("PhaseBannerSkin", BANNER_PHASE_ASSET_ID, "phase_banner_graybox")
+	_bind_banner_skin("RoundBannerSkin", BANNER_TURN_ASSET_ID, "turn_banner_graybox")
+	var ui: CanvasLayer = _ui_layer()
+	if ui == null:
+		return
+	var overlay: Control = ui.get_node_or_null("FinishBanner") as Control
+	if overlay != null and not overlay.has_meta("finish_banner_graybox"):
+		# Default graybox until _show_finish_banner selects victory/defeat art.
+		overlay.set_meta("finish_banner_graybox", true)
+
+
+func _banner_skin(node_name: String) -> TextureRect:
+	var ui: CanvasLayer = _ui_layer()
+	if ui == null:
+		return null
+	return ui.get_node_or_null(node_name) as TextureRect
+
+
+func _ensure_banner_skin_nodes() -> void:
+	var ui: CanvasLayer = _ui_layer()
+	if ui == null:
+		return
+	_ensure_texture_rect(ui, "PhaseBannerSkin", Rect2(320, 48, 640, 96))
+	_ensure_texture_rect(ui, "RoundBannerSkin", Rect2(480, 104, 320, 64))
+	var overlay: Control = ui.get_node_or_null("FinishBanner") as Control
+	if overlay != null:
+		var skin := overlay.get_node_or_null("BannerSkin") as TextureRect
+		if skin == null:
+			skin = TextureRect.new()
+			skin.name = "BannerSkin"
+			skin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			skin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			skin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			skin.set_anchors_preset(Control.PRESET_CENTER)
+			skin.offset_left = -360.0
+			skin.offset_top = -80.0
+			skin.offset_right = 360.0
+			skin.offset_bottom = 80.0
+			overlay.add_child(skin)
+			overlay.move_child(skin, 0)
+
+
+func _ensure_texture_rect(ui: CanvasLayer, node_name: String, rect: Rect2) -> TextureRect:
+	var node := ui.get_node_or_null(node_name) as TextureRect
+	if node != null:
+		return node
+	node = TextureRect.new()
+	node.name = node_name
+	node.visible = false
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	node.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	node.position = rect.position
+	node.size = rect.size
+	ui.add_child(node)
+	return node
+
+
+func _bind_banner_skin(node_name: String, asset_id: String, meta_key: String) -> void:
+	var ui: CanvasLayer = _ui_layer()
+	if ui == null:
+		return
+	var skin := _ensure_texture_rect(
+		ui,
+		node_name,
+		Rect2(320, 48, 640, 96) if node_name == "PhaseBannerSkin" else Rect2(480, 104, 320, 64)
+	)
+	var texture := _probe_ui_battle_texture(asset_id)
+	if texture != null:
+		skin.texture = texture
+		ui.set_meta(meta_key, false)
+	else:
+		skin.texture = null
+		skin.visible = false
+		ui.set_meta(meta_key, true)
+
+
+func _apply_finish_banner_skin(overlay: Control, victory: bool) -> void:
+	_ensure_banner_skin_nodes()
+	var skin := overlay.get_node_or_null("BannerSkin") as TextureRect
+	var primary := BANNER_RESULT_VICTORY_ASSET_ID if victory else BANNER_RESULT_DEFEAT_ASSET_ID
+	var texture := _probe_ui_battle_texture(primary)
+	if texture == null:
+		texture = _probe_ui_battle_texture(BANNER_RESULT_ASSET_ID)
+	if texture != null:
+		if skin != null:
+			skin.texture = texture
+			skin.visible = true
+			skin.modulate.a = 1.0
+		# StyleBoxTexture probe on a dedicated plate (not the full-screen dim scrim).
+		var plate := overlay.get_node_or_null("BannerPlate") as Panel
+		if plate == null:
+			plate = Panel.new()
+			plate.name = "BannerPlate"
+			plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			plate.set_anchors_preset(Control.PRESET_CENTER)
+			plate.offset_left = -360.0
+			plate.offset_top = -80.0
+			plate.offset_right = 360.0
+			plate.offset_bottom = 80.0
+			overlay.add_child(plate)
+			overlay.move_child(plate, 0)
+		var sb := StyleBoxTexture.new()
+		sb.texture = texture
+		sb.texture_margin_left = 32
+		sb.texture_margin_top = 24
+		sb.texture_margin_right = 32
+		sb.texture_margin_bottom = 24
+		plate.add_theme_stylebox_override("panel", sb)
+		plate.visible = true
+		# Keep theme PanelDimOverlay on overlay (no local Flat fork when graybox).
+		overlay.set_meta("finish_banner_graybox", false)
+	else:
+		if skin != null:
+			skin.texture = null
+			skin.visible = false
+		var plate2 := overlay.get_node_or_null("BannerPlate") as Panel
+		if plate2 != null:
+			plate2.visible = false
+			if plate2.has_theme_stylebox_override("panel"):
+				plate2.remove_theme_stylebox_override("panel")
+		if overlay.has_theme_stylebox_override("panel"):
+			overlay.remove_theme_stylebox_override("panel")
+		overlay.set_meta("finish_banner_graybox", true)
+
+
+func _probe_ui_battle_texture(asset_id: String) -> Texture2D:
+	if asset_id.is_empty():
+		return null
+	var texture := AssetAdapter.texture(asset_id, asset_base_dir)
+	if texture == null:
+		texture = AssetAdapter.texture_at("%s/ui/battle/%s.png" % [asset_base_dir, asset_id])
+	return texture
+
+
+func _probe_action_icon(action_def: Dictionary) -> Texture2D:
+	var kind := str(action_def.get("kind", "attack"))
+	var asset_id := str(ACTION_ICON_ASSET_BY_KIND.get(kind, "uia_bat_ico_attack"))
+	return _probe_ui_battle_texture(asset_id)
