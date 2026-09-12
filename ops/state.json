@@ -2,11 +2,11 @@
   "goal_status": "active",
   "milestone": "G7",
   "window": "W004-G6A+G7P",
-  "window_status": "visual_refactor_p4_standby",
+  "window_status": "visual_refactor_p5",
   "project_team_status": "active",
   "last_verified_commit": "9634010",
-  "active_packet": "VISUAL-REFACTOR-P4",
-  "resume_from": "visual_refactor_p4_standby",
+  "active_packet": "VISUAL-REFACTOR-P5",
+  "resume_from": "visual_refactor_p5_battle_icons_banner",
   "g6a_batch_status": {
     "batch1_env": "done",
     "batch2_units": "done",
@@ -14,7 +14,7 @@
     "batch4_audio": "done"
   },
   "next_packet_ids": [
-    "VISUAL-REFACTOR-P4"
+    "VISUAL-REFACTOR-P5"
   ],
   "known_blockers": [
     "Visual look not owner-passed — awaiting owner review of tip (do not invent/proxy playtest results); G7 shelved until look passes"
@@ -22,7 +22,7 @@
   "visual_polish_packet": "closed",
   "known_residuals": [
     "test_place_chain_* can false-red under dirty Godot userdata; clear userdata then full suite - single-run integration stays green; non-blocking",
-    "Post-P4 residuals (non-blocking): action icons/banner skins; recipe row text list; parallax ENV-18..20; boundary wall ENV-28; Boss arena stage"
+    "Post-P5 residuals (non-blocking): recipe row text list; parallax ENV-18..20; boundary wall ENV-28; Boss arena stage"
   ],
   "visual_refactor_packet": "p4_closed",
   "p1_a_explore_luoxian": "done",
@@ -30,5 +30,6 @@
   "p2_a_ui_chrome": "done",
   "p3_status": "closed",
   "p3_a_btnrail": "done",
-  "p4_status": "closed"
+  "p4_status": "closed",
+  "p5_status": "skeleton"
 }
